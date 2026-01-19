@@ -1,8 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const router = useRouter();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+
   const [currentDate, setCurrentDate] = useState(() => {
     // Initialize with a fixed date to avoid hydration mismatch
     const now = new Date();
@@ -20,6 +27,31 @@ export default function Home() {
 
   const datePickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // 인증 확인
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('userId');
+    const storedUserName = localStorage.getItem('userName');
+    const storedUserEmail = localStorage.getItem('userEmail');
+
+    if (!storedUserId) {
+      router.push('/login');
+      return;
+    }
+
+    setUserId(storedUserId);
+    setUserName(storedUserName || '');
+    setUserEmail(storedUserEmail || '');
+    setIsLoading(false);
+  }, [router]);
+
+  // 로그아웃 핸들러
+  const handleLogout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userEmail');
+    router.push('/login');
+  };
 
   // Close date picker when clicking outside
   useEffect(() => {
@@ -237,6 +269,11 @@ export default function Home() {
     );
   };
 
+  // 로딩 중일 때는 빈 화면 표시
+  if (isLoading) {
+    return null;
+  }
+
   return (
     <>
       <div className="noise-overlay" />
@@ -344,7 +381,7 @@ export default function Home() {
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                 className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold cursor-pointer transition-transform hover:scale-105"
               >
-                김
+                {userName ? userName.charAt(0) : userEmail.charAt(0)}
               </button>
 
               {/* Profile Menu Dropdown */}
@@ -358,8 +395,8 @@ export default function Home() {
                   }}
                 >
                   <div className="border-b border-[var(--border)]" style={{ padding: '12px 14px' }}>
-                    <div className="font-semibold text-text-primary" style={{ fontSize: '14px' }}>김철수</div>
-                    <div className="text-text-secondary" style={{ fontSize: '12px', marginTop: '2px' }}>user@example.com</div>
+                    <div className="font-semibold text-text-primary" style={{ fontSize: '14px' }}>{userName || '사용자'}</div>
+                    <div className="text-text-secondary" style={{ fontSize: '12px', marginTop: '2px' }}>{userEmail}</div>
                   </div>
                   <div style={{ padding: '6px 0' }}>
                     <button
@@ -377,7 +414,7 @@ export default function Home() {
                       style={{ padding: '10px 14px', fontSize: '14px' }}
                       onClick={() => {
                         setIsProfileMenuOpen(false);
-                        // TODO: Handle logout
+                        handleLogout();
                       }}
                     >
                       🚪 로그아웃
