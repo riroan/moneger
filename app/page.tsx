@@ -1,17 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function Home() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    // Initialize with a fixed date to avoid hydration mismatch
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
   const [transactionType, setTransactionType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Close date picker when clicking outside
+  useEffect(() => {
+    if (!isDatePickerOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setIsDatePickerOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDatePickerOpen]);
 
   const handlePreviousMonth = () => {
     setCurrentDate(prev => {
@@ -148,7 +170,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none" style={{ padding: '10px 20px', gap: '12px' }}>
+            <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none" style={{ padding: '10px 20px', gap: '12px' }}>
               <button
                 onClick={handlePreviousMonth}
                 className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer"
@@ -171,10 +193,11 @@ export default function Home() {
               {/* Date Picker Dropdown */}
               {isDatePickerOpen && (
                 <div
-                  className="absolute top-full left-1/2 -translate-x-1/2 mt-3 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none"
+                  className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none"
                   style={{
                     width: '320px',
                     padding: '20px',
+                    marginTop: '3px',
                     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
                   }}
                 >
