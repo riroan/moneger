@@ -22,7 +22,9 @@ export default function Home() {
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [categoryError, setCategoryError] = useState('');
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [descriptionError, setDescriptionError] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
@@ -222,26 +224,33 @@ export default function Home() {
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setAmount(value);
+
+    // 콤마 제거
+    const rawValue = value.replace(/,/g, '');
 
     // 빈 값인 경우
-    if (value === '') {
+    if (rawValue === '') {
+      setAmount('');
       setAmountError('');
       return;
     }
 
     // 숫자가 아닌 경우
-    if (!/^\d+$/.test(value)) {
+    if (!/^\d+$/.test(rawValue)) {
       setAmountError('숫자만 입력할 수 있습니다');
       return;
     }
 
     // 0인 경우
-    if (parseInt(value) === 0) {
+    if (parseInt(rawValue) === 0) {
       setAmountError('0보다 큰 금액을 입력하세요');
+      setAmount(rawValue);
       return;
     }
 
+    // 콤마 추가하여 저장
+    const formattedValue = parseInt(rawValue).toLocaleString('ko-KR');
+    setAmount(formattedValue);
     setAmountError('');
   };
 
@@ -249,8 +258,24 @@ export default function Home() {
     e.preventDefault();
 
     // 유효성 검사
+    let hasError = false;
+
     if (!amount || amountError) {
       setAmountError('금액을 입력해주세요');
+      hasError = true;
+    }
+
+    if (!description || description.trim() === '') {
+      setDescriptionError('내용을 입력해주세요');
+      hasError = true;
+    }
+
+    if (!selectedCategory) {
+      setCategoryError('카테고리를 선택해주세요');
+      hasError = true;
+    }
+
+    if (hasError) {
       return;
     }
 
@@ -261,6 +286,9 @@ export default function Home() {
     setIsSubmitting(true);
 
     try {
+      // 콤마 제거 후 숫자로 변환
+      const rawAmount = amount.replace(/,/g, '');
+
       const response = await fetch('/api/transactions', {
         method: 'POST',
         headers: {
@@ -269,7 +297,7 @@ export default function Home() {
         body: JSON.stringify({
           userId,
           type: transactionType,
-          amount: parseInt(amount),
+          amount: parseInt(rawAmount),
           description: description || null,
           categoryId: selectedCategory || null,
         }),
@@ -287,6 +315,8 @@ export default function Home() {
       setDescription('');
       setSelectedCategory('');
       setAmountError('');
+      setDescriptionError('');
+      setCategoryError('');
 
       // 최근 거래 목록 새로고침
       const recentResponse = await fetch(`/api/transactions/recent?userId=${userId}&limit=5`);
@@ -578,21 +608,6 @@ export default function Home() {
               <h2 className="text-lg font-semibold flex items-center gap-2.5">
                 <span className="text-xl">📊</span> 카테고리별 지출
               </h2>
-              <div className="flex gap-2">
-                {['생활비', '고정비'].map((tab) => (
-                  <button
-                    key={tab}
-                    className={`rounded-[10px] text-sm font-medium transition-all ${
-                      tab === '생활비'
-                        ? 'bg-[var(--glow-mint)] text-accent-mint'
-                        : 'text-text-secondary hover:bg-bg-card-hover hover:text-text-primary'
-                    }`}
-                    style={{ padding: '10px 20px' }}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div className="flex flex-col" style={{ gap: '12px' }}>
@@ -850,10 +865,24 @@ export default function Home() {
                   type="text"
                   placeholder="거래 내용을 입력하세요"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors"
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    if (e.target.value.trim()) {
+                      setDescriptionError('');
+                    }
+                  }}
+                  className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors ${
+                    descriptionError
+                      ? 'border-accent-coral focus:border-accent-coral'
+                      : 'border-[var(--border)] focus:border-accent-mint'
+                  }`}
                   style={{ padding: '14px 16px' }}
                 />
+                {descriptionError && (
+                  <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
+                    {descriptionError}
+                  </p>
+                )}
               </div>
 
               {/* Category */}
@@ -865,7 +894,11 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                    className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer text-left flex items-center justify-between"
+                    className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors cursor-pointer text-left flex items-center justify-between ${
+                      categoryError
+                        ? 'border-accent-coral focus:border-accent-coral'
+                        : 'border-[var(--border)] focus:border-accent-mint'
+                    }`}
                     style={{ padding: '14px 16px' }}
                   >
                     <span className={selectedCategory ? 'text-text-primary' : 'text-text-muted'}>
@@ -899,6 +932,7 @@ export default function Home() {
                           type="button"
                           onClick={() => {
                             setSelectedCategory(category.id);
+                            setCategoryError('');
                             setIsCategoryOpen(false);
                           }}
                           className="w-full text-left hover:bg-bg-card-hover transition-colors text-text-primary border-b border-[var(--border)] last:border-b-0 cursor-pointer"
@@ -910,6 +944,11 @@ export default function Home() {
                     </div>
                   )}
                 </div>
+                {categoryError && (
+                  <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
+                    {categoryError}
+                  </p>
+                )}
               </div>
 
               {/* Submit Buttons */}
@@ -922,6 +961,8 @@ export default function Home() {
                     setDescription('');
                     setSelectedCategory('');
                     setAmountError('');
+                    setDescriptionError('');
+                    setCategoryError('');
                   }}
                   className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
                   style={{ padding: '14px' }}
