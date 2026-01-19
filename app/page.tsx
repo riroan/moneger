@@ -193,6 +193,14 @@ export default function Home() {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() + 1);
+
+      // 미래 날짜로 이동하지 않도록 체크
+      const now = new Date();
+      if (newDate.getFullYear() > now.getFullYear() ||
+          (newDate.getFullYear() === now.getFullYear() && newDate.getMonth() > now.getMonth())) {
+        return prev;
+      }
+
       return newDate;
     });
   };
@@ -439,7 +447,14 @@ export default function Home() {
               </span>
               <button
                 onClick={handleNextMonth}
-                className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer"
+                disabled={(() => {
+                  const nextMonth = new Date(currentDate);
+                  nextMonth.setMonth(currentDate.getMonth() + 1);
+                  const now = new Date();
+                  return nextMonth.getFullYear() > now.getFullYear() ||
+                    (nextMonth.getFullYear() === now.getFullYear() && nextMonth.getMonth() > now.getMonth());
+                })()}
+                className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 ▶
               </button>
@@ -468,7 +483,8 @@ export default function Home() {
                     </div>
                     <button
                       onClick={handleNextYear}
-                      className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center"
+                      disabled={pickerYear >= new Date().getFullYear()}
+                      className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       ▶
                     </button>
@@ -478,14 +494,20 @@ export default function Home() {
                   <div className="grid grid-cols-4" style={{ gap: '8px' }}>
                     {Array.from({ length: 12 }, (_, i) => i).map(month => {
                       const isSelected = currentDate.getFullYear() === pickerYear && currentDate.getMonth() === month;
+                      const now = new Date();
+                      const isFuture = pickerYear > now.getFullYear() ||
+                        (pickerYear === now.getFullYear() && month > now.getMonth());
                       return (
                         <button
                           key={month}
                           onClick={() => handleMonthSelect(pickerYear, month)}
-                          className={`rounded-[8px] font-medium transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
-                              : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover'
+                          disabled={isFuture}
+                          className={`rounded-[8px] font-medium transition-all ${
+                            isFuture
+                              ? 'bg-bg-secondary text-text-muted opacity-30 cursor-not-allowed'
+                              : isSelected
+                              ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary cursor-pointer'
+                              : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover cursor-pointer'
                           }`}
                           style={{ padding: '10px 0', fontSize: '14px' }}
                         >
