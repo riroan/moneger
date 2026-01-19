@@ -79,6 +79,15 @@ yarn start
 # 린트 검사
 yarn lint
 
+# 테스트 실행
+npm test
+
+# 테스트 실시간 감시 모드
+npm run test:watch
+
+# 테스트 커버리지 확인
+npm run test:coverage
+
 # Prisma Studio 실행 (데이터베이스 GUI)
 yarn prisma studio
 ```
