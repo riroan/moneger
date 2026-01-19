@@ -1,0 +1,290 @@
+export default function Home() {
+  const formatCurrency = (amount: string) => {
+    // +, - 기호가 있는지 확인
+    const hasSign = amount.startsWith('+') || amount.startsWith('-');
+    const sign = hasSign ? amount.charAt(0) : '';
+    const rest = hasSign ? amount.slice(1) : amount;
+
+    // ₩ 기호 분리
+    const currencySymbol = rest.charAt(0);
+    const number = rest.slice(1);
+
+    return (
+      <>
+        {sign && <span style={{ fontSize: '1.3em', marginRight: '0.15em', verticalAlign: 'baseline', transform: 'translateY(0.05em)', display: 'inline-block' }}>{sign}</span>}
+        <span style={{ whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '0.7em', marginRight: '0.25em', display: 'inline-block' }}>{currencySymbol}</span>
+          {number}
+        </span>
+      </>
+    );
+  };
+
+  return (
+    <>
+      <div className="noise-overlay" />
+      <div className="gradient-orb orb-1" />
+      <div className="gradient-orb orb-2" />
+
+      <div
+        className="relative z-10"
+        style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          padding: '32px'
+        }}
+      >
+        {/* Header */}
+        <header
+          className="flex justify-between items-center animate-[fadeInDown_0.6s_ease-out]"
+          style={{ marginBottom: '40px' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-accent-mint to-accent-blue rounded-[14px] flex items-center justify-center text-2xl shadow-[0_8px_32px_var(--glow-mint)]">
+              💰
+            </div>
+            <span className="text-2xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent tracking-tight">
+              MONEGER
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl" style={{ padding: '10px 20px', gap: '12px' }}>
+              <button className="text-text-secondary hover:text-text-primary transition-colors text-lg">
+                ◀
+              </button>
+              <span className="text-base font-semibold min-w-[120px] text-center">
+                2026년 1월
+              </span>
+              <button className="text-text-secondary hover:text-text-primary transition-colors text-lg">
+                ▶
+              </button>
+            </div>
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold cursor-pointer transition-transform hover:scale-105">
+              김
+            </div>
+          </div>
+        </header>
+
+        {/* Summary Cards */}
+        <div
+          className="grid grid-cols-4"
+          style={{ gap: '20px', marginBottom: '32px' }}
+        >
+          {[
+            { type: 'income', icon: '💼', label: '이번 수입', amount: '₩4,791,265', change: '전월 대비 ₩639,666 ↑', positive: true },
+            { type: 'expense', icon: '💳', label: '이번 지출', amount: '₩1,394,580', change: '전월 대비 ₩194,580 ↑', positive: false },
+            { type: 'savings', icon: '🏦', label: '저축', amount: '₩2,000,000', change: '목표의 100%', positive: true },
+            { type: 'balance', icon: '✨', label: '남은 금액', amount: '₩2,757,019', change: '여유 자산', positive: true }
+          ].map((card, i) => (
+            <div
+              key={card.type}
+              className={`bg-bg-card border border-[var(--border)] rounded-[20px] relative overflow-hidden transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] animate-[fadeInUp_0.6s_ease-out_backwards] [animation-delay:${(i + 1) * 100}ms] before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:rounded-t-[20px] ${
+                card.type === 'income' ? 'before:bg-gradient-to-r before:from-accent-mint before:to-accent-blue' :
+                card.type === 'expense' ? 'before:bg-gradient-to-r before:from-accent-coral before:to-accent-yellow' :
+                card.type === 'savings' ? 'before:bg-gradient-to-r before:from-accent-blue before:to-accent-purple' :
+                'before:bg-gradient-to-r before:from-accent-purple before:to-accent-mint'
+              }`}
+              style={{ padding: '24px' }}
+            >
+              <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center text-[22px] ${
+                card.type === 'income' ? 'bg-[var(--glow-mint)] text-accent-mint' :
+                card.type === 'expense' ? 'bg-[var(--glow-coral)] text-accent-coral' :
+                card.type === 'savings' ? 'bg-[var(--glow-blue)] text-accent-blue' :
+                'bg-[var(--glow-purple)] text-accent-purple'
+              }`}
+                style={{ marginBottom: '16px' }}
+              >
+                {card.icon}
+              </div>
+              <div className="text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>{card.label}</div>
+              <div className={`font-mono font-bold tracking-tight ${
+                card.type === 'income' ? 'text-accent-mint' :
+                card.type === 'expense' ? 'text-accent-coral' :
+                card.type === 'savings' ? 'text-accent-blue' :
+                'text-accent-purple'
+              }`}
+                style={{ fontSize: 'clamp(20px, 2vw, 28px)' }}
+              >
+                {formatCurrency(card.amount)}
+              </div>
+              <div className={`inline-flex items-center gap-1 text-[13px] rounded-lg font-medium ${
+                card.positive ? 'bg-[var(--glow-mint)] text-accent-mint' : 'bg-[var(--glow-coral)] text-accent-coral'
+              }`}
+                style={{ marginTop: '12px', padding: '8px 12px' }}
+              >
+                {card.change}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-[1fr_380px]" style={{ gap: '24px' }}>
+          {/* Left Panel - Categories */}
+          <div className="bg-bg-card border border-[var(--border)] rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '24px' }}>
+            <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
+              <h2 className="text-lg font-semibold flex items-center gap-2.5">
+                <span className="text-xl">📊</span> 카테고리별 지출
+              </h2>
+              <div className="flex gap-2">
+                {['생활비', '고정비'].map((tab) => (
+                  <button
+                    key={tab}
+                    className={`rounded-[10px] text-sm font-medium transition-all ${
+                      tab === '생활비'
+                        ? 'bg-[var(--glow-mint)] text-accent-mint'
+                        : 'text-text-secondary hover:bg-bg-card-hover hover:text-text-primary'
+                    }`}
+                    style={{ padding: '10px 20px' }}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col" style={{ gap: '12px' }}>
+              {[
+                { icon: '🏠', name: '대출이자', count: '매월 고정', amount: '₩338,752', width: 85 },
+                { icon: '🍽️', name: '식비', count: '14건', amount: '₩263,380', width: 65 },
+                { icon: '🚇', name: '교통비', count: '31건', amount: '₩96,580', width: 45 },
+                { icon: '🎮', name: '구독서비스', count: '6건', amount: '₩45,624', width: 30 },
+                { icon: '✈️', name: '여행', count: '5건', amount: '₩622,184', width: 50 },
+                { icon: '💄', name: '미용/뷰티', count: '3건', amount: '₩40,000', width: 25 }
+              ].map((category, i) => (
+                <div
+                  key={i}
+                  className="flex items-center bg-bg-secondary rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover hover:translate-x-1"
+                  style={{ padding: '16px' }}
+                >
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${
+                    ['bg-[var(--glow-mint)]', 'bg-[var(--glow-coral)]', 'bg-[var(--glow-blue)]', 'bg-[rgba(251,191,36,0.15)]', 'bg-[var(--glow-purple)]', 'bg-[rgba(244,114,182,0.15)]'][i]
+                  }`} style={{ marginRight: '14px' }}>
+                    {category.icon}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[15px] font-medium" style={{ marginBottom: '4px' }}>{category.name}</div>
+                    <div className="text-[13px] text-text-muted">{category.count}</div>
+                  </div>
+                  <div className="font-mono text-base font-semibold" style={{ marginRight: '16px' }}>{formatCurrency(category.amount)}</div>
+                  <div className="w-20 h-1.5 bg-bg-primary rounded-[3px] overflow-hidden">
+                    <div
+                      className={`h-full rounded-[3px] transition-all duration-[600ms] ${
+                        ['bg-accent-mint', 'bg-accent-coral', 'bg-accent-blue', 'bg-accent-yellow', 'bg-accent-purple', 'bg-[#f472b6]'][i]
+                      }`}
+                      style={{ width: `${category.width}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="flex flex-col" style={{ gap: '24px' }}>
+            {/* Budget Progress */}
+            <div className="bg-bg-card border border-[var(--border)] rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '24px' }}>
+              <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
+                <h2 className="text-lg font-semibold flex items-center gap-2.5">
+                  <span className="text-xl">🎯</span> 예산 달성률
+                </h2>
+              </div>
+
+              <div className="flex justify-center py-5">
+                <div className="relative w-[180px] h-[180px]">
+                  <svg className="transform -rotate-90" width="180" height="180" viewBox="0 0 180 180">
+                    <defs>
+                      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style={{ stopColor: 'var(--accent-mint)' }} />
+                        <stop offset="100%" style={{ stopColor: 'var(--accent-blue)' }} />
+                      </linearGradient>
+                    </defs>
+                    <circle
+                      cx="90"
+                      cy="90"
+                      r="70"
+                      fill="none"
+                      stroke="var(--bg-secondary)"
+                      strokeWidth="12"
+                    />
+                    <circle
+                      cx="90"
+                      cy="90"
+                      r="70"
+                      fill="none"
+                      stroke="url(#gradient)"
+                      strokeWidth="12"
+                      strokeLinecap="round"
+                      strokeDasharray="439.8"
+                      strokeDashoffset="132"
+                      className="transition-all duration-1000"
+                    />
+                  </svg>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                    <div className="font-mono text-4xl font-bold text-accent-mint">70%</div>
+                    <div className="text-[13px] text-text-secondary mt-1">예산 사용</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col" style={{ gap: '12px', marginTop: '8px' }}>
+                <div className="bg-bg-secondary rounded-xl text-center" style={{ padding: '16px' }}>
+                  <div className="font-mono text-xl font-bold text-accent-mint" style={{ marginBottom: '4px' }}>{formatCurrency('₩605,000')}</div>
+                  <div className="text-xs text-text-muted">여유 예산</div>
+                </div>
+                <div className="bg-bg-secondary rounded-xl text-center" style={{ padding: '16px' }}>
+                  <div className="font-mono text-xl font-bold text-accent-coral" style={{ marginBottom: '4px' }}>{formatCurrency('₩1,390,000')}</div>
+                  <div className="text-xs text-text-muted">사용 금액</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Transactions */}
+            <div className="bg-bg-card border border-[var(--border)] rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '24px' }}>
+              <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
+                <h2 className="text-lg font-semibold flex items-center gap-2.5">
+                  <span className="text-xl">📝</span> 최근 거래
+                </h2>
+              </div>
+
+              <div className="flex flex-col" style={{ gap: '12px' }}>
+                {[
+                  { icon: '🍔', name: '곱돌이네', date: '오늘 12:30', amount: '-₩14,900', type: 'expense' },
+                  { icon: '💼', name: '월급', date: '1월 15일', amount: '+₩4,151,599', type: 'income' },
+                  { icon: '🎮', name: '닌텐도 칩', date: '1월 14일', amount: '-₩172,290', type: 'expense' },
+                  { icon: '💇', name: '미용실', date: '1월 12일', amount: '-₩40,000', type: 'expense' },
+                  { icon: '🎤', name: '노래방', date: '1월 11일', amount: '-₩2,500', type: 'expense' }
+                ].map((tx, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center bg-bg-secondary rounded-[14px] transition-colors hover:bg-bg-card-hover"
+                    style={{ padding: '14px' }}
+                  >
+                    <div className="w-10 h-10 rounded-[10px] bg-bg-card flex items-center justify-center text-lg" style={{ marginRight: '12px' }}>
+                      {tx.icon}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium" style={{ marginBottom: '2px' }}>{tx.name}</div>
+                      <div className="text-xs text-text-muted">{tx.date}</div>
+                    </div>
+                    <div className={`font-mono text-[15px] font-semibold ${
+                      tx.type === 'expense' ? 'text-accent-coral' : 'text-accent-mint'
+                    }`}>
+                      {formatCurrency(tx.amount)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Button */}
+      <button className="fixed bottom-8 right-8 w-16 h-16 rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue border-none text-bg-primary text-[28px] cursor-pointer shadow-[0_8px_32px_var(--glow-mint)] transition-all hover:scale-110 hover:rotate-90 hover:shadow-[0_12px_48px_var(--glow-mint)] z-[100] flex items-center justify-center">
+        +
+      </button>
+    </>
+  );
+}
