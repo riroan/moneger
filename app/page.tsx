@@ -138,6 +138,84 @@ export default function Home() {
     ],
   };
 
+  // Mock transaction data
+  const mockTransactions = [
+    { id: 1, type: 'INCOME' as const, amount: 3000000, description: '급여', category: 'salary', date: new Date(2026, 0, 15) },
+    { id: 2, type: 'INCOME' as const, amount: 500000, description: '상여금', category: 'bonus', date: new Date(2026, 0, 20) },
+    { id: 3, type: 'EXPENSE' as const, amount: 338752, description: '대출이자', category: 'loan', date: new Date(2026, 0, 5) },
+    { id: 4, type: 'EXPENSE' as const, amount: 150000, description: '식비', category: 'food', date: new Date(2026, 0, 10) },
+    { id: 5, type: 'EXPENSE' as const, amount: 80000, description: '교통비', category: 'transport', date: new Date(2026, 0, 12) },
+    { id: 6, type: 'EXPENSE' as const, amount: 45000, description: '구독서비스', category: 'subscription', date: new Date(2026, 0, 14) },
+    { id: 7, type: 'EXPENSE' as const, amount: 200000, description: '쇼핑', category: 'beauty', date: new Date(2026, 0, 18) },
+  ];
+
+  // Calculate summary statistics
+  const currentMonthTransactions = mockTransactions.filter(tx => {
+    return tx.date.getFullYear() === currentDate.getFullYear() &&
+           tx.date.getMonth() === currentDate.getMonth();
+  });
+
+  const totalIncome = currentMonthTransactions
+    .filter(tx => tx.type === 'INCOME')
+    .reduce((sum, tx) => sum + tx.amount, 0);
+
+  const totalExpense = currentMonthTransactions
+    .filter(tx => tx.type === 'EXPENSE')
+    .reduce((sum, tx) => sum + tx.amount, 0);
+
+  const balance = totalIncome - totalExpense;
+  const savingsGoal = 2000000;
+  const actualSavings = Math.max(0, balance);
+  const savingsRate = Math.min(100, Math.round((actualSavings / savingsGoal) * 100));
+
+  // Calculate category statistics
+  const categoryStats = currentMonthTransactions
+    .filter(tx => tx.type === 'EXPENSE')
+    .reduce((acc, tx) => {
+      if (!acc[tx.category]) {
+        acc[tx.category] = { count: 0, total: 0 };
+      }
+      acc[tx.category].count++;
+      acc[tx.category].total += tx.amount;
+      return acc;
+    }, {} as Record<string, { count: number; total: number }>);
+
+  const maxCategoryAmount = Math.max(...Object.values(categoryStats).map(s => s.total), 1);
+
+  const categoryList = [
+    { icon: '🏠', name: '대출이자', category: 'loan' },
+    { icon: '🍽️', name: '식비', category: 'food' },
+    { icon: '🚇', name: '교통비', category: 'transport' },
+    { icon: '🎮', name: '구독서비스', category: 'subscription' },
+    { icon: '✈️', name: '여행', category: 'travel' },
+    { icon: '💄', name: '미용/뷰티', category: 'beauty' }
+  ].map((cat, i) => {
+    const stats = categoryStats[cat.category] || { count: 0, total: 0 };
+    const width = Math.round((stats.total / maxCategoryAmount) * 100);
+    return {
+      ...cat,
+      count: stats.count,
+      amount: stats.total,
+      width: width || 0,
+      colorIndex: i
+    };
+  }).filter(cat => cat.count > 0);
+
+  // Calculate budget usage
+  const monthlyBudget = 2000000;
+  const budgetUsed = totalExpense;
+  const budgetUsagePercent = Math.min(100, Math.round((budgetUsed / monthlyBudget) * 100));
+  const budgetRemaining = Math.max(0, monthlyBudget - budgetUsed);
+
+  // Prepare recent transactions (sorted by date, most recent first)
+  const recentTransactions = [...currentMonthTransactions]
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .slice(0, 5);
+
+  const formatNumber = (num: number): string => {
+    return num.toLocaleString('ko-KR');
+  };
+
   const formatCurrency = (amount: string) => {
     // +, - 기호가 있는지 확인
     const hasSign = amount.startsWith('+') || amount.startsWith('-');
@@ -317,10 +395,10 @@ export default function Home() {
           style={{ gap: '20px', marginBottom: '32px' }}
         >
           {[
-            { type: 'income', icon: '💼', label: '이번 수입', amount: '₩4,791,265', change: '전월 대비 ₩639,666 ↑', positive: true },
-            { type: 'expense', icon: '💳', label: '이번 지출', amount: '₩1,394,580', change: '전월 대비 ₩194,580 ↑', positive: false },
-            { type: 'savings', icon: '🏦', label: '저축', amount: '₩2,000,000', change: '목표의 100%', positive: true },
-            { type: 'balance', icon: '✨', label: '남은 금액', amount: '₩2,757,019', change: '여유 자산', positive: true }
+            { type: 'income', icon: '💼', label: '이번 수입', amount: `₩${formatNumber(totalIncome)}`, change: `${currentMonthTransactions.filter(tx => tx.type === 'INCOME').length}건의 수입`, positive: true },
+            { type: 'expense', icon: '💳', label: '이번 지출', amount: `₩${formatNumber(totalExpense)}`, change: `${currentMonthTransactions.filter(tx => tx.type === 'EXPENSE').length}건의 지출`, positive: false },
+            { type: 'savings', icon: '🏦', label: '저축', amount: `₩${formatNumber(actualSavings)}`, change: `목표의 ${savingsRate}%`, positive: actualSavings >= savingsGoal },
+            { type: 'balance', icon: '✨', label: '남은 금액', amount: `₩${formatNumber(balance)}`, change: balance > 0 ? '여유 자산' : '적자', positive: balance > 0 }
           ].map((card, i) => (
             <div
               key={card.type}
@@ -390,39 +468,36 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col" style={{ gap: '12px' }}>
-              {[
-                { icon: '🏠', name: '대출이자', count: '매월 고정', amount: '₩338,752', width: 85 },
-                { icon: '🍽️', name: '식비', count: '14건', amount: '₩263,380', width: 65 },
-                { icon: '🚇', name: '교통비', count: '31건', amount: '₩96,580', width: 45 },
-                { icon: '🎮', name: '구독서비스', count: '6건', amount: '₩45,624', width: 30 },
-                { icon: '✈️', name: '여행', count: '5건', amount: '₩622,184', width: 50 },
-                { icon: '💄', name: '미용/뷰티', count: '3건', amount: '₩40,000', width: 25 }
-              ].map((category, i) => (
+              {categoryList.length > 0 ? categoryList.map((category) => (
                 <div
-                  key={i}
+                  key={category.category}
                   className="flex items-center bg-bg-secondary rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover hover:translate-x-1"
                   style={{ padding: '16px' }}
                 >
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${
-                    ['bg-[var(--glow-mint)]', 'bg-[var(--glow-coral)]', 'bg-[var(--glow-blue)]', 'bg-[rgba(251,191,36,0.15)]', 'bg-[var(--glow-purple)]', 'bg-[rgba(244,114,182,0.15)]'][i]
+                    ['bg-[var(--glow-mint)]', 'bg-[var(--glow-coral)]', 'bg-[var(--glow-blue)]', 'bg-[rgba(251,191,36,0.15)]', 'bg-[var(--glow-purple)]', 'bg-[rgba(244,114,182,0.15)]'][category.colorIndex]
                   }`} style={{ marginRight: '14px' }}>
                     {category.icon}
                   </div>
                   <div className="flex-1">
                     <div className="text-[15px] font-medium" style={{ marginBottom: '4px' }}>{category.name}</div>
-                    <div className="text-[13px] text-text-muted">{category.count}</div>
+                    <div className="text-[13px] text-text-muted">{category.count}건</div>
                   </div>
-                  <div className="font-mono text-base font-semibold" style={{ marginRight: '16px' }}>{formatCurrency(category.amount)}</div>
+                  <div className="font-mono text-base font-semibold" style={{ marginRight: '16px' }}>{formatCurrency(`₩${formatNumber(category.amount)}`)}</div>
                   <div className="w-20 h-1.5 bg-bg-primary rounded-[3px] overflow-hidden">
                     <div
                       className={`h-full rounded-[3px] transition-all duration-[600ms] ${
-                        ['bg-accent-mint', 'bg-accent-coral', 'bg-accent-blue', 'bg-accent-yellow', 'bg-accent-purple', 'bg-[#f472b6]'][i]
+                        ['bg-accent-mint', 'bg-accent-coral', 'bg-accent-blue', 'bg-accent-yellow', 'bg-accent-purple', 'bg-[#f472b6]'][category.colorIndex]
                       }`}
                       style={{ width: `${category.width}%` }}
                     />
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center text-text-muted py-8">
+                  이번 달 지출 내역이 없습니다
+                </div>
+              )}
             </div>
           </div>
 
@@ -462,12 +537,12 @@ export default function Home() {
                       strokeWidth="12"
                       strokeLinecap="round"
                       strokeDasharray="439.8"
-                      strokeDashoffset="132"
+                      strokeDashoffset={439.8 * (1 - budgetUsagePercent / 100)}
                       className="transition-all duration-1000"
                     />
                   </svg>
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                    <div className="font-mono text-4xl font-bold text-accent-mint">70%</div>
+                    <div className={`font-mono text-4xl font-bold ${budgetUsagePercent > 100 ? 'text-accent-coral' : 'text-accent-mint'}`}>{budgetUsagePercent}%</div>
                     <div className="text-[13px] text-text-secondary mt-1">예산 사용</div>
                   </div>
                 </div>
@@ -475,11 +550,11 @@ export default function Home() {
 
               <div className="flex flex-col" style={{ gap: '12px', marginTop: '8px' }}>
                 <div className="bg-bg-secondary rounded-xl text-center" style={{ padding: '16px' }}>
-                  <div className="font-mono text-xl font-bold text-accent-mint" style={{ marginBottom: '4px' }}>{formatCurrency('₩605,000')}</div>
+                  <div className={`font-mono text-xl font-bold ${budgetRemaining > 0 ? 'text-accent-mint' : 'text-accent-coral'}`} style={{ marginBottom: '4px' }}>{formatCurrency(`₩${formatNumber(budgetRemaining)}`)}</div>
                   <div className="text-xs text-text-muted">여유 예산</div>
                 </div>
                 <div className="bg-bg-secondary rounded-xl text-center" style={{ padding: '16px' }}>
-                  <div className="font-mono text-xl font-bold text-accent-coral" style={{ marginBottom: '4px' }}>{formatCurrency('₩1,390,000')}</div>
+                  <div className="font-mono text-xl font-bold text-accent-coral" style={{ marginBottom: '4px' }}>{formatCurrency(`₩${formatNumber(budgetUsed)}`)}</div>
                   <div className="text-xs text-text-muted">사용 금액</div>
                 </div>
               </div>
@@ -494,32 +569,40 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col" style={{ gap: '12px' }}>
-                {[
-                  { icon: '🍔', name: '곱돌이네', date: '오늘 12:30', amount: '-₩14,900', type: 'expense' },
-                  { icon: '💼', name: '월급', date: '1월 15일', amount: '+₩4,151,599', type: 'income' },
-                  { icon: '🎮', name: '닌텐도 칩', date: '1월 14일', amount: '-₩172,290', type: 'expense' },
-                  { icon: '💇', name: '미용실', date: '1월 12일', amount: '-₩40,000', type: 'expense' },
-                  { icon: '🎤', name: '노래방', date: '1월 11일', amount: '-₩2,500', type: 'expense' }
-                ].map((tx, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center bg-bg-secondary rounded-[14px] transition-colors hover:bg-bg-card-hover"
-                    style={{ padding: '14px' }}
-                  >
-                    <div className="w-10 h-10 rounded-[10px] bg-bg-card flex items-center justify-center text-lg" style={{ marginRight: '12px' }}>
-                      {tx.icon}
+                {recentTransactions.length > 0 ? recentTransactions.map((tx) => {
+                  const categoryInfo = categories[tx.type].find(c => c.value === tx.category);
+                  const icon = categoryInfo?.label.split(' ')[0] || '💰';
+                  const formatDate = (date: Date) => {
+                    const month = date.getMonth() + 1;
+                    const day = date.getDate();
+                    return `${month}월 ${day}일`;
+                  };
+
+                  return (
+                    <div
+                      key={tx.id}
+                      className="flex items-center bg-bg-secondary rounded-[14px] transition-colors hover:bg-bg-card-hover"
+                      style={{ padding: '14px' }}
+                    >
+                      <div className="w-10 h-10 rounded-[10px] bg-bg-card flex items-center justify-center text-lg" style={{ marginRight: '12px' }}>
+                        {icon}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium" style={{ marginBottom: '2px' }}>{tx.description}</div>
+                        <div className="text-xs text-text-muted">{formatDate(tx.date)}</div>
+                      </div>
+                      <div className={`font-mono text-[15px] font-semibold ${
+                        tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
+                      }`}>
+                        {formatCurrency(`${tx.type === 'EXPENSE' ? '-' : '+'}₩${formatNumber(tx.amount)}`)}
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium" style={{ marginBottom: '2px' }}>{tx.name}</div>
-                      <div className="text-xs text-text-muted">{tx.date}</div>
-                    </div>
-                    <div className={`font-mono text-[15px] font-semibold ${
-                      tx.type === 'expense' ? 'text-accent-coral' : 'text-accent-mint'
-                    }`}>
-                      {formatCurrency(tx.amount)}
-                    </div>
+                  );
+                }) : (
+                  <div className="text-center text-text-muted py-8">
+                    거래 내역이 없습니다
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
