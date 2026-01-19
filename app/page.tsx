@@ -16,8 +16,10 @@ export default function Home() {
   const [amountError, setAmountError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   const datePickerRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Close date picker when clicking outside
   useEffect(() => {
@@ -34,6 +36,22 @@ export default function Home() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isDatePickerOpen]);
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isProfileMenuOpen]);
 
   const handlePreviousMonth = () => {
     setCurrentDate(prev => {
@@ -243,8 +261,52 @@ export default function Home() {
                 </div>
               )}
             </div>
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold cursor-pointer transition-transform hover:scale-105">
-              김
+            <div ref={profileMenuRef} className="relative">
+              <button
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold cursor-pointer transition-transform hover:scale-105"
+              >
+                김
+              </button>
+
+              {/* Profile Menu Dropdown */}
+              {isProfileMenuOpen && (
+                <div
+                  className="absolute top-full right-0 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-hidden select-none z-[300]"
+                  style={{
+                    marginTop: '8px',
+                    minWidth: '180px',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+                  }}
+                >
+                  <div className="border-b border-[var(--border)]" style={{ padding: '12px 14px' }}>
+                    <div className="font-semibold text-text-primary" style={{ fontSize: '14px' }}>김철수</div>
+                    <div className="text-text-secondary" style={{ fontSize: '12px', marginTop: '2px' }}>user@example.com</div>
+                  </div>
+                  <div style={{ padding: '6px 0' }}>
+                    <button
+                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
+                      style={{ padding: '10px 14px', fontSize: '14px' }}
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        // TODO: Navigate to profile settings
+                      }}
+                    >
+                      ⚙️ 설정
+                    </button>
+                    <button
+                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
+                      style={{ padding: '10px 14px', fontSize: '14px' }}
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        // TODO: Handle logout
+                      }}
+                    >
+                      🚪 로그아웃
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
