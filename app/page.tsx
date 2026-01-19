@@ -1,4 +1,59 @@
+'use client';
+
+import { useState } from 'react';
+
 export default function Home() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [transactionType, setTransactionType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
+  const [amount, setAmount] = useState('');
+  const [amountError, setAmountError] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAmount(value);
+
+    // 빈 값인 경우
+    if (value === '') {
+      setAmountError('');
+      return;
+    }
+
+    // 숫자가 아닌 경우
+    if (!/^\d+$/.test(value)) {
+      setAmountError('숫자만 입력할 수 있습니다');
+      return;
+    }
+
+    // 0인 경우
+    if (parseInt(value) === 0) {
+      setAmountError('0보다 큰 금액을 입력하세요');
+      return;
+    }
+
+    setAmountError('');
+  };
+
+  const categories = {
+    EXPENSE: [
+      { value: 'auto', label: '🤖 자동' },
+      { value: 'food', label: '🍽️ 식비' },
+      { value: 'transport', label: '🚇 교통비' },
+      { value: 'loan', label: '🏠 대출이자' },
+      { value: 'subscription', label: '🎮 구독서비스' },
+      { value: 'travel', label: '✈️ 여행' },
+      { value: 'beauty', label: '💄 미용/뷰티' },
+    ],
+    INCOME: [
+      { value: 'auto', label: '🤖 자동' },
+      { value: 'salary', label: '💼 급여' },
+      { value: 'bonus', label: '🎁 상여금' },
+      { value: 'investment', label: '📈 투자수익' },
+      { value: 'etc', label: '💰 기타수입' },
+    ],
+  };
+
   const formatCurrency = (amount: string) => {
     // +, - 기호가 있는지 확인
     const hasSign = amount.startsWith('+') || amount.startsWith('-');
@@ -282,9 +337,191 @@ export default function Home() {
       </div>
 
       {/* Add Button */}
-      <button className="fixed bottom-8 right-8 w-16 h-16 rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue border-none text-bg-primary text-[28px] cursor-pointer shadow-[0_8px_32px_var(--glow-mint)] transition-all hover:scale-110 hover:rotate-90 hover:shadow-[0_12px_48px_var(--glow-mint)] z-[100] flex items-center justify-center">
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="fixed bottom-8 right-8 w-16 h-16 rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue border-none text-bg-primary text-[28px] cursor-pointer shadow-[0_8px_32px_var(--glow-mint)] transition-all hover:scale-110 hover:rotate-90 hover:shadow-[0_12px_48px_var(--glow-mint)] z-[100] flex items-center justify-center">
         +
       </button>
+
+      {/* Transaction Modal */}
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center"
+          style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="bg-bg-card border border-[var(--border)] rounded-[24px] animate-[fadeIn_0.3s_ease-out]"
+            style={{
+              width: '90%',
+              maxWidth: '520px',
+              padding: '32px',
+              boxShadow: '0 24px 48px rgba(0, 0, 0, 0.4)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
+              <h2 className="text-xl font-bold">거래 추가</h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-text-secondary hover:text-text-primary transition-colors text-2xl w-8 h-8 flex items-center justify-center cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Transaction Type Toggle */}
+            <div className="flex gap-3" style={{ marginBottom: '24px' }}>
+              <button
+                onClick={() => {
+                  setTransactionType('EXPENSE');
+                  setSelectedCategory('');
+                }}
+                className={`flex-1 rounded-[12px] font-medium transition-all cursor-pointer ${
+                  transactionType === 'EXPENSE'
+                    ? 'bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary'
+                    : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover'
+                }`}
+                style={{ padding: '14px' }}
+              >
+                💳 지출
+              </button>
+              <button
+                onClick={() => {
+                  setTransactionType('INCOME');
+                  setSelectedCategory('');
+                }}
+                className={`flex-1 rounded-[12px] font-medium transition-all cursor-pointer ${
+                  transactionType === 'INCOME'
+                    ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                    : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover'
+                }`}
+                style={{ padding: '14px' }}
+              >
+                💼 수입
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <form className="flex flex-col" style={{ gap: '20px' }}>
+              {/* Amount */}
+              <div>
+                <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
+                  금액
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={amount}
+                  onChange={handleAmountChange}
+                  className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary font-mono text-lg focus:outline-none transition-colors ${
+                    amountError
+                      ? 'border-accent-coral focus:border-accent-coral'
+                      : 'border-[var(--border)] focus:border-accent-mint'
+                  }`}
+                  style={{ padding: '14px 16px' }}
+                />
+                {amountError && (
+                  <p className="text-accent-coral text-sm" style={{ marginTop: '6px' }}>
+                    {amountError}
+                  </p>
+                )}
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
+                  내용
+                </label>
+                <input
+                  type="text"
+                  placeholder="거래 내용을 입력하세요"
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors"
+                  style={{ padding: '14px 16px' }}
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
+                  카테고리
+                </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                    className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer text-left flex items-center justify-between"
+                    style={{ padding: '14px 16px' }}
+                  >
+                    <span className={selectedCategory ? 'text-text-primary' : 'text-text-muted'}>
+                      {selectedCategory
+                        ? categories[transactionType].find(c => c.value === selectedCategory)?.label
+                        : '카테고리 선택'}
+                    </span>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={`transition-transform text-text-secondary ${isCategoryOpen ? 'rotate-180' : ''}`}
+                    >
+                      <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+
+                  {isCategoryOpen && (
+                    <div
+                      className="absolute top-full left-0 right-0 mt-2 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-hidden z-10"
+                      style={{ boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)' }}
+                    >
+                      {categories[transactionType].map((category) => (
+                        <button
+                          key={category.value}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory(category.value);
+                            setIsCategoryOpen(false);
+                          }}
+                          className="w-full text-left hover:bg-bg-card-hover transition-colors text-text-primary border-b border-[var(--border)] last:border-b-0 cursor-pointer"
+                          style={{ padding: '12px 16px', fontSize: '15px' }}
+                        >
+                          {category.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex gap-3" style={{ marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
+                  style={{ padding: '14px' }}
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer ${
+                    transactionType === 'EXPENSE'
+                      ? 'bg-gradient-to-br from-accent-coral to-accent-yellow'
+                      : 'bg-gradient-to-br from-accent-mint to-accent-blue'
+                  } text-bg-primary`}
+                  style={{ padding: '14px' }}
+                >
+                  추가
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
