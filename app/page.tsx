@@ -3,12 +3,56 @@
 import { useState } from 'react';
 
 export default function Home() {
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
   const [transactionType, setTransactionType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+  const handlePreviousMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
+
+  const formatYearMonth = (date: Date) => {
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+  };
+
+  const handleMonthSelect = (year: number, month: number) => {
+    const newDate = new Date(year, month, 1);
+    setCurrentDate(newDate);
+    setIsDatePickerOpen(false);
+  };
+
+  const handlePreviousYear = () => {
+    setPickerYear(prev => prev - 1);
+  };
+
+  const handleNextYear = () => {
+    setPickerYear(prev => prev + 1);
+  };
+
+  const handleDatePickerToggle = () => {
+    if (!isDatePickerOpen) {
+      setPickerYear(currentDate.getFullYear());
+    }
+    setIsDatePickerOpen(!isDatePickerOpen);
+  };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -104,16 +148,77 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl" style={{ padding: '10px 20px', gap: '12px' }}>
-              <button className="text-text-secondary hover:text-text-primary transition-colors text-lg">
+            <div className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none" style={{ padding: '10px 20px', gap: '12px' }}>
+              <button
+                onClick={handlePreviousMonth}
+                className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer"
+              >
                 ◀
               </button>
-              <span className="text-base font-semibold min-w-[120px] text-center">
-                2026년 1월
+              <span
+                onClick={handleDatePickerToggle}
+                className="text-base font-semibold min-w-[120px] text-center cursor-pointer"
+              >
+                {formatYearMonth(currentDate)}
               </span>
-              <button className="text-text-secondary hover:text-text-primary transition-colors text-lg">
+              <button
+                onClick={handleNextMonth}
+                className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer"
+              >
                 ▶
               </button>
+
+              {/* Date Picker Dropdown */}
+              {isDatePickerOpen && (
+                <div
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-3 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none"
+                  style={{
+                    width: '320px',
+                    padding: '20px',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+                  }}
+                >
+                  {/* Year Navigation */}
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <button
+                      onClick={handlePreviousYear}
+                      className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center"
+                    >
+                      ◀
+                    </button>
+                    <div className="text-text-primary font-semibold" style={{ fontSize: '16px' }}>
+                      {pickerYear}년
+                    </div>
+                    <button
+                      onClick={handleNextYear}
+                      className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center"
+                    >
+                      ▶
+                    </button>
+                  </div>
+
+                  {/* Month Grid */}
+                  <div className="grid grid-cols-4" style={{ gap: '8px' }}>
+                    {Array.from({ length: 12 }, (_, i) => i).map(month => {
+                      const isSelected = currentDate.getFullYear() === pickerYear && currentDate.getMonth() === month;
+                      return (
+                        <button
+                          key={month}
+                          onClick={() => handleMonthSelect(pickerYear, month)}
+                          className={`rounded-[8px] font-medium transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                              : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover'
+                          }`}
+                          style={{ padding: '10px 0', fontSize: '14px' }}
+                        >
+                          {month + 1}월
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold cursor-pointer transition-transform hover:scale-105">
               김
