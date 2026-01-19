@@ -28,6 +28,7 @@ export default function RootLayout({
     <html lang="ko">
       <body
         className={`${notoSansKR.variable} ${spaceMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         {children}
       </body>

@@ -5,10 +5,10 @@ import { TransactionType } from '@prisma/client';
 // PATCH /api/transactions/[id] - 거래 수정
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { userId, type, amount, description, categoryId, date } = body;
 
@@ -127,10 +127,10 @@ export async function PATCH(
 // DELETE /api/transactions/[id] - 거래 삭제 (Soft Delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const searchParams = request.nextUrl.searchParams;
     const userId = searchParams.get('userId');
 

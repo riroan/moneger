@@ -24,6 +24,14 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [summary, setSummary] = useState<any>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   const datePickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -52,6 +60,92 @@ export default function Home() {
     localStorage.removeItem('userEmail');
     router.push('/login');
   };
+
+  // 카테고리 데이터 가져오기 및 시드
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchCategories = async () => {
+      setIsLoadingCategories(true);
+      try {
+        // 먼저 카테고리 조회
+        const response = await fetch(`/api/categories?userId=${userId}`);
+        const data = await response.json();
+
+        if (data.success && data.data.length > 0) {
+          setCategories(data.data);
+        } else {
+          // 카테고리가 없으면 기본 카테고리 생성
+          const seedResponse = await fetch('/api/categories/seed', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId }),
+          });
+
+          const seedData = await seedResponse.json();
+          if (seedData.success) {
+            setCategories(seedData.data);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, [userId]);
+
+  // 요약 통계 데이터 가져오기
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchSummary = async () => {
+      setIsLoadingSummary(true);
+      try {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1;
+        const response = await fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`);
+        const data = await response.json();
+
+        if (data.success) {
+          setSummary(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch summary:', error);
+      } finally {
+        setIsLoadingSummary(false);
+      }
+    };
+
+    fetchSummary();
+  }, [userId, currentDate]);
+
+  // 최근 거래 데이터 가져오기
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchRecentTransactions = async () => {
+      setIsLoadingTransactions(true);
+      try {
+        const response = await fetch(`/api/transactions/recent?userId=${userId}&limit=5`);
+        const data = await response.json();
+
+        if (data.success) {
+          setRecentTransactions(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch recent transactions:', error);
+      } finally {
+        setIsLoadingTransactions(false);
+      }
+    };
+
+    fetchRecentTransactions();
+  }, [userId]);
 
   // Close date picker when clicking outside
   useEffect(() => {
@@ -151,98 +245,95 @@ export default function Home() {
     setAmountError('');
   };
 
-  const categories = {
-    EXPENSE: [
-      { value: 'auto', label: '🤖 자동' },
-      { value: 'food', label: '🍽️ 식비' },
-      { value: 'transport', label: '🚇 교통비' },
-      { value: 'loan', label: '🏠 대출이자' },
-      { value: 'subscription', label: '🎮 구독서비스' },
-      { value: 'travel', label: '✈️ 여행' },
-      { value: 'beauty', label: '💄 미용/뷰티' },
-    ],
-    INCOME: [
-      { value: 'auto', label: '🤖 자동' },
-      { value: 'salary', label: '💼 급여' },
-      { value: 'bonus', label: '🎁 상여금' },
-      { value: 'investment', label: '📈 투자수익' },
-      { value: 'etc', label: '💰 기타수입' },
-    ],
+  const handleSubmitTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // 유효성 검사
+    if (!amount || amountError) {
+      setAmountError('금액을 입력해주세요');
+      return;
+    }
+
+    if (!userId) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          type: transactionType,
+          amount: parseInt(amount),
+          description: description || null,
+          categoryId: selectedCategory || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '거래 추가에 실패했습니다');
+      }
+
+      // 성공 시 모달 닫고 폼 리셋
+      setIsModalOpen(false);
+      setAmount('');
+      setDescription('');
+      setSelectedCategory('');
+      setAmountError('');
+
+      // 최근 거래 목록 새로고침
+      const recentResponse = await fetch(`/api/transactions/recent?userId=${userId}&limit=5`);
+      const recentData = await recentResponse.json();
+      if (recentData.success) {
+        setRecentTransactions(recentData.data);
+      }
+
+      // 요약 통계 새로고침
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+      const summaryResponse = await fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`);
+      const summaryData = await summaryResponse.json();
+      if (summaryData.success) {
+        setSummary(summaryData.data);
+      }
+    } catch (error) {
+      console.error('Failed to create transaction:', error);
+      alert(error instanceof Error ? error.message : '거래 추가에 실패했습니다');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Mock transaction data
-  const mockTransactions = [
-    { id: 1, type: 'INCOME' as const, amount: 3000000, description: '급여', category: 'salary', date: new Date(2026, 0, 15) },
-    { id: 2, type: 'INCOME' as const, amount: 500000, description: '상여금', category: 'bonus', date: new Date(2026, 0, 20) },
-    { id: 3, type: 'EXPENSE' as const, amount: 338752, description: '대출이자', category: 'loan', date: new Date(2026, 0, 5) },
-    { id: 4, type: 'EXPENSE' as const, amount: 150000, description: '식비', category: 'food', date: new Date(2026, 0, 10) },
-    { id: 5, type: 'EXPENSE' as const, amount: 80000, description: '교통비', category: 'transport', date: new Date(2026, 0, 12) },
-    { id: 6, type: 'EXPENSE' as const, amount: 45000, description: '구독서비스', category: 'subscription', date: new Date(2026, 0, 14) },
-    { id: 7, type: 'EXPENSE' as const, amount: 200000, description: '쇼핑', category: 'beauty', date: new Date(2026, 0, 18) },
-  ];
+  // 현재 거래 타입에 해당하는 카테고리 필터링
+  const currentCategories = categories.filter(cat => cat.type === transactionType);
 
-  // Calculate summary statistics
-  const currentMonthTransactions = mockTransactions.filter(tx => {
-    return tx.date.getFullYear() === currentDate.getFullYear() &&
-           tx.date.getMonth() === currentDate.getMonth();
-  });
+  // API 데이터 또는 기본값 사용
+  const totalIncome = summary?.summary?.totalIncome || 0;
+  const totalExpense = summary?.summary?.totalExpense || 0;
+  const balance = summary?.summary?.netAmount || 0;
+  const monthlyBudget = summary?.budget?.amount || 0;
+  const budgetUsed = summary?.budget?.used || 0;
+  const budgetRemaining = summary?.budget?.remaining || 0;
+  const budgetUsagePercent = summary?.budget?.usagePercent || 0;
+  const categoryList = summary?.categories || [];
+  const maxCategoryAmount = categoryList.length > 0
+    ? Math.max(...categoryList.map((c: any) => c.total), 1)
+    : 1;
 
-  const totalIncome = currentMonthTransactions
-    .filter(tx => tx.type === 'INCOME')
-    .reduce((sum, tx) => sum + tx.amount, 0);
-
-  const totalExpense = currentMonthTransactions
-    .filter(tx => tx.type === 'EXPENSE')
-    .reduce((sum, tx) => sum + tx.amount, 0);
-
-  const balance = totalIncome - totalExpense;
-  const savingsGoal = 2000000;
-  const actualSavings = Math.max(0, balance);
-  const savingsRate = Math.min(100, Math.round((actualSavings / savingsGoal) * 100));
-
-  // Calculate category statistics
-  const categoryStats = currentMonthTransactions
-    .filter(tx => tx.type === 'EXPENSE')
-    .reduce((acc, tx) => {
-      if (!acc[tx.category]) {
-        acc[tx.category] = { count: 0, total: 0 };
-      }
-      acc[tx.category].count++;
-      acc[tx.category].total += tx.amount;
-      return acc;
-    }, {} as Record<string, { count: number; total: number }>);
-
-  const maxCategoryAmount = Math.max(...Object.values(categoryStats).map(s => s.total), 1);
-
-  const categoryList = [
-    { icon: '🏠', name: '대출이자', category: 'loan' },
-    { icon: '🍽️', name: '식비', category: 'food' },
-    { icon: '🚇', name: '교통비', category: 'transport' },
-    { icon: '🎮', name: '구독서비스', category: 'subscription' },
-    { icon: '✈️', name: '여행', category: 'travel' },
-    { icon: '💄', name: '미용/뷰티', category: 'beauty' }
-  ].map((cat, i) => {
-    const stats = categoryStats[cat.category] || { count: 0, total: 0 };
-    const width = Math.round((stats.total / maxCategoryAmount) * 100);
-    return {
-      ...cat,
-      count: stats.count,
-      amount: stats.total,
-      width: width || 0,
-      colorIndex: i
-    };
-  }).filter(cat => cat.count > 0);
-
-  // Calculate budget usage
-  const monthlyBudget = 2000000;
-  const budgetUsed = totalExpense;
-  const budgetUsagePercent = Math.min(100, Math.round((budgetUsed / monthlyBudget) * 100));
-  const budgetRemaining = Math.max(0, monthlyBudget - budgetUsed);
-
-  // Prepare recent transactions (sorted by date, most recent first)
-  const recentTransactions = [...currentMonthTransactions]
-    .sort((a, b) => b.date.getTime() - a.date.getTime())
-    .slice(0, 5);
+  // 카테고리 리스트 가공 (너비 퍼센트와 색상 인덱스 추가)
+  const categoryListWithWidth = categoryList.map((cat: any, index: number) => ({
+    ...cat,
+    width: Math.round((cat.total / maxCategoryAmount) * 100) || 0,
+    colorIndex: index % 6, // 6개 색상 순환
+    amount: cat.total, // API에서 total로 오지만 UI에서는 amount로 사용
+  }));
 
   const formatNumber = (num: number): string => {
     return num.toLocaleString('ko-KR');
@@ -432,9 +523,9 @@ export default function Home() {
           style={{ gap: '20px', marginBottom: '32px' }}
         >
           {[
-            { type: 'income', icon: '💼', label: '이번 수입', amount: `₩${formatNumber(totalIncome)}`, change: `${currentMonthTransactions.filter(tx => tx.type === 'INCOME').length}건의 수입`, positive: true },
-            { type: 'expense', icon: '💳', label: '이번 지출', amount: `₩${formatNumber(totalExpense)}`, change: `${currentMonthTransactions.filter(tx => tx.type === 'EXPENSE').length}건의 지출`, positive: false },
-            { type: 'savings', icon: '🏦', label: '저축', amount: `₩${formatNumber(actualSavings)}`, change: `목표의 ${savingsRate}%`, positive: actualSavings >= savingsGoal },
+            { type: 'income', icon: '💼', label: '이번 수입', amount: `₩${formatNumber(totalIncome)}`, change: `${summary?.transactionCount?.income || 0}건의 수입`, positive: true },
+            { type: 'expense', icon: '💳', label: '이번 지출', amount: `₩${formatNumber(totalExpense)}`, change: `${summary?.transactionCount?.expense || 0}건의 지출`, positive: false },
+            { type: 'budget', icon: '🎯', label: '예산', amount: `₩${formatNumber(monthlyBudget)}`, change: `${budgetUsagePercent}% 사용`, positive: budgetUsagePercent <= 100 },
             { type: 'balance', icon: '✨', label: '남은 금액', amount: `₩${formatNumber(balance)}`, change: balance > 0 ? '여유 자산' : '적자', positive: balance > 0 }
           ].map((card, i) => (
             <div
@@ -505,9 +596,13 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col" style={{ gap: '12px' }}>
-              {categoryList.length > 0 ? categoryList.map((category) => (
+              {isLoadingSummary ? (
+                <div className="text-center text-text-muted py-8">
+                  로딩 중...
+                </div>
+              ) : categoryListWithWidth.length > 0 ? categoryListWithWidth.map((category: any) => (
                 <div
-                  key={category.category}
+                  key={category.id}
                   className="flex items-center bg-bg-secondary rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover hover:translate-x-1"
                   style={{ padding: '16px' }}
                 >
@@ -606,10 +701,14 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col" style={{ gap: '12px' }}>
-                {recentTransactions.length > 0 ? recentTransactions.map((tx) => {
-                  const categoryInfo = categories[tx.type].find(c => c.value === tx.category);
-                  const icon = categoryInfo?.label.split(' ')[0] || '💰';
-                  const formatDate = (date: Date) => {
+                {isLoadingTransactions ? (
+                  <div className="text-center text-text-muted py-8">
+                    로딩 중...
+                  </div>
+                ) : recentTransactions.length > 0 ? recentTransactions.map((tx) => {
+                  const icon = tx.category?.icon || '💰';
+                  const formatDate = (dateStr: string) => {
+                    const date = new Date(dateStr);
                     const month = date.getMonth() + 1;
                     const day = date.getDate();
                     return `${month}월 ${day}일`;
@@ -625,7 +724,9 @@ export default function Home() {
                         {icon}
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ marginBottom: '2px' }}>{tx.description}</div>
+                        <div className="text-sm font-medium" style={{ marginBottom: '2px' }}>
+                          {tx.description || tx.category?.name || '거래'}
+                        </div>
                         <div className="text-xs text-text-muted">{formatDate(tx.date)}</div>
                       </div>
                       <div className={`font-mono text-[15px] font-semibold ${
@@ -714,7 +815,7 @@ export default function Home() {
             </div>
 
             {/* Form Fields */}
-            <form className="flex flex-col" style={{ gap: '20px' }}>
+            <form className="flex flex-col" style={{ gap: '20px' }} onSubmit={handleSubmitTransaction}>
               {/* Amount */}
               <div>
                 <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
@@ -748,6 +849,8 @@ export default function Home() {
                 <input
                   type="text"
                   placeholder="거래 내용을 입력하세요"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors"
                   style={{ padding: '14px 16px' }}
                 />
@@ -767,7 +870,10 @@ export default function Home() {
                   >
                     <span className={selectedCategory ? 'text-text-primary' : 'text-text-muted'}>
                       {selectedCategory
-                        ? categories[transactionType].find(c => c.value === selectedCategory)?.label
+                        ? (() => {
+                            const cat = currentCategories.find(c => c.id === selectedCategory);
+                            return cat ? `${cat.icon} ${cat.name}` : '카테고리 선택';
+                          })()
                         : '카테고리 선택'}
                     </span>
                     <svg
@@ -787,18 +893,18 @@ export default function Home() {
                       className="absolute top-full left-0 right-0 mt-2 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-hidden z-10"
                       style={{ boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)' }}
                     >
-                      {categories[transactionType].map((category) => (
+                      {currentCategories.map((category) => (
                         <button
-                          key={category.value}
+                          key={category.id}
                           type="button"
                           onClick={() => {
-                            setSelectedCategory(category.value);
+                            setSelectedCategory(category.id);
                             setIsCategoryOpen(false);
                           }}
                           className="w-full text-left hover:bg-bg-card-hover transition-colors text-text-primary border-b border-[var(--border)] last:border-b-0 cursor-pointer"
                           style={{ padding: '12px 16px', fontSize: '15px' }}
                         >
-                          {category.label}
+                          {category.icon} {category.name}
                         </button>
                       ))}
                     </div>
@@ -810,22 +916,30 @@ export default function Home() {
               <div className="flex gap-3" style={{ marginTop: '8px' }}>
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setAmount('');
+                    setDescription('');
+                    setSelectedCategory('');
+                    setAmountError('');
+                  }}
                   className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
                   style={{ padding: '14px' }}
+                  disabled={isSubmitting}
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer ${
+                  disabled={isSubmitting || !!amountError || !amount}
+                  className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                     transactionType === 'EXPENSE'
                       ? 'bg-gradient-to-br from-accent-coral to-accent-yellow'
                       : 'bg-gradient-to-br from-accent-mint to-accent-blue'
                   } text-bg-primary`}
                   style={{ padding: '14px' }}
                 >
-                  추가
+                  {isSubmitting ? '추가 중...' : '추가'}
                 </button>
               </div>
             </form>
