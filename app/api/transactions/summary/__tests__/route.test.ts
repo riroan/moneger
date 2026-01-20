@@ -25,18 +25,21 @@ describe('GET /api/transactions/summary', () => {
         id: '1',
         type: 'INCOME',
         amount: 100000,
+        categoryId: 'cat-1',
         category: { id: 'cat-1', name: '급여', type: 'INCOME', color: '#10B981', icon: '💰' },
       },
       {
         id: '2',
         type: 'EXPENSE',
         amount: 30000,
+        categoryId: 'cat-2',
         category: { id: 'cat-2', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
       },
       {
         id: '3',
         type: 'EXPENSE',
         amount: 20000,
+        categoryId: 'cat-2',
         category: { id: 'cat-2', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
       },
     ];
@@ -76,18 +79,21 @@ describe('GET /api/transactions/summary', () => {
         id: '1',
         type: 'EXPENSE',
         amount: 10000,
+        categoryId: 'cat-1',
         category: { id: 'cat-1', name: '교통비', type: 'EXPENSE', color: '#F59E0B', icon: '🚗' },
       },
       {
         id: '2',
         type: 'EXPENSE',
         amount: 30000,
+        categoryId: 'cat-2',
         category: { id: 'cat-2', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
       },
       {
         id: '3',
         type: 'EXPENSE',
         amount: 20000,
+        categoryId: 'cat-3',
         category: { id: 'cat-3', name: '쇼핑', type: 'EXPENSE', color: '#EC4899', icon: '🛍️' },
       },
     ];

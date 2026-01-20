@@ -1,6 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { TransactionType } from '@prisma/client';
+import { NextRequest } from 'next/server';
+import {
+  successResponseWithMessage,
+  errorResponse,
+  validateUserId,
+  validateTransactionType,
+} from '@/lib/api-utils';
+import {
+  findCategory,
+  findDuplicateCategory,
+  updateCategory,
+  deleteCategory,
+} from '@/lib/services/category.service';
 
 // PATCH /api/categories/[id] - 카테고리 수정
 export async function PATCH(
@@ -12,76 +22,36 @@ export async function PATCH(
     const body = await request.json();
     const { userId, name, type, color, icon } = body;
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userIdError = validateUserId(userId);
+    if (userIdError) return userIdError;
 
     // 카테고리 존재 여부 확인
-    const existingCategory = await prisma.category.findFirst({
-      where: {
-        id,
-        userId,
-        deletedAt: null,
-      },
-    });
-
+    const existingCategory = await findCategory(id, userId);
     if (!existingCategory) {
-      return NextResponse.json(
-        { error: 'Category not found' },
-        { status: 404 }
-      );
+      return errorResponse('Category not found', 404);
     }
 
-    // 업데이트할 데이터 구성
-    const updateData: any = {};
-
-    if (name !== undefined) updateData.name = name;
-    if (type && (type === 'INCOME' || type === 'EXPENSE')) {
-      updateData.type = type;
+    // 타입 유효성 검사
+    if (type !== undefined) {
+      const typeError = validateTransactionType(type);
+      if (typeError) return typeError;
     }
-    if (color !== undefined) updateData.color = color;
-    if (icon !== undefined) updateData.icon = icon;
 
     // 이름과 타입이 변경되는 경우 중복 확인
     if (name && type) {
-      const duplicate = await prisma.category.findFirst({
-        where: {
-          id: { not: id },
-          userId,
-          name,
-          type,
-          deletedAt: null,
-        },
-      });
-
+      const duplicate = await findDuplicateCategory(userId, name, type, id);
       if (duplicate) {
-        return NextResponse.json(
-          { error: '이미 존재하는 카테고리입니다' },
-          { status: 409 }
-        );
+        return errorResponse('이미 존재하는 카테고리입니다', 409);
       }
     }
 
     // 카테고리 업데이트
-    const updatedCategory = await prisma.category.update({
-      where: { id },
-      data: updateData,
-    });
+    const updatedCategory = await updateCategory(id, { name, type, color, icon });
 
-    return NextResponse.json({
-      success: true,
-      data: updatedCategory,
-      message: 'Category updated successfully',
-    });
+    return successResponseWithMessage(updatedCategory, 'Category updated successfully');
   } catch (error) {
     console.error('Failed to update category:', error);
-    return NextResponse.json(
-      { error: 'Failed to update category' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to update category', 500);
   }
 }
 
@@ -95,46 +65,21 @@ export async function DELETE(
     const searchParams = request.nextUrl.searchParams;
     const userId = searchParams.get('userId');
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userIdError = validateUserId(userId);
+    if (userIdError) return userIdError;
 
     // 카테고리 존재 여부 확인
-    const existingCategory = await prisma.category.findFirst({
-      where: {
-        id,
-        userId,
-        deletedAt: null,
-      },
-    });
-
+    const existingCategory = await findCategory(id, userId!);
     if (!existingCategory) {
-      return NextResponse.json(
-        { error: 'Category not found' },
-        { status: 404 }
-      );
+      return errorResponse('Category not found', 404);
     }
 
     // Soft delete
-    await prisma.category.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
+    await deleteCategory(id);
 
-    return NextResponse.json({
-      success: true,
-      message: 'Category deleted successfully',
-    });
+    return successResponseWithMessage(null, 'Category deleted successfully');
   } catch (error) {
     console.error('Failed to delete category:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete category' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to delete category', 500);
   }
 }

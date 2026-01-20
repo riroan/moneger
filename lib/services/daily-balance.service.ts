@@ -131,3 +131,97 @@ export async function updateDailyBalance(userId: string, date: Date): Promise<vo
     throw error;
   }
 }
+
+/**
+ * 일별 잔액 저장/업데이트
+ */
+export async function saveDailyBalance(
+  userId: string,
+  date: Date,
+  balance: number,
+  income: number,
+  expense: number
+) {
+  return prisma.dailyBalance.upsert({
+    where: {
+      userId_date: { userId, date },
+    },
+    update: { balance, income, expense },
+    create: { userId, date, balance, income, expense },
+  });
+}
+
+/**
+ * 최근 N일 일별 잔액 조회
+ */
+export async function getRecentDailyBalances(userId: string, days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  startDate.setHours(0, 0, 0, 0);
+
+  return prisma.dailyBalance.findMany({
+    where: {
+      userId,
+      date: { gte: startDate },
+    },
+    orderBy: { date: 'asc' },
+  });
+}
+
+/**
+ * 거래 데이터로부터 일별 잔액 계산
+ */
+export async function calculateDailyBalancesFromTransactions(userId: string, days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date();
+  endDate.setHours(23, 59, 59, 999);
+
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      userId,
+      date: { gte: startDate, lte: endDate },
+      deletedAt: null,
+    },
+    orderBy: { date: 'asc' },
+  });
+
+  // 일별 데이터 초기화
+  const dailyData: { [key: string]: { income: number; expense: number; balance: number } } = {};
+
+  for (let i = 0; i < days; i++) {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + i);
+    const dateKey = date.toISOString().split('T')[0];
+    dailyData[dateKey] = { income: 0, expense: 0, balance: 0 };
+  }
+
+  // 거래 데이터로부터 일별 수입/지출 계산
+  transactions.forEach((transaction) => {
+    const dateKey = new Date(transaction.date).toISOString().split('T')[0];
+    if (dailyData[dateKey]) {
+      if (transaction.type === 'INCOME') {
+        dailyData[dateKey].income += transaction.amount;
+      } else {
+        dailyData[dateKey].expense += transaction.amount;
+      }
+    }
+  });
+
+  // 누적 잔액 계산
+  let cumulativeBalance = 0;
+  return Object.keys(dailyData)
+    .sort()
+    .map((dateKey) => {
+      const { income, expense } = dailyData[dateKey];
+      cumulativeBalance += income - expense;
+      return {
+        date: new Date(dateKey),
+        balance: cumulativeBalance,
+        income,
+        expense,
+      };
+    });
+}

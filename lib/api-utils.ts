@@ -22,6 +22,13 @@ export function errorResponse(error: string, status = 400) {
 }
 
 /**
+ * 목록 응답 생성 (with count)
+ */
+export function listResponse<T>(data: T[], count: number, status = 200) {
+  return NextResponse.json({ success: true, data, count }, { status });
+}
+
+/**
  * 페이지네이션 응답 생성
  */
 export function paginatedResponse<T>(

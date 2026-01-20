@@ -1,6 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest } from 'next/server';
 import { TransactionType } from '@prisma/client';
+import {
+  listResponse,
+  successResponseWithMessage,
+  errorResponse,
+  validateUserId,
+  validateTransactionType,
+} from '@/lib/api-utils';
+import {
+  getCategories,
+  findDuplicateCategory,
+  createCategory,
+} from '@/lib/services/category.service';
 
 // GET /api/categories - 카테고리 목록 조회
 export async function GET(request: NextRequest) {
@@ -9,42 +20,18 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
     const type = searchParams.get('type') as TransactionType | null;
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userIdError = validateUserId(userId);
+    if (userIdError) return userIdError;
 
-    // 필터 조건 구성
-    const where: any = {
-      userId,
-      deletedAt: null,
-    };
+    const categories = await getCategories(
+      userId!,
+      type && (type === 'INCOME' || type === 'EXPENSE') ? type : undefined
+    );
 
-    // 타입 필터링 (선택사항)
-    if (type && (type === 'INCOME' || type === 'EXPENSE')) {
-      where.type = type;
-    }
-
-    const categories = await prisma.category.findMany({
-      where,
-      orderBy: {
-        name: 'asc',
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: categories,
-      count: categories.length,
-    });
+    return listResponse(categories, categories.length);
   } catch (error) {
     console.error('Failed to fetch categories:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch categories' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to fetch categories', 500);
   }
 }
 
@@ -55,68 +42,28 @@ export async function POST(request: NextRequest) {
     const { userId, name, type, color, icon } = body;
 
     // 유효성 검사
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userIdError = validateUserId(userId);
+    if (userIdError) return userIdError;
 
     if (!name) {
-      return NextResponse.json(
-        { error: 'name is required' },
-        { status: 400 }
-      );
+      return errorResponse('name is required', 400);
     }
 
-    if (!type || (type !== 'INCOME' && type !== 'EXPENSE')) {
-      return NextResponse.json(
-        { error: 'type must be INCOME or EXPENSE' },
-        { status: 400 }
-      );
-    }
+    const typeError = validateTransactionType(type);
+    if (typeError) return typeError;
 
     // 중복 카테고리 확인
-    const existingCategory = await prisma.category.findFirst({
-      where: {
-        userId,
-        name,
-        type,
-        deletedAt: null,
-      },
-    });
-
+    const existingCategory = await findDuplicateCategory(userId, name, type);
     if (existingCategory) {
-      return NextResponse.json(
-        { error: '이미 존재하는 카테고리입니다' },
-        { status: 409 }
-      );
+      return errorResponse('이미 존재하는 카테고리입니다', 409);
     }
 
     // 카테고리 생성
-    const category = await prisma.category.create({
-      data: {
-        userId,
-        name,
-        type,
-        color: color || '#6366F1',
-        icon: icon || '💰',
-      },
-    });
+    const category = await createCategory({ userId, name, type, color, icon });
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: category,
-        message: 'Category created successfully',
-      },
-      { status: 201 }
-    );
+    return successResponseWithMessage(category, 'Category created successfully', 201);
   } catch (error) {
     console.error('Failed to create category:', error);
-    return NextResponse.json(
-      { error: 'Failed to create category' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to create category', 500);
   }
 }
