@@ -172,4 +172,104 @@ describe('LoginPage', () => {
     await user.click(toggleButton);
     expect(passwordInput.type).toBe('password');
   });
+
+  it('회원가입 성공 시 로그인 화면으로 전환되어야 함', async () => {
+    const user = userEvent.setup();
+    render(<LoginPage />);
+
+    // 회원가입 모드로 전환
+    const signupLink = screen.getByText('회원가입');
+    await user.click(signupLink);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '회원가입' })).toBeInTheDocument();
+    });
+
+    // Mock 회원가입 성공 응답
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          user: {
+            id: 'new-user-1',
+            email: 'new@example.com',
+            name: '새사용자',
+          },
+        },
+      }),
+    });
+
+    // 폼 입력
+    const emailInput = screen.getByPlaceholderText('example@email.com');
+    const nameInput = screen.getByPlaceholderText('홍길동');
+    const passwordInputs = screen.getAllByPlaceholderText('••••••••');
+
+    await user.type(nameInput, '새사용자');
+    await user.type(emailInput, 'new@example.com');
+    await user.type(passwordInputs[0], 'Password123!');
+    await user.type(passwordInputs[1], 'Password123!');
+
+    // 회원가입 버튼 클릭
+    const signupButton = screen.getByRole('button', { name: '회원가입' });
+    await user.click(signupButton);
+
+    // 로그인 화면으로 전환되고 성공 메시지 표시
+    await waitFor(() => {
+      expect(screen.getByText('회원가입이 완료되었습니다. 로그인해주세요.')).toBeInTheDocument();
+    });
+
+    // 로그인 버튼이 다시 나타나야 함
+    expect(screen.getByRole('button', { name: '로그인' })).toBeInTheDocument();
+  });
+
+  it('회원가입 시 비밀번호가 일치하지 않으면 에러를 표시해야 함', async () => {
+    const user = userEvent.setup();
+    render(<LoginPage />);
+
+    // 회원가입 모드로 전환
+    const signupLink = screen.getByText('회원가입');
+    await user.click(signupLink);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '회원가입' })).toBeInTheDocument();
+    });
+
+    // 폼 입력 - 비밀번호 불일치
+    const emailInput = screen.getByPlaceholderText('example@email.com');
+    const nameInput = screen.getByPlaceholderText('홍길동');
+    const passwordInputs = screen.getAllByPlaceholderText('••••••••');
+
+    await user.type(nameInput, '새사용자');
+    await user.type(emailInput, 'new@example.com');
+    await user.type(passwordInputs[0], 'Password123!');
+    await user.type(passwordInputs[1], 'Different123!');
+
+    // 회원가입 버튼 클릭
+    const signupButton = screen.getByRole('button', { name: '회원가입' });
+    await user.click(signupButton);
+
+    // 에러 메시지 확인
+    await waitFor(() => {
+      expect(screen.getByText('비밀번호가 일치하지 않습니다')).toBeInTheDocument();
+    });
+  });
+
+  it('로그인 폼으로 돌아갈 수 있어야 함', async () => {
+    const user = userEvent.setup();
+    render(<LoginPage />);
+
+    // 회원가입 모드로 전환
+    await user.click(screen.getByText('회원가입'));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '회원가입' })).toBeInTheDocument();
+    });
+
+    // 로그인 링크 클릭
+    await user.click(screen.getByText('로그인'));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '로그인' })).toBeInTheDocument();
+      expect(screen.getByText('스마트한 가계부 관리')).toBeInTheDocument();
+    });
+  });
 });

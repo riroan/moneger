@@ -70,6 +70,46 @@ describe('GET /api/categories', () => {
     expect(response.status).toBe(400);
     expect(data.error).toBe('userId is required');
   });
+
+  it('type 파라미터로 필터링할 수 있어야 함', async () => {
+    const mockCategories = [
+      { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
+    ];
+    (prisma.category.findMany as jest.Mock).mockResolvedValue(mockCategories);
+
+    const url = new URL('http://localhost:3000/api/categories');
+    url.searchParams.set('userId', 'user-1');
+    url.searchParams.set('type', 'EXPENSE');
+
+    const request = new NextRequest(url);
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data).toHaveLength(1);
+    expect(prisma.category.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        type: 'EXPENSE',
+        deletedAt: null,
+      },
+      orderBy: { name: 'asc' },
+    });
+  });
+
+  it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
+    (prisma.category.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
+
+    const url = new URL('http://localhost:3000/api/categories');
+    url.searchParams.set('userId', 'user-1');
+
+    const request = new NextRequest(url);
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBe('Failed to fetch categories');
+  });
 });
 
 describe('POST /api/categories', () => {
@@ -161,5 +201,57 @@ describe('POST /api/categories', () => {
 
     expect(response.status).toBe(400);
     expect(data.error).toBe('name is required');
+  });
+
+  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+    const request = new NextRequest('http://localhost:3000/api/categories', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: '카페',
+        type: 'EXPENSE',
+      }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('userId is required');
+  });
+
+  it('잘못된 type이면 400 에러를 반환해야 함', async () => {
+    const request = new NextRequest('http://localhost:3000/api/categories', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: 'user-1',
+        name: '카페',
+        type: 'INVALID',
+      }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('type must be INCOME or EXPENSE');
+  });
+
+  it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
+    (prisma.category.findFirst as jest.Mock).mockRejectedValue(new Error('Database error'));
+
+    const request = new NextRequest('http://localhost:3000/api/categories', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: 'user-1',
+        name: '카페',
+        type: 'EXPENSE',
+      }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBe('Failed to create category');
   });
 });

@@ -134,4 +134,50 @@ describe('GET /api/transactions/recent', () => {
     expect(response.status).toBe(500);
     expect(data.error).toBe('Failed to fetch recent transactions');
   });
+
+  it('type 파라미터로 필터링할 수 있어야 함', async () => {
+    const mockTransactions = [
+      {
+        id: 'trans-1',
+        type: 'EXPENSE',
+        amount: 10000,
+        category: { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
+      },
+    ];
+    (prisma.transaction.findMany as jest.Mock).mockResolvedValue(mockTransactions);
+
+    const url = new URL('http://localhost:3000/api/transactions/recent');
+    url.searchParams.set('userId', 'user-1');
+    url.searchParams.set('type', 'EXPENSE');
+
+    const request = new NextRequest(url);
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(prisma.transaction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          type: 'EXPENSE',
+        }),
+      })
+    );
+  });
+
+  it('limit이 100을 초과하면 100으로 제한되어야 함', async () => {
+    (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
+
+    const url = new URL('http://localhost:3000/api/transactions/recent');
+    url.searchParams.set('userId', 'user-1');
+    url.searchParams.set('limit', '200');
+
+    const request = new NextRequest(url);
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(prisma.transaction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 100,
+      })
+    );
+  });
 });
