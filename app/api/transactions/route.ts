@@ -2,6 +2,88 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { TransactionType } from '@prisma/client';
 
+// 일별 스냅샷 업데이트 함수
+async function updateDailyBalance(userId: string, date: Date) {
+  try {
+    // 해당 날짜의 자정으로 설정
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    // 해당 날짜까지의 모든 거래 조회
+    const allTransactions = await prisma.transaction.findMany({
+      where: {
+        userId,
+        date: {
+          lte: targetDate,
+        },
+        deletedAt: null,
+      },
+    });
+
+    // 해당 날짜의 거래만 조회
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const dayTransactions = await prisma.transaction.findMany({
+      where: {
+        userId,
+        date: {
+          gte: targetDate,
+          lte: endOfDay,
+        },
+        deletedAt: null,
+      },
+    });
+
+    // 누적 잔액 계산
+    let balance = 0;
+    allTransactions.forEach((tx) => {
+      if (tx.type === 'INCOME') {
+        balance += tx.amount;
+      } else {
+        balance -= tx.amount;
+      }
+    });
+
+    // 해당 일의 수입/지출 계산
+    let dailyIncome = 0;
+    let dailyExpense = 0;
+    dayTransactions.forEach((tx) => {
+      if (tx.type === 'INCOME') {
+        dailyIncome += tx.amount;
+      } else {
+        dailyExpense += tx.amount;
+      }
+    });
+
+    // DailyBalance 업데이트 또는 생성
+    await prisma.dailyBalance.upsert({
+      where: {
+        userId_date: {
+          userId,
+          date: targetDate,
+        },
+      },
+      update: {
+        balance,
+        income: dailyIncome,
+        expense: dailyExpense,
+      },
+      create: {
+        userId,
+        date: targetDate,
+        balance,
+        income: dailyIncome,
+        expense: dailyExpense,
+      },
+    });
+
+    console.log(`Daily balance updated for ${targetDate.toISOString().split('T')[0]}: balance=${balance}`);
+  } catch (error) {
+    console.error('Failed to update daily balance:', error);
+  }
+}
+
 // GET /api/transactions - 거래 목록 조회
 export async function GET(request: NextRequest) {
   try {
@@ -141,6 +223,9 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // 일별 스냅샷 업데이트
+    await updateDailyBalance(userId, transaction.date);
 
     return NextResponse.json(
       {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 export default function Home() {
   const router = useRouter();
@@ -34,6 +35,9 @@ export default function Home() {
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [summary, setSummary] = useState<any>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [dailyBalances, setDailyBalances] = useState<any[]>([]);
+  const [isLoadingDailyBalances, setIsLoadingDailyBalances] = useState(false);
+  const [lastMonthBalance, setLastMonthBalance] = useState<number>(0);
 
   const datePickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -116,6 +120,19 @@ export default function Home() {
         if (data.success) {
           setSummary(data.data);
         }
+
+        // 지난달 잔액 가져오기
+        const lastMonth = new Date(currentDate);
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        const lastYear = lastMonth.getFullYear();
+        const lastMonthNum = lastMonth.getMonth() + 1;
+
+        const lastMonthResponse = await fetch(`/api/transactions/summary?userId=${userId}&year=${lastYear}&month=${lastMonthNum}`);
+        const lastMonthData = await lastMonthResponse.json();
+
+        if (lastMonthData.success) {
+          setLastMonthBalance(lastMonthData.data.summary.balance || 0);
+        }
       } catch (error) {
         console.error('Failed to fetch summary:', error);
       } finally {
@@ -147,6 +164,29 @@ export default function Home() {
     };
 
     fetchRecentTransactions();
+  }, [userId]);
+
+  // 일별 잔액 추이 데이터 가져오기
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchDailyBalances = async () => {
+      setIsLoadingDailyBalances(true);
+      try {
+        const response = await fetch(`/api/daily-balance?userId=${userId}&days=5`);
+        const data = await response.json();
+
+        if (data.success) {
+          setDailyBalances(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch daily balances:', error);
+      } finally {
+        setIsLoadingDailyBalances(false);
+      }
+    };
+
+    fetchDailyBalances();
   }, [userId]);
 
   // Close date picker when clicking outside
@@ -398,6 +438,44 @@ export default function Home() {
     );
   };
 
+  // 스파크라인 생성 함수
+  const generateSparkline = (balances: any[]) => {
+    if (!balances || balances.length === 0) return '▂▂▂▂▂';
+
+    const values = balances.map(b => b.balance);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min;
+
+    if (range === 0) return '▃▃▃▃▃'; // 모두 같은 값
+
+    const chars = ['▁', '▂', '▃', '▅', '▆', '▇', '█'];
+
+    return values.map(value => {
+      const normalized = (value - min) / range;
+      const index = Math.floor(normalized * (chars.length - 1));
+      return chars[index];
+    }).join('');
+  };
+
+  // 5일 추이 계산
+  const calculateTrend = () => {
+    if (!dailyBalances || dailyBalances.length === 0) {
+      return { sparkline: '▂▂▂▂▂', avgBalance: 0, changePercent: 0, changeAmount: 0 };
+    }
+
+    const sparkline = generateSparkline(dailyBalances);
+    const values = dailyBalances.map(b => b.balance);
+    const avgBalance = values.reduce((a, b) => a + b, 0) / values.length;
+
+    const firstBalance = values[0];
+    const lastBalance = values[values.length - 1];
+    const changeAmount = lastBalance - firstBalance;
+    const changePercent = firstBalance !== 0 ? (changeAmount / Math.abs(firstBalance)) * 100 : 0;
+
+    return { sparkline, avgBalance, changePercent, changeAmount };
+  };
+
   // 로딩 중일 때는 빈 화면 표시
   if (isLoading) {
     return null;
@@ -571,14 +649,13 @@ export default function Home() {
 
         {/* Summary Cards */}
         <div
-          className="grid grid-cols-4"
+          className="grid grid-cols-3"
           style={{ gap: '20px', marginBottom: '32px' }}
         >
           {[
-            { type: 'income', icon: '💼', label: '이번 수입', amount: `₩${formatNumber(totalIncome)}`, change: `${summary?.transactionCount?.income || 0}건의 수입`, positive: true },
-            { type: 'expense', icon: '💳', label: '이번 지출', amount: `₩${formatNumber(totalExpense)}`, change: `${summary?.transactionCount?.expense || 0}건의 지출`, positive: false },
-            { type: 'budget', icon: '🎯', label: '예산', amount: `₩${formatNumber(monthlyBudget)}`, change: `${budgetUsagePercent}% 사용`, positive: budgetUsagePercent <= 100 },
-            { type: 'balance', icon: '✨', label: '남은 금액', amount: `₩${formatNumber(balance)}`, change: balance > 0 ? '여유 자산' : '적자', positive: balance > 0 }
+            { type: 'income', icon: '💼', label: '이번 달 수입', amount: `₩${formatNumber(totalIncome)}`, change: `${summary?.transactionCount?.income || 0}건의 수입`, positive: true },
+            { type: 'expense', icon: '💳', label: '이번 달 지출', amount: `₩${formatNumber(totalExpense)}`, change: `${summary?.transactionCount?.expense || 0}건의 지출`, positive: false },
+            { type: 'balance', icon: '✨', label: '남은 금액', amount: `₩${formatNumber(balance)}`, change: `지난달 대비 ${balance - lastMonthBalance >= 0 ? '+' : ''}₩${formatNumber(Math.abs(balance - lastMonthBalance))}`, positive: balance - lastMonthBalance >= 0 }
           ].map((card, i) => (
             <div
               key={card.type}
@@ -586,6 +663,7 @@ export default function Home() {
                 card.type === 'income' ? 'before:bg-gradient-to-r before:from-accent-mint before:to-accent-blue' :
                 card.type === 'expense' ? 'before:bg-gradient-to-r before:from-accent-coral before:to-accent-yellow' :
                 card.type === 'savings' ? 'before:bg-gradient-to-r before:from-accent-blue before:to-accent-purple' :
+                card.type === 'trend' ? 'before:bg-gradient-to-r before:from-accent-purple before:to-accent-mint' :
                 'before:bg-gradient-to-r before:from-accent-purple before:to-accent-mint'
               }`}
               style={{ padding: '24px' }}
@@ -594,6 +672,7 @@ export default function Home() {
                 card.type === 'income' ? 'bg-[var(--glow-mint)] text-accent-mint' :
                 card.type === 'expense' ? 'bg-[var(--glow-coral)] text-accent-coral' :
                 card.type === 'savings' ? 'bg-[var(--glow-blue)] text-accent-blue' :
+                card.type === 'trend' ? 'bg-[var(--glow-purple)] text-accent-purple' :
                 'bg-[var(--glow-purple)] text-accent-purple'
               }`}
                 style={{ marginBottom: '16px' }}
@@ -605,11 +684,12 @@ export default function Home() {
                 card.type === 'income' ? 'text-accent-mint' :
                 card.type === 'expense' ? 'text-accent-coral' :
                 card.type === 'savings' ? 'text-accent-blue' :
+                card.type === 'trend' ? 'text-accent-purple' :
                 'text-accent-purple'
               }`}
-                style={{ fontSize: 'clamp(20px, 2vw, 28px)' }}
+                style={{ fontSize: card.type === 'trend' ? 'clamp(32px, 3vw, 40px)' : 'clamp(20px, 2vw, 28px)', letterSpacing: card.type === 'trend' ? '0.1em' : 'inherit' }}
               >
-                {formatCurrency(card.amount)}
+                {card.type === 'trend' ? card.amount : formatCurrency(card.amount)}
               </div>
               <div className={`inline-flex items-center gap-1 text-[13px] rounded-lg font-medium ${
                 card.positive ? 'bg-[var(--glow-mint)] text-accent-mint' : 'bg-[var(--glow-coral)] text-accent-coral'
@@ -632,103 +712,86 @@ export default function Home() {
               </h2>
             </div>
 
-            <div className="flex flex-col" style={{ gap: '12px' }}>
-              {isLoadingSummary ? (
-                <div className="text-center text-text-muted py-8">
-                  로딩 중...
+            {isLoadingSummary ? (
+              <div className="text-center text-text-muted py-8">
+                로딩 중...
+              </div>
+            ) : categoryListWithWidth.length > 0 ? (
+              <>
+                {/* Donut Chart */}
+                <div className="flex justify-center items-center relative" style={{ marginBottom: '32px', height: '280px', pointerEvents: 'none' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart style={{ outline: 'none' }}>
+                      <Pie
+                        data={categoryListWithWidth.map((category: any) => ({
+                          name: category.name,
+                          value: category.amount,
+                          colorIndex: category.colorIndex,
+                        }))}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={65}
+                        outerRadius={100}
+                        paddingAngle={1}
+                        dataKey="value"
+                        startAngle={90}
+                        endAngle={-270}
+                        isAnimationActive={false}
+                      >
+                        {categoryListWithWidth.map((category: any, index: number) => {
+                          const colors = ['#10B981', '#EF4444', '#3B82F6', '#FBBF24', '#A855F7', '#F472B6'];
+                          return (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={colors[category.colorIndex % colors.length]}
+                              opacity={0.9}
+                            />
+                          );
+                        })}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                    <div className="font-bold text-text-primary" style={{ fontSize: 'clamp(14px, 1.2vw, 18px)' }}>
+                      {formatNumber(totalExpense)}
+                    </div>
+                    <div className="text-xs text-text-muted" style={{ marginTop: '4px' }}>
+                      총 지출
+                    </div>
+                  </div>
                 </div>
-              ) : categoryListWithWidth.length > 0 ? categoryListWithWidth.map((category: any) => (
-                <div
-                  key={category.id}
-                  className="flex items-center bg-bg-secondary rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover hover:translate-x-1"
-                  style={{ padding: '16px' }}
-                >
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${
-                    ['bg-[var(--glow-mint)]', 'bg-[var(--glow-coral)]', 'bg-[var(--glow-blue)]', 'bg-[rgba(251,191,36,0.15)]', 'bg-[var(--glow-purple)]', 'bg-[rgba(244,114,182,0.15)]'][category.colorIndex]
-                  }`} style={{ marginRight: '14px' }}>
-                    {category.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-[15px] font-medium" style={{ marginBottom: '4px' }}>{category.name}</div>
-                    <div className="text-[13px] text-text-muted">{category.count}건</div>
-                  </div>
-                  <div className="font-mono text-base font-semibold" style={{ marginRight: '16px' }}>{formatCurrency(`₩${formatNumber(category.amount)}`)}</div>
-                  <div className="w-20 h-1.5 bg-bg-primary rounded-[3px] overflow-hidden">
+
+                {/* Category List */}
+                <div className="flex flex-col" style={{ gap: '12px' }}>
+                  {categoryListWithWidth.map((category: any) => (
                     <div
-                      className={`h-full rounded-[3px] transition-all duration-[600ms] ${
-                        ['bg-accent-mint', 'bg-accent-coral', 'bg-accent-blue', 'bg-accent-yellow', 'bg-accent-purple', 'bg-[#f472b6]'][category.colorIndex]
-                      }`}
-                      style={{ width: `${category.width}%` }}
-                    />
-                  </div>
+                      key={category.id}
+                      className="flex items-center bg-bg-secondary rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover hover:translate-x-1"
+                      style={{ padding: '16px' }}
+                    >
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${
+                        ['bg-[var(--glow-mint)]', 'bg-[var(--glow-coral)]', 'bg-[var(--glow-blue)]', 'bg-[rgba(251,191,36,0.15)]', 'bg-[var(--glow-purple)]', 'bg-[rgba(244,114,182,0.15)]'][category.colorIndex]
+                      }`} style={{ marginRight: '14px' }}>
+                        {category.icon}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-[15px] font-medium" style={{ marginBottom: '4px' }}>{category.name}</div>
+                        <div className="text-[13px] text-text-muted">{category.count}건</div>
+                      </div>
+                      <div className="font-mono text-base font-semibold">{formatCurrency(`₩${formatNumber(category.amount)}`)}</div>
+                    </div>
+                  ))}
                 </div>
-              )) : (
-                <div className="text-center text-text-muted py-8">
-                  이번 달 지출 내역이 없습니다
-                </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <div className="text-center text-text-muted py-8">
+                이번 달 지출 내역이 없습니다
+              </div>
+            )}
           </div>
 
           {/* Right Sidebar */}
           <div className="flex flex-col" style={{ gap: '24px' }}>
-            {/* Budget Progress */}
-            <div className="bg-bg-card border border-[var(--border)] rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '24px' }}>
-              <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-                <h2 className="text-lg font-semibold flex items-center gap-2.5">
-                  <span className="text-xl">🎯</span> 예산 달성률
-                </h2>
-              </div>
-
-              <div className="flex justify-center py-5">
-                <div className="relative w-[180px] h-[180px]">
-                  <svg className="transform -rotate-90" width="180" height="180" viewBox="0 0 180 180">
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" style={{ stopColor: 'var(--accent-mint)' }} />
-                        <stop offset="100%" style={{ stopColor: 'var(--accent-blue)' }} />
-                      </linearGradient>
-                    </defs>
-                    <circle
-                      cx="90"
-                      cy="90"
-                      r="70"
-                      fill="none"
-                      stroke="var(--bg-secondary)"
-                      strokeWidth="12"
-                    />
-                    <circle
-                      cx="90"
-                      cy="90"
-                      r="70"
-                      fill="none"
-                      stroke="url(#gradient)"
-                      strokeWidth="12"
-                      strokeLinecap="round"
-                      strokeDasharray="439.8"
-                      strokeDashoffset={439.8 * (1 - budgetUsagePercent / 100)}
-                      className="transition-all duration-1000"
-                    />
-                  </svg>
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                    <div className={`font-mono text-4xl font-bold ${budgetUsagePercent > 100 ? 'text-accent-coral' : 'text-accent-mint'}`}>{budgetUsagePercent}%</div>
-                    <div className="text-[13px] text-text-secondary mt-1">예산 사용</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col" style={{ gap: '12px', marginTop: '8px' }}>
-                <div className="bg-bg-secondary rounded-xl text-center" style={{ padding: '16px' }}>
-                  <div className={`font-mono text-xl font-bold ${budgetRemaining > 0 ? 'text-accent-mint' : 'text-accent-coral'}`} style={{ marginBottom: '4px' }}>{formatCurrency(`₩${formatNumber(budgetRemaining)}`)}</div>
-                  <div className="text-xs text-text-muted">여유 예산</div>
-                </div>
-                <div className="bg-bg-secondary rounded-xl text-center" style={{ padding: '16px' }}>
-                  <div className="font-mono text-xl font-bold text-accent-coral" style={{ marginBottom: '4px' }}>{formatCurrency(`₩${formatNumber(budgetUsed)}`)}</div>
-                  <div className="text-xs text-text-muted">사용 금액</div>
-                </div>
-              </div>
-            </div>
-
             {/* Recent Transactions */}
             <div className="bg-bg-card border border-[var(--border)] rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '24px' }}>
               <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>

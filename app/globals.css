@@ -163,3 +163,16 @@ input[type="number"]:focus::-webkit-outer-spin-button {
   -webkit-appearance: none;
   display: none;
 }
+
+/* Remove focus outline from Recharts */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-wrapper *,
+.recharts-surface * {
+  outline: none !important;
+}
+
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none !important;
+}
