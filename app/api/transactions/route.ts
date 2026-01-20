@@ -92,6 +92,11 @@ export async function GET(request: NextRequest) {
     const year = searchParams.get('year');
     const month = searchParams.get('month');
     const type = searchParams.get('type') as TransactionType | null;
+    const categoryIds = searchParams.getAll('categoryId');
+    const cursor = searchParams.get('cursor');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const search = searchParams.get('search');
+    const sort = searchParams.get('sort') || 'recent';
 
     if (!userId) {
       return NextResponse.json(
@@ -122,7 +127,39 @@ export async function GET(request: NextRequest) {
       where.type = type;
     }
 
-    const transactions = await prisma.transaction.findMany({
+    // 카테고리 필터링 (다중 선택 지원)
+    if (categoryIds.length > 0) {
+      where.categoryId = { in: categoryIds };
+    }
+
+    // 검색어 필터링
+    if (search) {
+      where.description = {
+        contains: search,
+        mode: 'insensitive',
+      };
+    }
+
+    // 정렬 옵션 설정
+    let orderBy: any;
+    switch (sort) {
+      case 'oldest':
+        orderBy = { date: 'asc' };
+        break;
+      case 'expensive':
+        orderBy = { amount: 'desc' };
+        break;
+      case 'cheapest':
+        orderBy = { amount: 'asc' };
+        break;
+      case 'recent':
+      default:
+        orderBy = { date: 'desc' };
+        break;
+    }
+
+    // 커서 기반 페이지네이션
+    const queryOptions: any = {
       where,
       include: {
         category: {
@@ -135,15 +172,28 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: {
-        date: 'desc',
-      },
-    });
+      orderBy,
+      take: limit + 1, // 다음 페이지 존재 여부 확인을 위해 1개 더 가져옴
+    };
+
+    if (cursor) {
+      queryOptions.cursor = { id: cursor };
+      queryOptions.skip = 1; // 커서 자체는 제외
+    }
+
+    const transactions = await prisma.transaction.findMany(queryOptions);
+
+    // 다음 페이지 존재 여부 확인
+    const hasMore = transactions.length > limit;
+    const data = hasMore ? transactions.slice(0, limit) : transactions;
+    const nextCursor = hasMore ? data[data.length - 1].id : null;
 
     return NextResponse.json({
       success: true,
-      data: transactions,
-      count: transactions.length,
+      data,
+      count: data.length,
+      nextCursor,
+      hasMore,
     });
   } catch (error) {
     console.error('Failed to fetch transactions:', error);

@@ -42,9 +42,24 @@ export default function Home() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions'>('dashboard');
+
+  // 전체 내역 탭 상태
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
+  const [isLoadingAllTransactions, setIsLoadingAllTransactions] = useState(false);
+  const [allTransactionsNextCursor, setAllTransactionsNextCursor] = useState<string | null>(null);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
+  const [filterType, setFilterType] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isIncomeCategoryOpen, setIsIncomeCategoryOpen] = useState(true);
+  const [isExpenseCategoryOpen, setIsExpenseCategoryOpen] = useState(true);
+  const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'expensive' | 'cheapest'>('recent');
 
   const datePickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const transactionsEndRef = useRef<HTMLDivElement>(null);
 
   // 모달이 열렸을 때 body 스크롤 비활성화
   useEffect(() => {
@@ -205,6 +220,108 @@ export default function Home() {
 
     fetchDailyBalances();
   }, [userId]);
+
+  // 전체 내역 불러오기 함수
+  const fetchAllTransactions = async (cursor?: string | null, reset?: boolean) => {
+    if (!userId) return;
+    if (isLoadingAllTransactions) return;
+
+    setIsLoadingAllTransactions(true);
+    try {
+      const params = new URLSearchParams({
+        userId,
+        limit: '20',
+      });
+
+      if (cursor && !reset) {
+        params.append('cursor', cursor);
+      }
+
+      if (filterType !== 'ALL') {
+        params.append('type', filterType);
+      }
+
+      if (filterCategories.length > 0) {
+        filterCategories.forEach(catId => {
+          params.append('categoryId', catId);
+        });
+      }
+
+      if (searchKeyword.trim()) {
+        params.append('search', searchKeyword.trim());
+      }
+
+      params.append('sort', sortOrder);
+
+      const response = await fetch(`/api/transactions?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        if (reset) {
+          setAllTransactions(data.data);
+        } else {
+          setAllTransactions(prev => [...prev, ...data.data]);
+        }
+        setAllTransactionsNextCursor(data.nextCursor);
+        setHasMoreTransactions(data.hasMore);
+      }
+    } catch (error) {
+      console.error('Failed to fetch all transactions:', error);
+    } finally {
+      setIsLoadingAllTransactions(false);
+    }
+  };
+
+  // 전체 내역 탭이 활성화될 때 데이터 불러오기
+  useEffect(() => {
+    if (activeTab === 'transactions' && userId && allTransactions.length === 0) {
+      fetchAllTransactions(null, true);
+    }
+  }, [activeTab, userId]);
+
+  // 필터가 변경될 때 데이터 다시 불러오기
+  useEffect(() => {
+    if (activeTab === 'transactions' && userId) {
+      setAllTransactions([]);
+      setAllTransactionsNextCursor(null);
+      setHasMoreTransactions(true);
+      fetchAllTransactions(null, true);
+    }
+  }, [filterType, filterCategories, sortOrder]);
+
+  // 검색어 디바운스 처리
+  useEffect(() => {
+    if (activeTab !== 'transactions' || !userId) return;
+
+    const timer = setTimeout(() => {
+      setAllTransactions([]);
+      setAllTransactionsNextCursor(null);
+      setHasMoreTransactions(true);
+      fetchAllTransactions(null, true);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchKeyword]);
+
+  // 무한 스크롤 - Intersection Observer
+  useEffect(() => {
+    if (activeTab !== 'transactions') return;
+    if (!transactionsEndRef.current) return;
+    if (!hasMoreTransactions) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMoreTransactions && !isLoadingAllTransactions) {
+          fetchAllTransactions(allTransactionsNextCursor);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(transactionsEndRef.current);
+
+    return () => observer.disconnect();
+  }, [activeTab, hasMoreTransactions, isLoadingAllTransactions, allTransactionsNextCursor]);
 
   // Close date picker when clicking outside
   useEffect(() => {
@@ -809,6 +926,38 @@ export default function Home() {
           </div>
         </header>
 
+        {/* Tab Bar */}
+        <div className="animate-[fadeInUp_0.5s_ease-out]" style={{ marginBottom: '24px' }}>
+          <nav className="flex gap-2 bg-bg-card border border-[var(--border)] rounded-[12px] p-1 w-full sm:w-fit">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-[10px] transition-all cursor-pointer ${
+                activeTab === 'dashboard'
+                  ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+              style={{ padding: '12px 20px' }}
+            >
+              <span className="text-base">📊</span>
+              <span className="font-medium text-sm">대시보드</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-[10px] transition-all cursor-pointer ${
+                activeTab === 'transactions'
+                  ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+              style={{ padding: '12px 20px' }}
+            >
+              <span className="text-base">📝</span>
+              <span className="font-medium text-sm">전체 내역</span>
+            </button>
+          </nav>
+        </div>
+
+        {activeTab === 'dashboard' && (
+          <>
         {/* Summary Cards */}
         <div
           className="grid grid-cols-1 sm:grid-cols-3"
@@ -830,7 +979,7 @@ export default function Home() {
               }`}
               style={{ padding: '16px' }}
             >
-              <div className="flex items-center gap-3 sm:block">
+              <div className="flex items-center gap-4 sm:block">
                 <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[12px] sm:rounded-[14px] flex items-center justify-center text-lg sm:text-[22px] flex-shrink-0 ${
                   card.type === 'income' ? 'bg-[var(--glow-mint)] text-accent-mint' :
                   card.type === 'expense' ? 'bg-[var(--glow-coral)] text-accent-coral' :
@@ -842,8 +991,8 @@ export default function Home() {
                 >
                   {card.icon}
                 </div>
-                <div className="flex-1 sm:mt-4">
-                  <div className="text-xs sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px' }}>{card.label}</div>
+                <div className="flex-1 sm:mt-8">
+                  <div className="text-xs sm:text-sm text-text-secondary font-medium mb-0.5 sm:mb-1">{card.label}</div>
                   <div className={`font-mono font-bold tracking-tight text-lg sm:text-2xl ${
                     card.type === 'income' ? 'text-accent-mint' :
                     card.type === 'expense' ? 'text-accent-coral' :
@@ -933,6 +1082,13 @@ export default function Home() {
                       key={category.id}
                       className="flex items-center bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover hover:translate-x-1"
                       style={{ padding: '12px' }}
+                      onClick={() => {
+                        setFilterType('EXPENSE');
+                        setFilterCategories([category.id]);
+                        setSortOrder('recent');
+                        setSearchKeyword('');
+                        setActiveTab('transactions');
+                      }}
                     >
                       <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-xl ${
                         ['bg-[var(--glow-mint)]', 'bg-[var(--glow-coral)]', 'bg-[var(--glow-blue)]', 'bg-[rgba(251,191,36,0.15)]', 'bg-[var(--glow-purple)]', 'bg-[rgba(244,114,182,0.15)]'][category.colorIndex]
@@ -974,15 +1130,18 @@ export default function Home() {
                   const icon = tx.category?.icon || '💰';
                   const formatDate = (dateStr: string) => {
                     const date = new Date(dateStr);
+                    const year = date.getFullYear();
                     const month = date.getMonth() + 1;
                     const day = date.getDate();
-                    return `${month}월 ${day}일`;
+                    const hours = date.getHours().toString().padStart(2, '0');
+                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    return `${year}.${month}.${day} ${hours}:${minutes}`;
                   };
 
                   return (
                     <div
                       key={tx.id}
-                      className="flex items-center bg-bg-secondary rounded-[12px] sm:rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
+                      className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
                       style={{ padding: '12px' }}
                       onClick={() => {
                         setEditingTransaction(tx);
@@ -994,19 +1153,30 @@ export default function Home() {
                         setIsEditModalOpen(true);
                       }}
                     >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg" style={{ marginRight: '10px' }}>
-                        {icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs sm:text-sm font-medium truncate" style={{ marginBottom: '2px' }}>
-                          {tx.description || tx.category?.name || '거래'}
+                      <div className="flex items-center">
+                        {/* 아이콘 */}
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0" style={{ marginRight: '12px' }}>
+                          {icon}
                         </div>
-                        <div className="text-[10px] sm:text-xs text-text-muted">{formatDate(tx.date)}</div>
-                      </div>
-                      <div className={`font-mono text-xs sm:text-[15px] font-semibold ${
-                        tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
-                      }`}>
-                        {formatCurrency(`${tx.type === 'EXPENSE' ? '-' : '+'}₩${formatNumber(tx.amount)}`)}
+                        {/* 내용 영역 */}
+                        <div className="flex-1 min-w-0">
+                          {/* 상단: 내용 + 금액 */}
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm sm:text-[15px] font-medium truncate flex-1 min-w-0" style={{ marginRight: '12px' }}>
+                              {tx.description || tx.category?.name || '거래'}
+                            </div>
+                            <div className={`font-mono text-sm sm:text-base font-semibold whitespace-nowrap ${
+                              tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
+                            }`}>
+                              {formatCurrency(`${tx.type === 'EXPENSE' ? '-' : '+'}₩${formatNumber(tx.amount)}`)}
+                            </div>
+                          </div>
+                          {/* 하단: 시간 + 카테고리 */}
+                          <div className="flex items-center justify-between text-xs sm:text-[13px] text-text-muted">
+                            <span>{formatDate(tx.date)}</span>
+                            <span>{tx.category?.name || '미분류'}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1019,6 +1189,323 @@ export default function Home() {
             </div>
           </div>
         </div>
+          </>
+        )}
+
+        {activeTab === 'transactions' && (
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] animate-[fadeIn_0.5s_ease-out]" style={{ gap: '16px' }}>
+            {/* 왼쪽 필터 패널 */}
+            <div className="lg:block">
+              {/* 모바일 필터 토글 */}
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="lg:hidden w-full bg-bg-card border border-[var(--border)] rounded-[12px] flex items-center justify-between cursor-pointer"
+                style={{ padding: '12px 16px', marginBottom: '12px' }}
+              >
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <span>🔍</span> 필터 {(filterType !== 'ALL' || filterCategories.length > 0 || searchKeyword || sortOrder !== 'recent') && <span className="text-accent-mint">(적용됨)</span>}
+                </span>
+                <span className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+
+              {/* 필터 내용 */}
+              <div className={`${isFilterOpen ? 'block' : 'hidden'} lg:block bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]`} style={{ padding: '16px' }}>
+                <h3 className="text-base font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
+                  <span>🔍</span> 필터
+                </h3>
+
+                {/* 검색 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>검색</label>
+                  <input
+                    type="text"
+                    value={searchKeyword}
+                    onChange={(e) => setSearchKeyword(e.target.value)}
+                    placeholder="내역 검색..."
+                    className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors"
+                    style={{ padding: '10px 12px' }}
+                  />
+                </div>
+
+                {/* 거래 유형 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>거래 유형</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'ALL', label: '전체' },
+                      { value: 'INCOME', label: '수입' },
+                      { value: 'EXPENSE', label: '지출' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setFilterType(option.value as 'ALL' | 'INCOME' | 'EXPENSE')}
+                        className={`flex-1 rounded-[8px] text-sm font-medium transition-all cursor-pointer ${
+                          filterType === option.value
+                            ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                            : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+                        }`}
+                        style={{ padding: '8px 12px' }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 정렬 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>정렬</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'recent', label: '최근 순' },
+                      { value: 'oldest', label: '오래된 순' },
+                      { value: 'expensive', label: '금액 높은 순' },
+                      { value: 'cheapest', label: '금액 낮은 순' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setSortOrder(option.value as 'recent' | 'oldest' | 'expensive' | 'cheapest')}
+                        className={`rounded-[8px] text-sm font-medium transition-all cursor-pointer ${
+                          sortOrder === option.value
+                            ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                            : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+                        }`}
+                        style={{ padding: '8px 12px' }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 카테고리 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
+                    카테고리 {filterCategories.length > 0 && <span className="text-accent-mint">({filterCategories.length})</span>}
+                  </label>
+                  <div className="flex flex-col gap-2">
+                    {/* 수입 카테고리 */}
+                    {(filterType === 'ALL' || filterType === 'INCOME') && (
+                      <div className="bg-bg-secondary rounded-[10px] overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setIsIncomeCategoryOpen(!isIncomeCategoryOpen)}
+                          className="w-full flex items-center justify-between text-left cursor-pointer hover:bg-bg-card-hover transition-colors"
+                          style={{ padding: '10px 12px' }}
+                        >
+                          <span className="text-sm font-medium text-accent-mint flex items-center gap-2">
+                            <span>💼</span> 수입
+                            <span className="text-text-muted font-normal">
+                              ({categories.filter(c => c.type === 'INCOME').length})
+                            </span>
+                          </span>
+                          <span className="text-text-muted text-xs">
+                            {isIncomeCategoryOpen ? '▲' : '▼'}
+                          </span>
+                        </button>
+                        {isIncomeCategoryOpen && (
+                          <div className="flex flex-col gap-1" style={{ padding: '0 8px 8px 8px' }}>
+                            {categories.filter(c => c.type === 'INCOME').map((cat) => {
+                              const isChecked = filterCategories.includes(cat.id);
+                              return (
+                                <label
+                                  key={cat.id}
+                                  className="flex items-center gap-2 bg-bg-card rounded-[6px] cursor-pointer hover:bg-bg-card-hover transition-colors"
+                                  style={{ padding: '6px 8px' }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      if (isChecked) {
+                                        setFilterCategories(prev => prev.filter(id => id !== cat.id));
+                                      } else {
+                                        setFilterCategories(prev => [...prev, cat.id]);
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded accent-accent-mint cursor-pointer"
+                                  />
+                                  <span className="text-sm text-text-primary">{cat.icon} {cat.name}</span>
+                                </label>
+                              );
+                            })}
+                            {categories.filter(c => c.type === 'INCOME').length === 0 && (
+                              <div className="text-xs text-text-muted text-center py-2">
+                                수입 카테고리가 없습니다
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 지출 카테고리 */}
+                    {(filterType === 'ALL' || filterType === 'EXPENSE') && (
+                      <div className="bg-bg-secondary rounded-[10px] overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setIsExpenseCategoryOpen(!isExpenseCategoryOpen)}
+                          className="w-full flex items-center justify-between text-left cursor-pointer hover:bg-bg-card-hover transition-colors"
+                          style={{ padding: '10px 12px' }}
+                        >
+                          <span className="text-sm font-medium text-accent-coral flex items-center gap-2">
+                            <span>💳</span> 지출
+                            <span className="text-text-muted font-normal">
+                              ({categories.filter(c => c.type === 'EXPENSE').length})
+                            </span>
+                          </span>
+                          <span className="text-text-muted text-xs">
+                            {isExpenseCategoryOpen ? '▲' : '▼'}
+                          </span>
+                        </button>
+                        {isExpenseCategoryOpen && (
+                          <div className="flex flex-col gap-1" style={{ padding: '0 8px 8px 8px' }}>
+                            {categories.filter(c => c.type === 'EXPENSE').map((cat) => {
+                              const isChecked = filterCategories.includes(cat.id);
+                              return (
+                                <label
+                                  key={cat.id}
+                                  className="flex items-center gap-2 bg-bg-card rounded-[6px] cursor-pointer hover:bg-bg-card-hover transition-colors"
+                                  style={{ padding: '6px 8px' }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      if (isChecked) {
+                                        setFilterCategories(prev => prev.filter(id => id !== cat.id));
+                                      } else {
+                                        setFilterCategories(prev => [...prev, cat.id]);
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded accent-accent-mint cursor-pointer"
+                                  />
+                                  <span className="text-sm text-text-primary">{cat.icon} {cat.name}</span>
+                                </label>
+                              );
+                            })}
+                            {categories.filter(c => c.type === 'EXPENSE').length === 0 && (
+                              <div className="text-xs text-text-muted text-center py-2">
+                                지출 카테고리가 없습니다
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 필터 초기화 */}
+                <button
+                  onClick={() => {
+                    setFilterType('ALL');
+                    setFilterCategories([]);
+                    setSearchKeyword('');
+                    setSortOrder('recent');
+                  }}
+                  disabled={filterType === 'ALL' && filterCategories.length === 0 && !searchKeyword && sortOrder === 'recent'}
+                  className="w-full bg-bg-secondary text-text-secondary hover:text-text-primary rounded-[10px] text-sm font-medium transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-text-secondary"
+                  style={{ padding: '10px 12px' }}
+                >
+                  필터 초기화
+                </button>
+              </div>
+            </div>
+
+            {/* 오른쪽 거래 내역 리스트 */}
+            <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]" style={{ padding: '16px' }}>
+              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
+                <span className="text-lg sm:text-xl">📝</span> 전체 거래 내역
+                {allTransactions.length > 0 && (
+                  <span className="text-sm text-text-muted font-normal">({allTransactions.length}건)</span>
+                )}
+              </h2>
+
+              <div className="flex flex-col" style={{ gap: '8px' }}>
+                {allTransactions.length > 0 ? (
+                  <>
+                    {allTransactions.map((tx) => {
+                      const icon = tx.category?.icon || '💰';
+                      const formatDate = (dateStr: string) => {
+                        const date = new Date(dateStr);
+                        const year = date.getFullYear();
+                        const month = date.getMonth() + 1;
+                        const day = date.getDate();
+                        const hours = date.getHours().toString().padStart(2, '0');
+                        const minutes = date.getMinutes().toString().padStart(2, '0');
+                        return `${year}.${month}.${day} ${hours}:${minutes}`;
+                      };
+
+                      return (
+                        <div
+                          key={tx.id}
+                          className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
+                          style={{ padding: '12px' }}
+                          onClick={() => {
+                            setEditingTransaction(tx);
+                            setTransactionType(tx.type);
+                            setAmount(tx.amount.toLocaleString('ko-KR'));
+                            setDescription(tx.description || '');
+                            setSelectedCategory(tx.categoryId || '');
+                            setSelectedDate(new Date(tx.date));
+                            setIsEditModalOpen(true);
+                          }}
+                        >
+                          <div className="flex items-center">
+                            {/* 아이콘 */}
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0" style={{ marginRight: '12px' }}>
+                              {icon}
+                            </div>
+                            {/* 내용 영역 */}
+                            <div className="flex-1 min-w-0">
+                              {/* 상단: 내용 + 금액 */}
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm sm:text-[15px] font-medium truncate flex-1 min-w-0" style={{ marginRight: '12px' }}>
+                                  {tx.description || tx.category?.name || '거래'}
+                                </div>
+                                <div className={`font-mono text-sm sm:text-base font-semibold whitespace-nowrap ${
+                                  tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
+                                }`}>
+                                  {formatCurrency(`${tx.type === 'EXPENSE' ? '-' : '+'}₩${formatNumber(tx.amount)}`)}
+                                </div>
+                              </div>
+                              {/* 하단: 시간 + 카테고리 */}
+                              <div className="flex items-center justify-between text-xs sm:text-[13px] text-text-muted">
+                                <span>{formatDate(tx.date)}</span>
+                                <span>{tx.category?.name || '미분류'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* 무한 스크롤 트리거 */}
+                    <div ref={transactionsEndRef} style={{ height: '20px' }} />
+
+                    {/* 로딩 인디케이터 */}
+                    {isLoadingAllTransactions && (
+                      <div className="text-center text-text-muted py-4">
+                        로딩 중...
+                      </div>
+                    )}
+                  </>
+                ) : isLoadingAllTransactions ? (
+                  <div className="text-center text-text-muted py-8">
+                    로딩 중...
+                  </div>
+                ) : (
+                  <div className="text-center text-text-muted py-8">
+                    {searchKeyword || filterType !== 'ALL' || filterCategories.length > 0
+                      ? '검색 결과가 없습니다'
+                      : '거래 내역이 없습니다'}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add Button */}
