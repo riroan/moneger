@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -201,11 +202,13 @@ export default function LoginPage() {
       >
         {/* Logo */}
         <div className="flex items-center justify-center" style={{ marginBottom: '20px' }}>
-          <div
-            className="w-12 h-12 sm:w-16 sm:h-16 rounded-[12px] sm:rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue flex items-center justify-center text-2xl sm:text-4xl shadow-[0_8px_32px_var(--glow-mint)]"
-          >
-            💰
-          </div>
+          <Image
+            src="/logo.svg"
+            alt="MONEGER"
+            width={64}
+            height={64}
+            className="w-12 h-12 sm:w-16 sm:h-16 rounded-[12px] sm:rounded-[18px] shadow-[0_8px_32px_var(--glow-mint)]"
+          />
         </div>
 
         {/* Title */}

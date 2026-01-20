@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { formatYearMonth } from '@/utils/formatters';
 
 interface HeaderProps {
@@ -85,9 +86,13 @@ export default function Header({
         }}
         className="flex items-center gap-2 sm:gap-3 cursor-pointer"
       >
-        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-accent-mint to-accent-blue rounded-[12px] sm:rounded-[14px] flex items-center justify-center text-xl sm:text-2xl shadow-[0_8px_32px_var(--glow-mint)]">
-          💰
-        </div>
+        <Image
+          src="/logo.svg"
+          alt="MONEGER"
+          width={48}
+          height={48}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-[12px] sm:rounded-[14px] shadow-[0_8px_32px_var(--glow-mint)]"
+        />
         <span className="hidden sm:block text-xl sm:text-2xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent tracking-tight">
           MONEGER
         </span>
