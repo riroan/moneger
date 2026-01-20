@@ -348,9 +348,7 @@ export default function SettingsPage() {
     try {
       const response = await fetch(`/api/categories/${editingCategory.id}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
       });
 
@@ -385,7 +383,7 @@ export default function SettingsPage() {
   };
 
   // 아이콘 목록
-  const iconList = ['📦', '🍽️', '🚗', '🏠', '💼', '🎮', '🎬', '🛒', '💰', '💳', '🏥', '📚', '✈️', '🎁', '☕', '🍔'];
+  const iconList = ['⭐', '📦', '🍽️', '🚗', '🏠', '💼', '🎮', '🎬', '🛒', '💰', '💳', '🏥', '📚', '✈️', '🎁', '☕', '🍔', '🧑', '❤️', '🛍️', '💸', '🎵', '🏋️', '🐾'];
 
   // 색상 목록
   const colorList = [

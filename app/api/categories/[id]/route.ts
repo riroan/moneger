@@ -62,8 +62,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const searchParams = request.nextUrl.searchParams;
-    const userId = searchParams.get('userId');
+    const body = await request.json();
+    const { userId } = body;
 
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;

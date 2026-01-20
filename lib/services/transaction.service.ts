@@ -37,6 +37,10 @@ interface GetTransactionsInput {
   sort?: 'recent' | 'oldest' | 'expensive' | 'cheapest';
   cursor?: string;
   limit?: number;
+  startYear?: number;
+  startMonth?: number;
+  endYear?: number;
+  endMonth?: number;
 }
 
 /**
@@ -132,7 +136,14 @@ export async function getTransactions(input: GetTransactionsInput) {
   // 필터 조건
   const where: any = { userId, deletedAt: null };
 
-  if (year && month) {
+  // 날짜 범위 필터 (startYear, startMonth ~ endYear, endMonth)
+  if (input.startYear !== undefined && input.startMonth !== undefined &&
+      input.endYear !== undefined && input.endMonth !== undefined) {
+    const startDate = new Date(input.startYear, input.startMonth - 1, 1);
+    const endDate = new Date(input.endYear, input.endMonth, 0, 23, 59, 59, 999);
+    where.date = { gte: startDate, lte: endDate };
+  } else if (year && month) {
+    // 기존 단일 월 필터
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
     where.date = { gte: startDate, lte: endDate };
@@ -182,6 +193,18 @@ export async function getRecentTransactions(userId: string, limit = 5) {
     orderBy: { date: 'desc' },
     take: limit,
   });
+}
+
+/**
+ * 가장 오래된 거래 날짜 조회
+ */
+export async function getOldestTransactionDate(userId: string): Promise<Date | null> {
+  const oldest = await prisma.transaction.findFirst({
+    where: { userId, deletedAt: null },
+    orderBy: { date: 'asc' },
+    select: { date: true },
+  });
+  return oldest?.date || null;
 }
 
 /**

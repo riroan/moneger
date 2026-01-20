@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Category {
   id: string;
@@ -37,8 +37,27 @@ export default function TransactionModal({
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categoryError, setCategoryError] = useState('');
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const categoryRef = useRef<HTMLDivElement>(null);
 
   const currentCategories = categories.filter(cat => cat.type === transactionType);
+  const filteredCategories = currentCategories.filter(cat =>
+    cat.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
+    (cat.icon && cat.icon.includes(categorySearch))
+  );
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    if (!isCategoryOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryRef.current && !categoryRef.current.contains(event.target as Node)) {
+        setIsCategoryOpen(false);
+        setCategorySearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isCategoryOpen]);
 
   const resetForm = () => {
     setAmount('');
@@ -48,6 +67,7 @@ export default function TransactionModal({
     setDescriptionError('');
     setCategoryError('');
     setIsCategoryOpen(false);
+    setCategorySearch('');
   };
 
   const handleClose = () => {
@@ -178,31 +198,6 @@ export default function TransactionModal({
 
         {/* Form Fields */}
         <form className="flex flex-col" style={{ gap: '20px' }} onSubmit={handleSubmit}>
-          {/* Amount */}
-          <div>
-            <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
-              금액
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="0"
-              value={amount}
-              onChange={handleAmountChange}
-              className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary font-mono text-lg focus:outline-none transition-colors ${
-                amountError
-                  ? 'border-accent-coral focus:border-accent-coral'
-                  : 'border-[var(--border)] focus:border-accent-mint'
-              }`}
-              style={{ padding: '14px 16px' }}
-            />
-            {amountError && (
-              <p className="text-accent-coral text-sm" style={{ marginTop: '6px' }}>
-                {amountError}
-              </p>
-            )}
-          </div>
-
           {/* Description */}
           <div>
             <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
@@ -232,62 +227,118 @@ export default function TransactionModal({
             )}
           </div>
 
-          {/* Category */}
+          {/* Amount */}
           <div>
+            <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
+              금액
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="0"
+              value={amount}
+              onChange={handleAmountChange}
+              className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary font-mono text-lg focus:outline-none transition-colors ${
+                amountError
+                  ? 'border-accent-coral focus:border-accent-coral'
+                  : 'border-[var(--border)] focus:border-accent-mint'
+              }`}
+              style={{ padding: '14px 16px' }}
+            />
+            {amountError && (
+              <p className="text-accent-coral text-sm" style={{ marginTop: '6px' }}>
+                {amountError}
+              </p>
+            )}
+          </div>
+
+          {/* Category */}
+          <div ref={categoryRef}>
             <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
               카테고리
             </label>
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors cursor-pointer text-left flex items-center justify-between ${
+              <div
+                className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus-within:border-accent-mint transition-colors flex items-center ${
                   categoryError
-                    ? 'border-accent-coral focus:border-accent-coral'
-                    : 'border-[var(--border)] focus:border-accent-mint'
+                    ? 'border-accent-coral focus-within:border-accent-coral'
+                    : 'border-[var(--border)]'
                 }`}
                 style={{ padding: '14px 16px' }}
               >
-                <span className={selectedCategory ? 'text-text-primary' : 'text-text-muted'}>
-                  {selectedCategory
-                    ? (() => {
-                        const cat = currentCategories.find(c => c.id === selectedCategory);
-                        return cat ? `${cat.icon} ${cat.name}` : '카테고리 선택';
-                      })()
-                    : '카테고리 선택'}
-                </span>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={`transition-transform text-text-secondary ${isCategoryOpen ? 'rotate-180' : ''}`}
+                {selectedCategory && !isCategoryOpen && (
+                  <span className="text-text-primary mr-3">
+                    {(() => {
+                      const cat = currentCategories.find(c => c.id === selectedCategory);
+                      return cat ? `${cat.icon}` : '';
+                    })()}
+                  </span>
+                )}
+                <input
+                  type="text"
+                  placeholder={selectedCategory ? '' : '카테고리 검색 또는 선택'}
+                  value={isCategoryOpen ? categorySearch : (selectedCategory ? currentCategories.find(c => c.id === selectedCategory)?.name || '' : '')}
+                  onChange={(e) => {
+                    setCategorySearch(e.target.value);
+                    if (!isCategoryOpen) setIsCategoryOpen(true);
+                  }}
+                  onFocus={() => {
+                    setIsCategoryOpen(true);
+                    setCategorySearch('');
+                  }}
+                  className="flex-1 bg-transparent outline-none text-text-primary placeholder:text-text-muted"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCategoryOpen(!isCategoryOpen);
+                    if (!isCategoryOpen) setCategorySearch('');
+                  }}
+                  className="ml-2 text-text-secondary hover:text-text-primary transition-colors"
                 >
-                  <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={`transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`}
+                  >
+                    <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
 
               {isCategoryOpen && (
                 <div
                   className="absolute top-full left-0 right-0 mt-2 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-10"
                   style={{ boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)', maxHeight: '240px' }}
                 >
-                  {currentCategories.map((category) => (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCategory(category.id);
-                        setCategoryError('');
-                        setIsCategoryOpen(false);
-                      }}
-                      className="w-full text-left hover:bg-bg-card-hover transition-colors text-text-primary border-b border-[var(--border)] last:border-b-0 cursor-pointer"
-                      style={{ padding: '12px 16px', fontSize: '15px' }}
-                    >
-                      {category.icon} {category.name}
-                    </button>
-                  ))}
+                  {filteredCategories.length > 0 ? (
+                    filteredCategories.map((category) => (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(category.id);
+                          setCategoryError('');
+                          setIsCategoryOpen(false);
+                          setCategorySearch('');
+                        }}
+                        className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer flex items-center gap-3 ${
+                          selectedCategory === category.id ? 'bg-bg-card-hover text-accent-mint' : 'text-text-primary'
+                        }`}
+                        style={{ padding: '12px 16px', fontSize: '15px' }}
+                      >
+                        <span>{category.icon}</span>
+                        <span>{category.name}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="text-text-muted text-center" style={{ padding: '12px 16px', fontSize: '14px' }}>
+                      일치하는 카테고리가 없습니다
+                    </div>
+                  )}
                 </div>
               )}
             </div>

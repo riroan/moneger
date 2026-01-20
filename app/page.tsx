@@ -8,7 +8,7 @@ import SummaryCards from '@/components/dashboard/SummaryCards';
 import CategoryChart from '@/components/dashboard/CategoryChart';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import TransactionList from '@/components/transactions/TransactionList';
-import FilterPanel from '@/components/transactions/FilterPanel';
+import FilterPanel, { DateRange } from '@/components/transactions/FilterPanel';
 import TransactionModal from '@/components/modals/TransactionModal';
 import EditTransactionModal from '@/components/modals/EditTransactionModal';
 import DeleteConfirmModal from '@/components/modals/DeleteConfirmModal';
@@ -35,6 +35,7 @@ export default function Home() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'expensive' | 'cheapest'>('recent');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | null>(null);
 
   // 데이터 상태
   const [categories, setCategories] = useState<any[]>([]);
@@ -43,6 +44,7 @@ export default function Home() {
   const [lastMonthBalance, setLastMonthBalance] = useState(0);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [oldestTransactionDate, setOldestTransactionDate] = useState<{ year: number; month: number } | null>(null);
 
   const transactionsEndRef = useRef<HTMLDivElement>(null);
 
@@ -60,6 +62,7 @@ export default function Home() {
     searchKeyword,
     sortOrder,
     activeTab,
+    dateRange,
   });
 
   // 모달 열림 시 스크롤 비활성화
@@ -91,6 +94,23 @@ export default function Home() {
       }
     };
     fetchCategories();
+  }, [userId]);
+
+  // 가장 오래된 거래 날짜 조회
+  useEffect(() => {
+    if (!userId) return;
+    const fetchOldestDate = async () => {
+      try {
+        const response = await fetch(`/api/transactions/oldest-date?userId=${userId}`);
+        const data = await response.json();
+        if (data.success && data.data.year && data.data.month) {
+          setOldestTransactionDate({ year: data.data.year, month: data.data.month });
+        }
+      } catch (error) {
+        console.error('Failed to fetch oldest transaction date:', error);
+      }
+    };
+    fetchOldestDate();
   }, [userId]);
 
   // 요약 데이터
@@ -125,7 +145,7 @@ export default function Home() {
     const fetchRecent = async () => {
       setIsLoadingTransactions(true);
       try {
-        const response = await fetch(`/api/transactions/recent?userId=${userId}&limit=5`);
+        const response = await fetch(`/api/transactions/recent?userId=${userId}&limit=10`);
         const data = await response.json();
         if (data.success) setRecentTransactions(data.data);
       } catch (error) {
@@ -156,7 +176,7 @@ export default function Home() {
   const refreshData = async () => {
     if (!userId) return;
     const [recentRes, summaryRes] = await Promise.all([
-      fetch(`/api/transactions/recent?userId=${userId}&limit=5`),
+      fetch(`/api/transactions/recent?userId=${userId}&limit=10`),
       fetch(`/api/transactions/summary?userId=${userId}&year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`),
     ]);
     const [recentData, summaryData] = await Promise.all([recentRes.json(), summaryRes.json()]);
@@ -303,6 +323,26 @@ export default function Home() {
               lastMonthBalance={lastMonthBalance}
               incomeCount={summary?.transactionCount?.income || 0}
               expenseCount={summary?.transactionCount?.expense || 0}
+              onIncomeClick={() => {
+                const month = currentDate.getMonth(); // 0-based
+                const year = currentDate.getFullYear();
+                setFilterType('INCOME');
+                setFilterCategories([]);
+                setSearchKeyword('');
+                setSortOrder('recent');
+                setDateRange({ startYear: year, startMonth: month, endYear: year, endMonth: month });
+                setActiveTab('transactions');
+              }}
+              onExpenseClick={() => {
+                const month = currentDate.getMonth(); // 0-based
+                const year = currentDate.getFullYear();
+                setFilterType('EXPENSE');
+                setFilterCategories([]);
+                setSearchKeyword('');
+                setSortOrder('recent');
+                setDateRange({ startYear: year, startMonth: month, endYear: year, endMonth: month });
+                setActiveTab('transactions');
+              }}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]" style={{ gap: '16px' }}>
@@ -358,6 +398,9 @@ export default function Home() {
               categories={categories}
               isFilterOpen={isFilterOpen}
               setIsFilterOpen={setIsFilterOpen}
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              oldestDate={oldestTransactionDate}
             />
 
             <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]" style={{ padding: '16px' }}>

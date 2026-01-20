@@ -2,6 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
+interface DateRange {
+  startYear: number;
+  startMonth: number;
+  endYear: number;
+  endMonth: number;
+}
+
 interface UseTransactionsProps {
   userId: string | null;
   filterType: 'ALL' | 'INCOME' | 'EXPENSE';
@@ -9,6 +16,7 @@ interface UseTransactionsProps {
   searchKeyword: string;
   sortOrder: 'recent' | 'oldest' | 'expensive' | 'cheapest';
   activeTab: 'dashboard' | 'transactions';
+  dateRange: DateRange | null;
 }
 
 export function useTransactions({
@@ -18,6 +26,7 @@ export function useTransactions({
   searchKeyword,
   sortOrder,
   activeTab,
+  dateRange,
 }: UseTransactionsProps) {
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +62,13 @@ export function useTransactions({
 
       params.append('sort', sortOrder);
 
+      if (dateRange) {
+        params.append('startYear', dateRange.startYear.toString());
+        params.append('startMonth', (dateRange.startMonth + 1).toString()); // 0-based to 1-based
+        params.append('endYear', dateRange.endYear.toString());
+        params.append('endMonth', (dateRange.endMonth + 1).toString()); // 0-based to 1-based
+      }
+
       const response = await fetch(`/api/transactions?${params.toString()}`);
       const data = await response.json();
 
@@ -71,7 +87,7 @@ export function useTransactions({
       setIsLoading(false);
       isLoadingRef.current = false;
     }
-  }, [userId, filterType, filterCategories, searchKeyword, sortOrder]);
+  }, [userId, filterType, filterCategories, searchKeyword, sortOrder, dateRange]);
 
   const resetAndFetch = useCallback(() => {
     setAllTransactions([]);
@@ -98,7 +114,7 @@ export function useTransactions({
     if (activeTab === 'transactions' && userId) {
       resetAndFetch();
     }
-  }, [filterType, filterCategories, sortOrder]);
+  }, [filterType, filterCategories, sortOrder, dateRange]);
 
   // 검색어 디바운스
   useEffect(() => {

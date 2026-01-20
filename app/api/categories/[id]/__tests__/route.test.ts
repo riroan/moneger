@@ -184,10 +184,10 @@ describe('DELETE /api/categories/[id]', () => {
       deletedAt: new Date(),
     });
 
-    const url = new URL('http://localhost:3000/api/categories/cat-1');
-    url.searchParams.set('userId', 'user-1');
-
-    const request = new NextRequest(url, { method: 'DELETE' });
+    const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
+      method: 'DELETE',
+      body: JSON.stringify({ userId: 'user-1' }),
+    });
     const response = await DELETE(request, { params: Promise.resolve({ id: 'cat-1' }) });
     const data = await response.json();
 
@@ -199,6 +199,7 @@ describe('DELETE /api/categories/[id]', () => {
   it('userId가 없으면 400 에러를 반환해야 함', async () => {
     const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
       method: 'DELETE',
+      body: JSON.stringify({}),
     });
 
     const response = await DELETE(request, { params: Promise.resolve({ id: 'cat-1' }) });
@@ -211,10 +212,10 @@ describe('DELETE /api/categories/[id]', () => {
   it('존재하지 않는 카테고리면 404 에러를 반환해야 함', async () => {
     (prisma.category.findFirst as jest.Mock).mockResolvedValue(null);
 
-    const url = new URL('http://localhost:3000/api/categories/cat-999');
-    url.searchParams.set('userId', 'user-1');
-
-    const request = new NextRequest(url, { method: 'DELETE' });
+    const request = new NextRequest('http://localhost:3000/api/categories/cat-999', {
+      method: 'DELETE',
+      body: JSON.stringify({ userId: 'user-1' }),
+    });
     const response = await DELETE(request, { params: Promise.resolve({ id: 'cat-999' }) });
     const data = await response.json();
 
@@ -225,10 +226,10 @@ describe('DELETE /api/categories/[id]', () => {
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
     (prisma.category.findFirst as jest.Mock).mockRejectedValue(new Error('Database error'));
 
-    const url = new URL('http://localhost:3000/api/categories/cat-1');
-    url.searchParams.set('userId', 'user-1');
-
-    const request = new NextRequest(url, { method: 'DELETE' });
+    const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
+      method: 'DELETE',
+      body: JSON.stringify({ userId: 'user-1' }),
+    });
     const response = await DELETE(request, { params: Promise.resolve({ id: 'cat-1' }) });
     const data = await response.json();
 

@@ -10,6 +10,8 @@ interface SummaryCardsProps {
   lastMonthBalance: number;
   incomeCount: number;
   expenseCount: number;
+  onIncomeClick?: () => void;
+  onExpenseClick?: () => void;
 }
 
 export default function SummaryCards({
@@ -19,6 +21,8 @@ export default function SummaryCards({
   lastMonthBalance,
   incomeCount,
   expenseCount,
+  onIncomeClick,
+  onExpenseClick,
 }: SummaryCardsProps) {
   const cards = [
     {
@@ -52,16 +56,21 @@ export default function SummaryCards({
       className="grid grid-cols-1 sm:grid-cols-3"
       style={{ gap: '12px', marginBottom: '24px' }}
     >
-      {cards.map((card, i) => (
+      {cards.map((card, i) => {
+        const isClickable = card.type === 'income' || card.type === 'expense';
+        const handleClick = card.type === 'income' ? onIncomeClick : card.type === 'expense' ? onExpenseClick : undefined;
+
+        return (
         <div
           key={card.type}
+          onClick={handleClick}
           className={`bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] relative overflow-hidden transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] animate-[fadeInUp_0.6s_ease-out_backwards] [animation-delay:${(i + 1) * 100}ms] before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:rounded-t-[20px] ${
             card.type === 'income'
               ? 'before:bg-gradient-to-r before:from-accent-mint before:to-accent-blue'
               : card.type === 'expense'
               ? 'before:bg-gradient-to-r before:from-accent-coral before:to-accent-yellow'
               : 'before:bg-gradient-to-r before:from-accent-purple before:to-accent-mint'
-          }`}
+          } ${isClickable ? 'cursor-pointer' : ''}`}
           style={{ padding: '16px' }}
         >
           <div className="flex items-center gap-4 sm:block">
@@ -105,7 +114,8 @@ export default function SummaryCards({
             {card.change}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

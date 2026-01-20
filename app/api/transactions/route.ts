@@ -33,6 +33,10 @@ export async function GET(request: NextRequest) {
       sort: (searchParams.get('sort') || 'recent') as 'recent' | 'oldest' | 'expensive' | 'cheapest',
       cursor: searchParams.get('cursor') || undefined,
       limit: parseInt(searchParams.get('limit') || '20'),
+      startYear: searchParams.get('startYear') ? parseInt(searchParams.get('startYear')!) : undefined,
+      startMonth: searchParams.get('startMonth') ? parseInt(searchParams.get('startMonth')!) : undefined,
+      endYear: searchParams.get('endYear') ? parseInt(searchParams.get('endYear')!) : undefined,
+      endMonth: searchParams.get('endMonth') ? parseInt(searchParams.get('endMonth')!) : undefined,
     });
 
     return paginatedResponse(result.data, result.count, result.nextCursor, result.hasMore);

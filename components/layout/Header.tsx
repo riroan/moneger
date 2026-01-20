@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { formatYearMonth } from '@/utils/formatters';
 
 interface HeaderProps {
@@ -24,6 +24,7 @@ export default function Header({
   onLogout,
 }: HeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const datePickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -74,7 +75,16 @@ export default function Header({
       className="flex justify-between items-center animate-[fadeInDown_0.6s_ease-out]"
       style={{ marginBottom: '24px' }}
     >
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div
+        onClick={() => {
+          if (pathname === '/') {
+            window.location.reload();
+          } else {
+            router.push('/');
+          }
+        }}
+        className="flex items-center gap-2 sm:gap-3 cursor-pointer"
+      >
         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-accent-mint to-accent-blue rounded-[12px] sm:rounded-[14px] flex items-center justify-center text-xl sm:text-2xl shadow-[0_8px_32px_var(--glow-mint)]">
           💰
         </div>
