@@ -787,7 +787,7 @@ export default function Home() {
                       style={{ padding: '10px 14px', fontSize: '14px' }}
                       onClick={() => {
                         setIsProfileMenuOpen(false);
-                        // TODO: Navigate to profile settings
+                        router.push('/settings');
                       }}
                     >
                       ⚙️ 설정
@@ -1021,7 +1021,8 @@ export default function Home() {
       {/* Add Button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-8 right-8 w-16 h-16 rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue border-none text-bg-primary text-[28px] cursor-pointer shadow-[0_8px_32px_var(--glow-mint)] transition-all hover:scale-110 hover:rotate-90 hover:shadow-[0_12px_48px_var(--glow-mint)] z-[100] flex items-center justify-center">
+        className="fixed bottom-8 right-8 w-24 h-24 rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue border-none text-bg-primary text-[40px] font-light leading-none cursor-pointer shadow-[0_8px_32px_var(--glow-mint)] transition-all hover:scale-110 hover:rotate-90 hover:shadow-[0_12px_48px_var(--glow-mint)] z-[100] flex items-center justify-center p-2"
+      >
         +
       </button>
 
