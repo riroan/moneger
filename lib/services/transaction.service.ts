@@ -41,6 +41,8 @@ interface GetTransactionsInput {
   startMonth?: number;
   endYear?: number;
   endMonth?: number;
+  minAmount?: number;
+  maxAmount?: number;
 }
 
 /**
@@ -152,6 +154,17 @@ export async function getTransactions(input: GetTransactionsInput) {
   if (type) where.type = type;
   if (categoryIds?.length) where.categoryId = { in: categoryIds };
   if (search) where.description = { contains: search, mode: 'insensitive' };
+
+  // 금액 범위 필터
+  if (input.minAmount !== undefined || input.maxAmount !== undefined) {
+    where.amount = {};
+    if (input.minAmount !== undefined) {
+      where.amount.gte = input.minAmount;
+    }
+    if (input.maxAmount !== undefined) {
+      where.amount.lte = input.maxAmount;
+    }
+  }
 
   // 정렬
   const orderBy = {

@@ -8,7 +8,7 @@ import SummaryCards from '@/components/dashboard/SummaryCards';
 import CategoryChart from '@/components/dashboard/CategoryChart';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import TransactionList from '@/components/transactions/TransactionList';
-import FilterPanel, { DateRange } from '@/components/transactions/FilterPanel';
+import FilterPanel, { DateRange, AmountRange } from '@/components/transactions/FilterPanel';
 import TransactionModal from '@/components/modals/TransactionModal';
 import EditTransactionModal from '@/components/modals/EditTransactionModal';
 import DeleteConfirmModal from '@/components/modals/DeleteConfirmModal';
@@ -36,6 +36,7 @@ export default function Home() {
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'expensive' | 'cheapest'>('recent');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
+  const [amountRange, setAmountRange] = useState<AmountRange | null>(null);
 
   // 데이터 상태
   const [categories, setCategories] = useState<any[]>([]);
@@ -63,6 +64,7 @@ export default function Home() {
     sortOrder,
     activeTab,
     dateRange,
+    amountRange,
   });
 
   // 모달 열림 시 스크롤 비활성화
@@ -401,6 +403,8 @@ export default function Home() {
               dateRange={dateRange}
               setDateRange={setDateRange}
               oldestDate={oldestTransactionDate}
+              amountRange={amountRange}
+              setAmountRange={setAmountRange}
             />
 
             <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]" style={{ padding: '16px' }}>
@@ -413,7 +417,7 @@ export default function Home() {
                 transactions={allTransactions}
                 isLoading={isLoadingAllTransactions}
                 hasMore={hasMoreTransactions}
-                emptyMessage={searchKeyword || filterType !== 'ALL' || filterCategories.length > 0 ? '검색 결과가 없습니다' : '거래 내역이 없습니다'}
+                emptyMessage={searchKeyword || filterType !== 'ALL' || filterCategories.length > 0 || amountRange !== null ? '검색 결과가 없습니다' : '거래 내역이 없습니다'}
                 onTransactionClick={(tx) => { setEditingTransaction(tx); setIsEditModalOpen(true); }}
               />
             </div>

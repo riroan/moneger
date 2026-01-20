@@ -9,6 +9,11 @@ interface DateRange {
   endMonth: number;
 }
 
+interface AmountRange {
+  minAmount: number | null;
+  maxAmount: number | null;
+}
+
 interface UseTransactionsProps {
   userId: string | null;
   filterType: 'ALL' | 'INCOME' | 'EXPENSE';
@@ -17,6 +22,7 @@ interface UseTransactionsProps {
   sortOrder: 'recent' | 'oldest' | 'expensive' | 'cheapest';
   activeTab: 'dashboard' | 'transactions';
   dateRange: DateRange | null;
+  amountRange: AmountRange | null;
 }
 
 export function useTransactions({
@@ -27,6 +33,7 @@ export function useTransactions({
   sortOrder,
   activeTab,
   dateRange,
+  amountRange,
 }: UseTransactionsProps) {
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,6 +76,15 @@ export function useTransactions({
         params.append('endMonth', (dateRange.endMonth + 1).toString()); // 0-based to 1-based
       }
 
+      if (amountRange) {
+        if (amountRange.minAmount !== null) {
+          params.append('minAmount', amountRange.minAmount.toString());
+        }
+        if (amountRange.maxAmount !== null) {
+          params.append('maxAmount', amountRange.maxAmount.toString());
+        }
+      }
+
       const response = await fetch(`/api/transactions?${params.toString()}`);
       const data = await response.json();
 
@@ -87,7 +103,7 @@ export function useTransactions({
       setIsLoading(false);
       isLoadingRef.current = false;
     }
-  }, [userId, filterType, filterCategories, searchKeyword, sortOrder, dateRange]);
+  }, [userId, filterType, filterCategories, searchKeyword, sortOrder, dateRange, amountRange]);
 
   const resetAndFetch = useCallback(() => {
     setAllTransactions([]);
@@ -114,7 +130,7 @@ export function useTransactions({
     if (activeTab === 'transactions' && userId) {
       resetAndFetch();
     }
-  }, [filterType, filterCategories, sortOrder, dateRange]);
+  }, [filterType, filterCategories, sortOrder, dateRange, amountRange]);
 
   // 검색어 디바운스
   useEffect(() => {

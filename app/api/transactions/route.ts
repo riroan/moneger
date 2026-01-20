@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
       startMonth: searchParams.get('startMonth') ? parseInt(searchParams.get('startMonth')!) : undefined,
       endYear: searchParams.get('endYear') ? parseInt(searchParams.get('endYear')!) : undefined,
       endMonth: searchParams.get('endMonth') ? parseInt(searchParams.get('endMonth')!) : undefined,
+      minAmount: searchParams.get('minAmount') ? parseInt(searchParams.get('minAmount')!) : undefined,
+      maxAmount: searchParams.get('maxAmount') ? parseInt(searchParams.get('maxAmount')!) : undefined,
     });
 
     return paginatedResponse(result.data, result.count, result.nextCursor, result.hasMore);

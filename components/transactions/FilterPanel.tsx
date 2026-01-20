@@ -16,6 +16,11 @@ interface DateRange {
   endMonth: number;
 }
 
+interface AmountRange {
+  minAmount: number | null;
+  maxAmount: number | null;
+}
+
 interface FilterPanelProps {
   filterType: 'ALL' | 'INCOME' | 'EXPENSE';
   setFilterType: (type: 'ALL' | 'INCOME' | 'EXPENSE') => void;
@@ -31,6 +36,8 @@ interface FilterPanelProps {
   dateRange: DateRange | null;
   setDateRange: (range: DateRange | null) => void;
   oldestDate: { year: number; month: number } | null;
+  amountRange: AmountRange | null;
+  setAmountRange: (range: AmountRange | null) => void;
 }
 
 interface CustomSelectProps {
@@ -121,22 +128,34 @@ export default function FilterPanel({
   dateRange,
   setDateRange,
   oldestDate,
+  amountRange,
+  setAmountRange,
 }: FilterPanelProps) {
   const [isIncomeCategoryOpen, setIsIncomeCategoryOpen] = useState(true);
   const [isExpenseCategoryOpen, setIsExpenseCategoryOpen] = useState(true);
   const [isDateFilterEnabled, setIsDateFilterEnabled] = useState(dateRange !== null);
+  const [isAmountFilterEnabled, setIsAmountFilterEnabled] = useState(amountRange !== null);
+  const [minAmountInput, setMinAmountInput] = useState(amountRange?.minAmount?.toLocaleString('ko-KR') || '');
+  const [maxAmountInput, setMaxAmountInput] = useState(amountRange?.maxAmount?.toLocaleString('ko-KR') || '');
 
   // dateRange 외부 변경 시 isDateFilterEnabled 동기화
   useEffect(() => {
     setIsDateFilterEnabled(dateRange !== null);
   }, [dateRange]);
 
+  // amountRange 외부 변경 시 동기화
+  useEffect(() => {
+    setIsAmountFilterEnabled(amountRange !== null);
+    setMinAmountInput(amountRange?.minAmount?.toLocaleString('ko-KR') || '');
+    setMaxAmountInput(amountRange?.maxAmount?.toLocaleString('ko-KR') || '');
+  }, [amountRange]);
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
   const minYear = oldestDate?.year || currentYear;
 
-  const hasActiveFilters = filterType !== 'ALL' || filterCategories.length > 0 || searchKeyword || sortOrder !== 'recent' || dateRange !== null;
+  const hasActiveFilters = filterType !== 'ALL' || filterCategories.length > 0 || searchKeyword || sortOrder !== 'recent' || dateRange !== null || amountRange !== null;
 
   const handleReset = () => {
     setFilterType('ALL');
@@ -145,6 +164,10 @@ export default function FilterPanel({
     setSortOrder('recent');
     setDateRange(null);
     setIsDateFilterEnabled(false);
+    setAmountRange(null);
+    setIsAmountFilterEnabled(false);
+    setMinAmountInput('');
+    setMaxAmountInput('');
   };
 
   const handleDateFilterToggle = (enabled: boolean) => {
@@ -158,6 +181,45 @@ export default function FilterPanel({
       });
     } else {
       setDateRange(null);
+    }
+  };
+
+  const handleAmountFilterToggle = (enabled: boolean) => {
+    setIsAmountFilterEnabled(enabled);
+    if (enabled) {
+      setAmountRange({ minAmount: null, maxAmount: null });
+    } else {
+      setAmountRange(null);
+      setMinAmountInput('');
+      setMaxAmountInput('');
+    }
+  };
+
+  const handleAmountInputChange = (type: 'min' | 'max', value: string) => {
+    const rawValue = value.replace(/,/g, '');
+
+    if (rawValue === '') {
+      if (type === 'min') {
+        setMinAmountInput('');
+        setAmountRange({ ...amountRange!, minAmount: null });
+      } else {
+        setMaxAmountInput('');
+        setAmountRange({ ...amountRange!, maxAmount: null });
+      }
+      return;
+    }
+
+    if (!/^\d+$/.test(rawValue)) return;
+
+    const numValue = parseInt(rawValue);
+    const formattedValue = numValue.toLocaleString('ko-KR');
+
+    if (type === 'min') {
+      setMinAmountInput(formattedValue);
+      setAmountRange({ ...amountRange!, minAmount: numValue });
+    } else {
+      setMaxAmountInput(formattedValue);
+      setAmountRange({ ...amountRange!, maxAmount: numValue });
     }
   };
 
@@ -289,6 +351,52 @@ export default function FilterPanel({
                       onChange={(newMonth) => setDateRange({ ...dateRange, endMonth: newMonth })}
                     />
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 금액 범위 필터 */}
+        <div style={{ marginBottom: '16px' }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
+            <label className="text-sm text-text-muted">금액 범위</label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isAmountFilterEnabled}
+                onChange={(e) => handleAmountFilterToggle(e.target.checked)}
+                className="w-4 h-4 rounded accent-accent-mint cursor-pointer"
+              />
+              <span className="text-xs text-text-secondary">금액 필터 사용</span>
+            </label>
+          </div>
+          {isAmountFilterEnabled && amountRange && (
+            <div className="bg-bg-secondary rounded-[10px]" style={{ padding: '12px' }}>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="block text-xs text-text-muted" style={{ marginBottom: '6px' }}>최소 금액</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={minAmountInput}
+                    onChange={(e) => handleAmountInputChange('min', e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-text-primary text-sm font-mono focus:outline-none focus:border-accent-blue transition-colors"
+                    style={{ padding: '8px 10px' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-text-muted" style={{ marginBottom: '6px' }}>최대 금액</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={maxAmountInput}
+                    onChange={(e) => handleAmountInputChange('max', e.target.value)}
+                    placeholder="제한 없음"
+                    className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-text-primary text-sm font-mono focus:outline-none focus:border-accent-blue transition-colors"
+                    style={{ padding: '8px 10px' }}
+                  />
                 </div>
               </div>
             </div>
@@ -478,4 +586,4 @@ export default function FilterPanel({
   );
 }
 
-export type { Category, DateRange };
+export type { Category, DateRange, AmountRange };
