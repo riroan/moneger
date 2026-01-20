@@ -212,6 +212,8 @@ export default function FilterPanel({
     if (!/^\d+$/.test(rawValue)) return;
 
     const numValue = parseInt(rawValue);
+    if (numValue > 100000000000) return;
+
     const formattedValue = numValue.toLocaleString('ko-KR');
 
     if (type === 'min') {

@@ -96,6 +96,11 @@ export default function TransactionModal({
       return;
     }
 
+    if (parseInt(rawValue) > 100000000000) {
+      setAmountError('1000억 원을 초과할 수 없습니다');
+      return;
+    }
+
     const formattedValue = parseInt(rawValue).toLocaleString('ko-KR');
     setAmount(formattedValue);
     setAmountError('');
