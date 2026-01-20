@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         acc[tx.category.id].count++;
         acc[tx.category.id].total += tx.amount;
         return acc;
-      }, {} as Record<string, { id: string; name: string; icon: string; color: string; count: number; total: number }>);
+      }, {} as Record<string, { id: string; name: string; icon: string | null; color: string | null; count: number; total: number }>);
 
     // 카테고리별 통계를 배열로 변환하고 금액순 정렬
     const categoryList = Object.values(categoryStats).sort((a, b) => b.total - a.total);

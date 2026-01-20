@@ -1,0 +1,91 @@
+'use client';
+
+import { formatNumber, formatDate, formatCurrencyDisplay } from '@/utils/formatters';
+
+interface Transaction {
+  id: string;
+  type: 'INCOME' | 'EXPENSE';
+  amount: number;
+  description: string | null;
+  date: string;
+  categoryId: string | null;
+  category?: {
+    id: string;
+    name: string;
+    type: string;
+    color: string | null;
+    icon: string | null;
+  } | null;
+}
+
+interface TransactionItemProps {
+  transaction: Transaction;
+  onClick?: () => void;
+}
+
+/**
+ * 통화 표시 컴포넌트
+ */
+const CurrencyDisplay = ({ amount }: { amount: string }) => {
+  const { sign, currencySymbol, number } = formatCurrencyDisplay(amount);
+
+  return (
+    <>
+      {sign && (
+        <span style={{ fontSize: '1.3em', marginRight: '0.15em', verticalAlign: 'baseline', transform: 'translateY(0.05em)', display: 'inline-block' }}>
+          {sign}
+        </span>
+      )}
+      <span style={{ whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: '0.7em', marginRight: '0.25em', display: 'inline-block' }}>
+          {currencySymbol}
+        </span>
+        {number}
+      </span>
+    </>
+  );
+};
+
+export default function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
+  const icon = tx.category?.icon || '💰';
+
+  return (
+    <div
+      className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
+      style={{ padding: '12px' }}
+      onClick={onClick}
+    >
+      <div className="flex items-center">
+        {/* 아이콘 */}
+        <div
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0"
+          style={{ marginRight: '12px' }}
+        >
+          {icon}
+        </div>
+        {/* 내용 영역 */}
+        <div className="flex-1 min-w-0">
+          {/* 상단: 내용 + 금액 */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm sm:text-[15px] font-medium truncate flex-1 min-w-0" style={{ marginRight: '12px' }}>
+              {tx.description || tx.category?.name || '거래'}
+            </div>
+            <div className={`font-mono text-sm sm:text-base font-semibold whitespace-nowrap ${
+              tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
+            }`}>
+              <CurrencyDisplay amount={`${tx.type === 'EXPENSE' ? '-' : '+'}₩${formatNumber(tx.amount)}`} />
+            </div>
+          </div>
+          {/* 하단: 시간 + 카테고리 */}
+          <div className="flex items-center justify-between text-xs sm:text-[13px] text-text-muted">
+            <span>{formatDate(tx.date)}</span>
+            <span>{tx.category?.name || '미분류'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { CurrencyDisplay };
+export type { Transaction };

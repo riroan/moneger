@@ -1,206 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest } from 'next/server';
 import { TransactionType } from '@prisma/client';
-
-// 일별 스냅샷 업데이트 함수
-async function updateDailyBalance(userId: string, date: Date) {
-  try {
-    // 해당 날짜의 자정으로 설정
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
-
-    // 해당 날짜까지의 모든 거래 조회
-    const allTransactions = await prisma.transaction.findMany({
-      where: {
-        userId,
-        date: {
-          lte: targetDate,
-        },
-        deletedAt: null,
-      },
-    });
-
-    // 해당 날짜의 거래만 조회
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const dayTransactions = await prisma.transaction.findMany({
-      where: {
-        userId,
-        date: {
-          gte: targetDate,
-          lte: endOfDay,
-        },
-        deletedAt: null,
-      },
-    });
-
-    // 누적 잔액 계산
-    let balance = 0;
-    allTransactions.forEach((tx) => {
-      if (tx.type === 'INCOME') {
-        balance += tx.amount;
-      } else {
-        balance -= tx.amount;
-      }
-    });
-
-    // 해당 일의 수입/지출 계산
-    let dailyIncome = 0;
-    let dailyExpense = 0;
-    dayTransactions.forEach((tx) => {
-      if (tx.type === 'INCOME') {
-        dailyIncome += tx.amount;
-      } else {
-        dailyExpense += tx.amount;
-      }
-    });
-
-    // DailyBalance 업데이트 또는 생성
-    await prisma.dailyBalance.upsert({
-      where: {
-        userId_date: {
-          userId,
-          date: targetDate,
-        },
-      },
-      update: {
-        balance,
-        income: dailyIncome,
-        expense: dailyExpense,
-      },
-      create: {
-        userId,
-        date: targetDate,
-        balance,
-        income: dailyIncome,
-        expense: dailyExpense,
-      },
-    });
-
-    console.log(`Daily balance updated for ${targetDate.toISOString().split('T')[0]}: balance=${balance}`);
-  } catch (error) {
-    console.error('Failed to update daily balance:', error);
-  }
-}
+import {
+  successResponseWithMessage,
+  errorResponse,
+  paginatedResponse,
+  validateUserId,
+  validateTransactionType,
+  validateAmount,
+} from '@/lib/api-utils';
+import {
+  createTransaction,
+  getTransactions,
+  validateCategory,
+} from '@/lib/services/transaction.service';
 
 // GET /api/transactions - 거래 목록 조회
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const userId = searchParams.get('userId');
-    const year = searchParams.get('year');
-    const month = searchParams.get('month');
-    const type = searchParams.get('type') as TransactionType | null;
-    const categoryIds = searchParams.getAll('categoryId');
-    const cursor = searchParams.get('cursor');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const search = searchParams.get('search');
-    const sort = searchParams.get('sort') || 'recent';
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userIdError = validateUserId(userId);
+    if (userIdError) return userIdError;
 
-    // 필터 조건 구성
-    const where: any = {
-      userId,
-      deletedAt: null, // soft delete - 삭제되지 않은 거래만
-    };
-
-    // 날짜 필터링
-    if (year && month) {
-      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-      const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
-
-      where.date = {
-        gte: startDate,
-        lte: endDate,
-      };
-    }
-
-    // 타입 필터링
-    if (type && (type === 'INCOME' || type === 'EXPENSE')) {
-      where.type = type;
-    }
-
-    // 카테고리 필터링 (다중 선택 지원)
-    if (categoryIds.length > 0) {
-      where.categoryId = { in: categoryIds };
-    }
-
-    // 검색어 필터링
-    if (search) {
-      where.description = {
-        contains: search,
-        mode: 'insensitive',
-      };
-    }
-
-    // 정렬 옵션 설정
-    let orderBy: any;
-    switch (sort) {
-      case 'oldest':
-        orderBy = { date: 'asc' };
-        break;
-      case 'expensive':
-        orderBy = { amount: 'desc' };
-        break;
-      case 'cheapest':
-        orderBy = { amount: 'asc' };
-        break;
-      case 'recent':
-      default:
-        orderBy = { date: 'desc' };
-        break;
-    }
-
-    // 커서 기반 페이지네이션
-    const queryOptions: any = {
-      where,
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            color: true,
-            icon: true,
-          },
-        },
-      },
-      orderBy,
-      take: limit + 1, // 다음 페이지 존재 여부 확인을 위해 1개 더 가져옴
-    };
-
-    if (cursor) {
-      queryOptions.cursor = { id: cursor };
-      queryOptions.skip = 1; // 커서 자체는 제외
-    }
-
-    const transactions = await prisma.transaction.findMany(queryOptions);
-
-    // 다음 페이지 존재 여부 확인
-    const hasMore = transactions.length > limit;
-    const data = hasMore ? transactions.slice(0, limit) : transactions;
-    const nextCursor = hasMore ? data[data.length - 1].id : null;
-
-    return NextResponse.json({
-      success: true,
-      data,
-      count: data.length,
-      nextCursor,
-      hasMore,
+    const result = await getTransactions({
+      userId: userId!,
+      year: searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined,
+      month: searchParams.get('month') ? parseInt(searchParams.get('month')!) : undefined,
+      type: searchParams.get('type') as TransactionType | undefined,
+      categoryIds: searchParams.getAll('categoryId'),
+      search: searchParams.get('search') || undefined,
+      sort: (searchParams.get('sort') || 'recent') as 'recent' | 'oldest' | 'expensive' | 'cheapest',
+      cursor: searchParams.get('cursor') || undefined,
+      limit: parseInt(searchParams.get('limit') || '20'),
     });
+
+    return paginatedResponse(result.data, result.count, result.nextCursor, result.hasMore);
   } catch (error) {
     console.error('Failed to fetch transactions:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch transactions' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to fetch transactions', 500);
   }
 }
 
@@ -211,160 +49,35 @@ export async function POST(request: NextRequest) {
     const { userId, type, amount, description, categoryId, date } = body;
 
     // 유효성 검사
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userIdError = validateUserId(userId);
+    if (userIdError) return userIdError;
 
-    if (!type || (type !== 'INCOME' && type !== 'EXPENSE')) {
-      return NextResponse.json(
-        { error: 'type must be INCOME or EXPENSE' },
-        { status: 400 }
-      );
-    }
+    const typeError = validateTransactionType(type);
+    if (typeError) return typeError;
 
-    if (!amount || amount <= 0) {
-      return NextResponse.json(
-        { error: 'amount must be greater than 0' },
-        { status: 400 }
-      );
-    }
+    const amountError = validateAmount(amount);
+    if (amountError) return amountError;
 
-    // 카테고리가 제공된 경우 해당 카테고리가 존재하고 타입이 일치하는지 확인
+    // 카테고리 검증
     if (categoryId) {
-      const category = await prisma.category.findFirst({
-        where: {
-          id: categoryId,
-          userId,
-          type,
-          deletedAt: null,
-        },
-      });
-
+      const category = await validateCategory(categoryId, userId, type);
       if (!category) {
-        return NextResponse.json(
-          { error: 'Invalid category or category type mismatch' },
-          { status: 400 }
-        );
+        return errorResponse('Invalid category or category type mismatch', 400);
       }
     }
 
-    // 트랜잭션으로 거래 생성과 일별 잔액 업데이트를 원자적으로 처리
-    const result = await prisma.$transaction(async (tx) => {
-      // 거래 생성
-      const transaction = await tx.transaction.create({
-        data: {
-          userId,
-          type,
-          amount: parseFloat(amount),
-          description: description || null,
-          categoryId: categoryId || null,
-          date: date ? new Date(date) : new Date(),
-        },
-        include: {
-          category: {
-            select: {
-              id: true,
-              name: true,
-              type: true,
-              color: true,
-              icon: true,
-            },
-          },
-        },
-      });
-
-      // 일별 잔액 업데이트
-      const targetDate = new Date(transaction.date);
-      targetDate.setHours(0, 0, 0, 0);
-
-      // 해당 날짜까지의 모든 거래 조회
-      const allTransactions = await tx.transaction.findMany({
-        where: {
-          userId,
-          date: {
-            lte: targetDate,
-          },
-          deletedAt: null,
-        },
-      });
-
-      // 해당 날짜의 거래만 조회
-      const endOfDay = new Date(targetDate);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      const dayTransactions = await tx.transaction.findMany({
-        where: {
-          userId,
-          date: {
-            gte: targetDate,
-            lte: endOfDay,
-          },
-          deletedAt: null,
-        },
-      });
-
-      // 누적 잔액 계산
-      let balance = 0;
-      allTransactions.forEach((t) => {
-        if (t.type === 'INCOME') {
-          balance += t.amount;
-        } else {
-          balance -= t.amount;
-        }
-      });
-
-      // 해당 일의 수입/지출 계산
-      let dailyIncome = 0;
-      let dailyExpense = 0;
-      dayTransactions.forEach((t) => {
-        if (t.type === 'INCOME') {
-          dailyIncome += t.amount;
-        } else {
-          dailyExpense += t.amount;
-        }
-      });
-
-      // DailyBalance 업데이트 또는 생성
-      await tx.dailyBalance.upsert({
-        where: {
-          userId_date: {
-            userId,
-            date: targetDate,
-          },
-        },
-        update: {
-          balance,
-          income: dailyIncome,
-          expense: dailyExpense,
-        },
-        create: {
-          userId,
-          date: targetDate,
-          balance,
-          income: dailyIncome,
-          expense: dailyExpense,
-        },
-      });
-
-      return transaction;
+    const transaction = await createTransaction({
+      userId,
+      type,
+      amount: parseFloat(amount),
+      description,
+      categoryId,
+      date: date ? new Date(date) : undefined,
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: result,
-        message: 'Transaction created successfully',
-      },
-      { status: 201 }
-    );
+    return successResponseWithMessage(transaction, 'Transaction created successfully', 201);
   } catch (error) {
     console.error('Failed to create transaction:', error);
-    return NextResponse.json(
-      { error: 'Failed to create transaction' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to create transaction', 500);
   }
 }
