@@ -194,35 +194,35 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg-primary flex items-center justify-center px-3 sm:px-4 py-4 sm:py-8 overflow-x-hidden">
       <div
-        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md animate-[fadeIn_0.5s_ease-out]"
-        style={{ padding: '48px 40px' }}
+        className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[24px] w-full max-w-[calc(100vw-24px)] sm:max-w-md animate-[fadeIn_0.5s_ease-out]"
+        style={{ padding: '20px 16px' }}
       >
         {/* Logo */}
-        <div className="flex items-center justify-center" style={{ marginBottom: '40px' }}>
+        <div className="flex items-center justify-center" style={{ marginBottom: '20px' }}>
           <div
-            className="w-16 h-16 rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue flex items-center justify-center text-4xl shadow-[0_8px_32px_var(--glow-mint)]"
+            className="w-12 h-12 sm:w-16 sm:h-16 rounded-[12px] sm:rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue flex items-center justify-center text-2xl sm:text-4xl shadow-[0_8px_32px_var(--glow-mint)]"
           >
             💰
           </div>
         </div>
 
         {/* Title */}
-        <div className="text-center" style={{ marginBottom: '40px' }}>
-          <h1 className="text-3xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent" style={{ marginBottom: '8px' }}>
+        <div className="text-center" style={{ marginBottom: '20px' }}>
+          <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent" style={{ marginBottom: '4px' }}>
             MONEGER
           </h1>
-          <p className="text-text-secondary text-sm">
+          <p className="text-text-secondary text-[11px] sm:text-sm">
             {isSignup ? '새로운 계정을 만드세요' : '스마트한 가계부 관리'}
           </p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col" style={{ gap: '20px' }}>
+        <form onSubmit={handleSubmit} className="flex flex-col" style={{ gap: '12px' }}>
           {/* Email */}
           <div>
-            <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px', paddingLeft: '4px' }}>
+            <label className="block text-[11px] sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px', paddingLeft: '2px' }}>
               이메일
             </label>
             <input
@@ -230,15 +230,15 @@ export default function LoginPage() {
               value={email}
               onChange={handleEmailChange}
               placeholder="example@email.com"
-              className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors ${
+              className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors ${
                 emailError
                   ? 'border-accent-coral focus:border-accent-coral'
                   : 'border-[var(--border)] focus:border-accent-mint'
               }`}
-              style={{ padding: '14px 16px' }}
+              style={{ padding: '10px 12px' }}
             />
             {emailError && (
-              <p className="text-accent-coral text-sm" style={{ marginTop: '6px' }}>
+              <p className="text-accent-coral text-xs" style={{ marginTop: '4px' }}>
                 {emailError}
               </p>
             )}
@@ -247,7 +247,7 @@ export default function LoginPage() {
           {/* Name (회원가입 시에만) */}
           {isSignup && (
             <div>
-              <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px', paddingLeft: '4px' }}>
+              <label className="block text-[11px] sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px', paddingLeft: '2px' }}>
                 이름
               </label>
               <input
@@ -255,15 +255,15 @@ export default function LoginPage() {
                 value={name}
                 onChange={handleNameChange}
                 placeholder="홍길동"
-                className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors ${
+                className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors ${
                   nameError
                     ? 'border-accent-coral focus:border-accent-coral'
                     : 'border-[var(--border)] focus:border-accent-mint'
                 }`}
-                style={{ padding: '14px 16px' }}
+                style={{ padding: '10px 12px' }}
               />
               {nameError && (
-                <p className="text-accent-coral text-sm" style={{ marginTop: '6px' }}>
+                <p className="text-accent-coral text-xs" style={{ marginTop: '4px' }}>
                   {nameError}
                 </p>
               )}
@@ -272,7 +272,7 @@ export default function LoginPage() {
 
           {/* Password */}
           <div>
-            <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px', paddingLeft: '4px' }}>
+            <label className="block text-[11px] sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px', paddingLeft: '2px' }}>
               비밀번호
             </label>
             <div className="relative">
@@ -281,17 +281,17 @@ export default function LoginPage() {
                 value={password}
                 onChange={handlePasswordChange}
                 placeholder="••••••••"
-                className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors ${
+                className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors ${
                   passwordError
                     ? 'border-accent-coral focus:border-accent-coral'
                     : 'border-[var(--border)] focus:border-accent-mint'
                 }`}
-                style={{ padding: '14px 16px', paddingRight: '48px' }}
+                style={{ padding: '10px 12px', paddingRight: '40px' }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                 aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
               >
                 {showPassword ? (
@@ -311,11 +311,11 @@ export default function LoginPage() {
               </button>
             </div>
             {passwordError ? (
-              <p className="text-accent-coral text-sm" style={{ marginTop: '6px' }}>
+              <p className="text-accent-coral text-xs" style={{ marginTop: '4px' }}>
                 {passwordError}
               </p>
             ) : isSignup ? (
-              <p className="text-xs text-text-muted" style={{ marginTop: '6px' }}>
+              <p className="text-[10px] sm:text-xs text-text-muted" style={{ marginTop: '4px' }}>
                 8자 이상, 숫자+영문+특수문자 조합
               </p>
             ) : null}
@@ -324,7 +324,7 @@ export default function LoginPage() {
           {/* Password Confirm (회원가입 시에만) */}
           {isSignup && (
             <div>
-              <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px', paddingLeft: '4px' }}>
+              <label className="block text-[11px] sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px', paddingLeft: '2px' }}>
                 비밀번호 확인
               </label>
               <div className="relative">
@@ -333,17 +333,17 @@ export default function LoginPage() {
                   value={passwordConfirm}
                   onChange={handlePasswordConfirmChange}
                   placeholder="••••••••"
-                  className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors ${
+                  className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors ${
                     passwordConfirmError
                       ? 'border-accent-coral focus:border-accent-coral'
                       : 'border-[var(--border)] focus:border-accent-mint'
                   }`}
-                  style={{ padding: '14px 16px', paddingRight: '48px' }}
+                  style={{ padding: '10px 12px', paddingRight: '40px' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                   aria-label={showPasswordConfirm ? '비밀번호 숨기기' : '비밀번호 보기'}
                 >
                   {showPasswordConfirm ? (
@@ -363,7 +363,7 @@ export default function LoginPage() {
                 </button>
               </div>
               {passwordConfirmError && (
-                <p className="text-accent-coral text-sm" style={{ marginTop: '6px' }}>
+                <p className="text-accent-coral text-xs" style={{ marginTop: '4px' }}>
                   {passwordConfirmError}
                 </p>
               )}
@@ -372,14 +372,14 @@ export default function LoginPage() {
 
           {/* Success Message */}
           {successMessage && (
-            <div className="bg-[rgba(16,185,129,0.1)] border border-accent-mint rounded-[12px] text-accent-mint text-sm animate-[fadeIn_0.3s_ease-out]" style={{ padding: '12px 16px' }}>
+            <div className="bg-[rgba(16,185,129,0.1)] border border-accent-mint rounded-[8px] sm:rounded-[12px] text-accent-mint text-xs sm:text-sm animate-[fadeIn_0.3s_ease-out]" style={{ padding: '10px 12px' }}>
               {successMessage}
             </div>
           )}
 
           {/* Error Message */}
           {error && (
-            <div className="bg-[rgba(239,68,68,0.1)] border border-accent-coral rounded-[12px] text-accent-coral text-sm" style={{ padding: '12px 16px' }}>
+            <div className="bg-[rgba(239,68,68,0.1)] border border-accent-coral rounded-[8px] sm:rounded-[12px] text-accent-coral text-xs sm:text-sm" style={{ padding: '10px 12px' }}>
               {error}
             </div>
           )}
@@ -388,15 +388,15 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary font-semibold rounded-[12px] transition-all hover:shadow-[0_8px_32px_var(--glow-mint)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            style={{ padding: '14px', marginTop: '8px' }}
+            className="w-full bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary font-semibold text-sm rounded-[8px] sm:rounded-[12px] transition-all hover:shadow-[0_8px_32px_var(--glow-mint)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            style={{ padding: '10px', marginTop: '4px' }}
           >
             {isLoading ? '처리 중...' : isSignup ? '회원가입' : '로그인'}
           </button>
         </form>
 
         {/* Toggle */}
-        <div className="text-center" style={{ marginTop: '24px' }}>
+        <div className="text-center" style={{ marginTop: '16px' }}>
           <button
             type="button"
             onClick={() => {
@@ -410,7 +410,7 @@ export default function LoginPage() {
               setShowPassword(false);
               setShowPasswordConfirm(false);
             }}
-            className="text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+            className="text-[11px] sm:text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
           >
             {isSignup ? '이미 계정이 있으신가요? ' : '계정이 없으신가요? '}
             <span className="text-accent-mint font-medium">

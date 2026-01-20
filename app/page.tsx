@@ -654,34 +654,34 @@ export default function Home() {
         style={{
           maxWidth: '1400px',
           margin: '0 auto',
-          padding: '32px'
+          padding: '16px'
         }}
       >
         {/* Header */}
         <header
           className="flex justify-between items-center animate-[fadeInDown_0.6s_ease-out]"
-          style={{ marginBottom: '40px' }}
+          style={{ marginBottom: '24px' }}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-accent-mint to-accent-blue rounded-[14px] flex items-center justify-center text-2xl shadow-[0_8px_32px_var(--glow-mint)]">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-accent-mint to-accent-blue rounded-[12px] sm:rounded-[14px] flex items-center justify-center text-xl sm:text-2xl shadow-[0_8px_32px_var(--glow-mint)]">
               💰
             </div>
-            <span className="text-2xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent tracking-tight">
+            <span className="hidden sm:block text-xl sm:text-2xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent tracking-tight">
               MONEGER
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none" style={{ padding: '10px 20px', gap: '12px' }}>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none" style={{ padding: '8px 12px', gap: '8px' }}>
               <button
                 onClick={handlePreviousMonth}
-                className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer"
+                className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer"
               >
                 ◀
               </button>
               <span
                 onClick={handleDatePickerToggle}
-                className="text-base font-semibold min-w-[120px] text-center cursor-pointer"
+                className="text-sm sm:text-base font-semibold min-w-[80px] sm:min-w-[120px] text-center cursor-pointer"
               >
                 {formatYearMonth(currentDate)}
               </span>
@@ -694,7 +694,7 @@ export default function Home() {
                   return nextMonth.getFullYear() > now.getFullYear() ||
                     (nextMonth.getFullYear() === now.getFullYear() && nextMonth.getMonth() > now.getMonth());
                 })()}
-                className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 ▶
               </button>
@@ -762,9 +762,9 @@ export default function Home() {
             <div ref={profileMenuRef} className="relative">
               <button
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold cursor-pointer transition-transform hover:scale-105"
+                className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold text-sm sm:text-base cursor-pointer transition-transform hover:scale-105"
               >
-                {userName ? userName.charAt(0) : userEmail.charAt(0)}
+                {userName ? userName.charAt(0) : (userEmail ? userEmail.charAt(0) : '?')}
               </button>
 
               {/* Profile Menu Dropdown */}
@@ -811,8 +811,8 @@ export default function Home() {
 
         {/* Summary Cards */}
         <div
-          className="grid grid-cols-3"
-          style={{ gap: '20px', marginBottom: '32px' }}
+          className="grid grid-cols-1 sm:grid-cols-3"
+          style={{ gap: '12px', marginBottom: '24px' }}
         >
           {[
             { type: 'income', icon: '💼', label: '이번 달 수입', amount: `₩${formatNumber(totalIncome)}`, change: `${summary?.transactionCount?.income || 0}건의 수입`, positive: true },
@@ -821,39 +821,42 @@ export default function Home() {
           ].map((card, i) => (
             <div
               key={card.type}
-              className={`bg-bg-card border border-[var(--border)] rounded-[20px] relative overflow-hidden transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] animate-[fadeInUp_0.6s_ease-out_backwards] [animation-delay:${(i + 1) * 100}ms] before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:rounded-t-[20px] ${
+              className={`bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] relative overflow-hidden transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] animate-[fadeInUp_0.6s_ease-out_backwards] [animation-delay:${(i + 1) * 100}ms] before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:rounded-t-[20px] ${
                 card.type === 'income' ? 'before:bg-gradient-to-r before:from-accent-mint before:to-accent-blue' :
                 card.type === 'expense' ? 'before:bg-gradient-to-r before:from-accent-coral before:to-accent-yellow' :
                 card.type === 'savings' ? 'before:bg-gradient-to-r before:from-accent-blue before:to-accent-purple' :
                 card.type === 'trend' ? 'before:bg-gradient-to-r before:from-accent-purple before:to-accent-mint' :
                 'before:bg-gradient-to-r before:from-accent-purple before:to-accent-mint'
               }`}
-              style={{ padding: '24px' }}
+              style={{ padding: '16px' }}
             >
-              <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center text-[22px] ${
-                card.type === 'income' ? 'bg-[var(--glow-mint)] text-accent-mint' :
-                card.type === 'expense' ? 'bg-[var(--glow-coral)] text-accent-coral' :
-                card.type === 'savings' ? 'bg-[var(--glow-blue)] text-accent-blue' :
-                card.type === 'trend' ? 'bg-[var(--glow-purple)] text-accent-purple' :
-                'bg-[var(--glow-purple)] text-accent-purple'
-              }`}
-                style={{ marginBottom: '16px' }}
-              >
-                {card.icon}
+              <div className="flex items-center gap-3 sm:block">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[12px] sm:rounded-[14px] flex items-center justify-center text-lg sm:text-[22px] flex-shrink-0 ${
+                  card.type === 'income' ? 'bg-[var(--glow-mint)] text-accent-mint' :
+                  card.type === 'expense' ? 'bg-[var(--glow-coral)] text-accent-coral' :
+                  card.type === 'savings' ? 'bg-[var(--glow-blue)] text-accent-blue' :
+                  card.type === 'trend' ? 'bg-[var(--glow-purple)] text-accent-purple' :
+                  'bg-[var(--glow-purple)] text-accent-purple'
+                }`}
+                  style={{ marginBottom: '0' }}
+                >
+                  {card.icon}
+                </div>
+                <div className="flex-1 sm:mt-4">
+                  <div className="text-xs sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px' }}>{card.label}</div>
+                  <div className={`font-mono font-bold tracking-tight text-lg sm:text-2xl ${
+                    card.type === 'income' ? 'text-accent-mint' :
+                    card.type === 'expense' ? 'text-accent-coral' :
+                    card.type === 'savings' ? 'text-accent-blue' :
+                    card.type === 'trend' ? 'text-accent-purple' :
+                    'text-accent-purple'
+                  }`}
+                  >
+                    {card.type === 'trend' ? card.amount : formatCurrency(card.amount)}
+                  </div>
+                </div>
               </div>
-              <div className="text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>{card.label}</div>
-              <div className={`font-mono font-bold tracking-tight ${
-                card.type === 'income' ? 'text-accent-mint' :
-                card.type === 'expense' ? 'text-accent-coral' :
-                card.type === 'savings' ? 'text-accent-blue' :
-                card.type === 'trend' ? 'text-accent-purple' :
-                'text-accent-purple'
-              }`}
-                style={{ fontSize: card.type === 'trend' ? 'clamp(32px, 3vw, 40px)' : 'clamp(20px, 2vw, 28px)', letterSpacing: card.type === 'trend' ? '0.1em' : 'inherit' }}
-              >
-                {card.type === 'trend' ? card.amount : formatCurrency(card.amount)}
-              </div>
-              <div className={`inline-flex items-center gap-1 text-[13px] rounded-lg font-medium ${
+              <div className={`hidden sm:inline-flex items-center gap-1 text-[13px] rounded-lg font-medium ${
                 card.positive ? 'bg-[var(--glow-mint)] text-accent-mint' : 'bg-[var(--glow-coral)] text-accent-coral'
               }`}
                 style={{ marginTop: '12px', padding: '8px 12px' }}
@@ -865,12 +868,12 @@ export default function Home() {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-[1fr_380px]" style={{ gap: '24px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]" style={{ gap: '16px' }}>
           {/* Left Panel - Categories */}
-          <div className="bg-bg-card border border-[var(--border)] rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '24px' }}>
-            <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-              <h2 className="text-lg font-semibold flex items-center gap-2.5">
-                <span className="text-xl">📊</span> 카테고리별 지출
+          <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-2 lg:order-1" style={{ padding: '16px' }}>
+            <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
+              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <span className="text-lg sm:text-xl">📊</span> 카테고리별 지출
               </h2>
             </div>
 
@@ -881,7 +884,7 @@ export default function Home() {
             ) : categoryListWithWidth.length > 0 ? (
               <>
                 {/* Donut Chart */}
-                <div className="flex justify-center items-center relative" style={{ marginBottom: '32px', height: '280px', pointerEvents: 'none' }}>
+                <div className="flex justify-center items-center relative" style={{ marginBottom: '24px', height: '200px', pointerEvents: 'none' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart style={{ outline: 'none' }}>
                       <Pie
@@ -892,8 +895,8 @@ export default function Home() {
                         }))}
                         cx="50%"
                         cy="50%"
-                        innerRadius={65}
-                        outerRadius={100}
+                        innerRadius={50}
+                        outerRadius={80}
                         paddingAngle={1}
                         dataKey="value"
                         startAngle={90}
@@ -914,33 +917,33 @@ export default function Home() {
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                    <div className="font-bold text-text-primary" style={{ fontSize: 'clamp(14px, 1.2vw, 18px)' }}>
+                    <div className="font-bold text-text-primary text-sm sm:text-base">
                       {formatNumber(totalExpense)}
                     </div>
-                    <div className="text-xs text-text-muted" style={{ marginTop: '4px' }}>
+                    <div className="text-[10px] sm:text-xs text-text-muted" style={{ marginTop: '2px' }}>
                       총 지출
                     </div>
                   </div>
                 </div>
 
                 {/* Category List */}
-                <div className="flex flex-col" style={{ gap: '12px' }}>
+                <div className="flex flex-col" style={{ gap: '8px' }}>
                   {categoryListWithWidth.map((category: any) => (
                     <div
                       key={category.id}
-                      className="flex items-center bg-bg-secondary rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover hover:translate-x-1"
-                      style={{ padding: '16px' }}
+                      className="flex items-center bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover hover:translate-x-1"
+                      style={{ padding: '12px' }}
                     >
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${
+                      <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-xl ${
                         ['bg-[var(--glow-mint)]', 'bg-[var(--glow-coral)]', 'bg-[var(--glow-blue)]', 'bg-[rgba(251,191,36,0.15)]', 'bg-[var(--glow-purple)]', 'bg-[rgba(244,114,182,0.15)]'][category.colorIndex]
-                      }`} style={{ marginRight: '14px' }}>
+                      }`} style={{ marginRight: '12px' }}>
                         {category.icon}
                       </div>
-                      <div className="flex-1">
-                        <div className="text-[15px] font-medium" style={{ marginBottom: '4px' }}>{category.name}</div>
-                        <div className="text-[13px] text-text-muted">{category.count}건</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm sm:text-[15px] font-medium truncate" style={{ marginBottom: '2px' }}>{category.name}</div>
+                        <div className="text-xs sm:text-[13px] text-text-muted">{category.count}건</div>
                       </div>
-                      <div className="font-mono text-base font-semibold">{formatCurrency(`₩${formatNumber(category.amount)}`)}</div>
+                      <div className="font-mono text-sm sm:text-base font-semibold">{formatCurrency(`₩${formatNumber(category.amount)}`)}</div>
                     </div>
                   ))}
                 </div>
@@ -953,18 +956,18 @@ export default function Home() {
           </div>
 
           {/* Right Sidebar */}
-          <div className="flex flex-col" style={{ gap: '24px' }}>
+          <div className="flex flex-col order-1 lg:order-2" style={{ gap: '16px' }}>
             {/* Recent Transactions */}
-            <div className="bg-bg-card border border-[var(--border)] rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '24px' }}>
-              <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-                <h2 className="text-lg font-semibold flex items-center gap-2.5">
-                  <span className="text-xl">📝</span> 최근 내역
+            <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '16px' }}>
+              <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
+                <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                  <span className="text-lg sm:text-xl">📝</span> 최근 내역
                 </h2>
               </div>
 
-              <div className="flex flex-col" style={{ gap: '12px' }}>
+              <div className="flex flex-col" style={{ gap: '8px' }}>
                 {isLoadingTransactions ? (
-                  <div className="text-center text-text-muted py-8">
+                  <div className="text-center text-text-muted py-6">
                     로딩 중...
                   </div>
                 ) : recentTransactions.length > 0 ? recentTransactions.map((tx) => {
@@ -979,8 +982,8 @@ export default function Home() {
                   return (
                     <div
                       key={tx.id}
-                      className="flex items-center bg-bg-secondary rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
-                      style={{ padding: '14px' }}
+                      className="flex items-center bg-bg-secondary rounded-[12px] sm:rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
+                      style={{ padding: '12px' }}
                       onClick={() => {
                         setEditingTransaction(tx);
                         setTransactionType(tx.type);
@@ -991,16 +994,16 @@ export default function Home() {
                         setIsEditModalOpen(true);
                       }}
                     >
-                      <div className="w-10 h-10 rounded-[10px] bg-bg-card flex items-center justify-center text-lg" style={{ marginRight: '12px' }}>
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg" style={{ marginRight: '10px' }}>
                         {icon}
                       </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium" style={{ marginBottom: '2px' }}>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs sm:text-sm font-medium truncate" style={{ marginBottom: '2px' }}>
                           {tx.description || tx.category?.name || '거래'}
                         </div>
-                        <div className="text-xs text-text-muted">{formatDate(tx.date)}</div>
+                        <div className="text-[10px] sm:text-xs text-text-muted">{formatDate(tx.date)}</div>
                       </div>
-                      <div className={`font-mono text-[15px] font-semibold ${
+                      <div className={`font-mono text-xs sm:text-[15px] font-semibold ${
                         tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
                       }`}>
                         {formatCurrency(`${tx.type === 'EXPENSE' ? '-' : '+'}₩${formatNumber(tx.amount)}`)}
@@ -1008,7 +1011,7 @@ export default function Home() {
                     </div>
                   );
                 }) : (
-                  <div className="text-center text-text-muted py-8">
+                  <div className="text-center text-text-muted py-6">
                     거래 내역이 없습니다
                   </div>
                 )}
@@ -1021,7 +1024,7 @@ export default function Home() {
       {/* Add Button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-8 right-8 w-24 h-24 rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue border-none text-bg-primary text-[40px] font-light leading-none cursor-pointer shadow-[0_8px_32px_var(--glow-mint)] transition-all hover:scale-110 hover:rotate-90 hover:shadow-[0_12px_48px_var(--glow-mint)] z-[100] flex items-center justify-center p-2"
+        className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-14 h-14 sm:w-20 sm:h-20 rounded-[14px] sm:rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue border-none text-bg-primary text-[28px] sm:text-[36px] font-light leading-none cursor-pointer shadow-[0_8px_32px_var(--glow-mint)] transition-all hover:scale-110 hover:rotate-90 hover:shadow-[0_12px_48px_var(--glow-mint)] z-[100] flex items-center justify-center"
       >
         +
       </button>

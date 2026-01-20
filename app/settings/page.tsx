@@ -413,27 +413,27 @@ export default function SettingsPage() {
       <div className="gradient-orb orb-1" />
       <div className="gradient-orb orb-2" />
 
-      <div className="relative z-10" style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px' }}>
+      <div className="relative z-10" style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px' }}>
         {/* Header */}
-        <header className="animate-[fadeInUp_0.5s_ease-out]" style={{ marginBottom: '32px' }}>
+        <header className="animate-[fadeInUp_0.5s_ease-out]" style={{ marginBottom: '24px' }}>
           <div className="flex justify-between items-center">
             <div
-              className="flex items-center gap-3 cursor-pointer"
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer"
               onClick={() => router.push('/')}
             >
-              <div className="w-12 h-12 bg-gradient-to-br from-accent-mint to-accent-blue rounded-[14px] flex items-center justify-center text-2xl shadow-[0_8px_32px_var(--glow-mint)]">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-accent-mint to-accent-blue rounded-[12px] sm:rounded-[14px] flex items-center justify-center text-xl sm:text-2xl shadow-[0_8px_32px_var(--glow-mint)]">
                 💰
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent tracking-tight">
+              <span className="hidden sm:block text-xl sm:text-2xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent tracking-tight">
                 MONEGER
               </span>
             </div>
             <div ref={profileMenuRef} className="relative">
               <button
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold cursor-pointer transition-transform hover:scale-105"
+                className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold text-sm sm:text-base cursor-pointer transition-transform hover:scale-105"
               >
-                {userName ? userName.charAt(0) : userEmail.charAt(0)}
+                {userName ? userName.charAt(0) : (userEmail ? userEmail.charAt(0) : '?')}
               </button>
 
               {/* Profile Menu Dropdown */}
@@ -479,9 +479,39 @@ export default function SettingsPage() {
         </header>
 
         {/* Main Content with Sidebar */}
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <aside className="animate-[fadeInUp_0.6s_ease-out]" style={{ width: '240px', flexShrink: 0 }}>
+        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
+          {/* Mobile Tab Bar */}
+          <div className="md:hidden animate-[fadeInUp_0.6s_ease-out]">
+            <nav className="flex gap-2 bg-bg-card border border-[var(--border)] rounded-[12px] p-1">
+              <button
+                onClick={() => setActiveTab('account')}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-[10px] transition-all cursor-pointer ${
+                  activeTab === 'account'
+                    ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                    : 'text-text-secondary'
+                }`}
+                style={{ padding: '10px 12px' }}
+              >
+                <span className="text-base">👤</span>
+                <span className="font-medium text-sm">계정</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('category')}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-[10px] transition-all cursor-pointer ${
+                  activeTab === 'category'
+                    ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                    : 'text-text-secondary'
+                }`}
+                style={{ padding: '10px 12px' }}
+              >
+                <span className="text-base">📂</span>
+                <span className="font-medium text-sm">카테고리</span>
+              </button>
+            </nav>
+          </div>
+
+          {/* Desktop Sidebar */}
+          <aside className="hidden md:block animate-[fadeInUp_0.6s_ease-out]" style={{ width: '240px', flexShrink: 0 }}>
             <nav className="flex flex-col gap-2">
               <button
                 onClick={() => setActiveTab('account')}
@@ -514,17 +544,17 @@ export default function SettingsPage() {
           <main className="flex-1 animate-[fadeInUp_0.7s_ease-out]">
             {activeTab === 'account' && (
               <div>
-                <h1 className="text-2xl font-bold text-text-primary" style={{ marginBottom: '8px' }}>
+                <h1 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '6px' }}>
                   계정
                 </h1>
-                <p className="text-text-secondary" style={{ marginBottom: '24px' }}>
+                <p className="text-sm sm:text-base text-text-secondary" style={{ marginBottom: '16px' }}>
                   계정 정보를 확인하고 관리합니다.
                 </p>
 
-                <div className="flex flex-col" style={{ gap: '24px' }}>
+                <div className="flex flex-col" style={{ gap: '16px' }}>
                   {/* 프로필 정보 */}
-                  <div className="bg-bg-card border border-[var(--border)] rounded-[16px]" style={{ padding: '24px' }}>
-                    <h2 className="text-lg font-semibold" style={{ marginBottom: '20px' }}>프로필 정보</h2>
+                  <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
+                    <h2 className="text-base sm:text-lg font-semibold" style={{ marginBottom: '16px' }}>프로필 정보</h2>
                     <div className="flex flex-col" style={{ gap: '20px' }}>
                       <div>
                         <div className="text-sm text-text-muted" style={{ marginBottom: '6px' }}>이름</div>
@@ -539,8 +569,8 @@ export default function SettingsPage() {
                   </div>
 
                   {/* 비밀번호 변경 */}
-                  <div className="bg-bg-card border border-[var(--border)] rounded-[16px]" style={{ padding: '24px' }}>
-                    <h2 className="text-lg font-semibold" style={{ marginBottom: '20px' }}>비밀번호 변경</h2>
+                  <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
+                    <h2 className="text-base sm:text-lg font-semibold" style={{ marginBottom: '16px' }}>비밀번호 변경</h2>
                     <form onSubmit={handleChangePassword}>
                       <div className="flex flex-col" style={{ gap: '16px' }}>
                         <div>
@@ -555,8 +585,8 @@ export default function SettingsPage() {
                               setPasswordError('');
                               setPasswordSuccess('');
                             }}
-                            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
-                            style={{ padding: '12px 14px', maxWidth: '400px' }}
+                            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors"
+                            style={{ padding: '10px 12px' }}
                             placeholder="현재 비밀번호 입력"
                           />
                         </div>
@@ -572,8 +602,8 @@ export default function SettingsPage() {
                               setPasswordError('');
                               setPasswordSuccess('');
                             }}
-                            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
-                            style={{ padding: '12px 14px', maxWidth: '400px' }}
+                            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors"
+                            style={{ padding: '10px 12px' }}
                             placeholder="새 비밀번호 입력 (6자 이상)"
                           />
                         </div>
@@ -589,8 +619,8 @@ export default function SettingsPage() {
                               setPasswordError('');
                               setPasswordSuccess('');
                             }}
-                            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
-                            style={{ padding: '12px 14px', maxWidth: '400px' }}
+                            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors"
+                            style={{ padding: '10px 12px' }}
                             placeholder="새 비밀번호 다시 입력"
                           />
                         </div>
@@ -600,12 +630,12 @@ export default function SettingsPage() {
                         {passwordSuccess && (
                           <p className="text-accent-mint text-sm">{passwordSuccess}</p>
                         )}
-                        <div style={{ marginTop: '8px' }}>
+                        <div style={{ marginTop: '4px' }}>
                           <button
                             type="submit"
                             disabled={isChangingPassword}
-                            className="bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[10px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ padding: '14px 32px', fontSize: '16px' }}
+                            className="w-full sm:w-auto bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[10px] font-medium text-sm sm:text-base hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ padding: '12px 24px' }}
                           >
                             {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
                           </button>
@@ -615,15 +645,15 @@ export default function SettingsPage() {
                   </div>
 
                   {/* 계정 삭제 */}
-                  <div className="bg-bg-card border border-accent-coral/30 rounded-[16px]" style={{ padding: '24px' }}>
-                    <h2 className="text-lg font-semibold text-accent-coral" style={{ marginBottom: '8px' }}>계정 삭제</h2>
-                    <p className="text-sm text-text-secondary" style={{ marginBottom: '20px' }}>
+                  <div className="bg-bg-card border border-accent-coral/30 rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
+                    <h2 className="text-base sm:text-lg font-semibold text-accent-coral" style={{ marginBottom: '6px' }}>계정 삭제</h2>
+                    <p className="text-xs sm:text-sm text-text-secondary" style={{ marginBottom: '16px' }}>
                       계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
                     </p>
                     <button
                       onClick={() => setIsDeleteAccountModalOpen(true)}
-                      className="bg-accent-coral text-white rounded-[10px] font-medium hover:shadow-lg transition-all cursor-pointer"
-                      style={{ padding: '14px 32px', fontSize: '16px' }}
+                      className="w-full sm:w-auto bg-accent-coral text-white rounded-[10px] font-medium text-sm sm:text-base hover:shadow-lg transition-all cursor-pointer"
+                      style={{ padding: '12px 24px' }}
                     >
                       계정 삭제
                     </button>
@@ -634,20 +664,20 @@ export default function SettingsPage() {
 
             {activeTab === 'category' && (
               <div>
-                <h1 className="text-2xl font-bold text-text-primary" style={{ marginBottom: '8px' }}>
+                <h1 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '6px' }}>
                   카테고리
                 </h1>
-                <p className="text-text-secondary" style={{ marginBottom: '24px' }}>
+                <p className="text-sm sm:text-base text-text-secondary" style={{ marginBottom: '16px' }}>
                   수입과 지출 카테고리를 관리합니다.
                 </p>
 
-                <div className="grid grid-cols-2" style={{ gap: '24px' }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '16px' }}>
                   {/* 수입 카테고리 */}
-                  <div className="bg-bg-card border border-[var(--border)] rounded-[16px]" style={{ padding: '24px' }}>
-                    <div className="flex justify-between items-center" style={{ marginBottom: '20px' }}>
-                      <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <span>💼</span> 수입 카테고리
-                        <span className="text-sm text-text-muted font-normal">({incomeCategories.length}/20)</span>
+                  <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
+                    <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
+                      <h2 className="text-sm sm:text-lg font-semibold flex items-center gap-1 sm:gap-2">
+                        <span className="text-sm sm:text-base">💼</span> 수입
+                        <span className="text-xs sm:text-sm text-text-muted font-normal">({incomeCategories.length}/20)</span>
                       </h2>
                       <button
                         onClick={() => {
@@ -656,22 +686,22 @@ export default function SettingsPage() {
                           setCategoryColor('#10B981');
                           setIsAddCategoryModalOpen(true);
                         }}
-                        className="bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[10px] font-medium hover:shadow-lg transition-all cursor-pointer"
-                        style={{ padding: '12px 24px', fontSize: '15px' }}
+                        className="bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[8px] sm:rounded-[10px] font-medium text-xs sm:text-sm hover:shadow-lg transition-all cursor-pointer"
+                        style={{ padding: '8px 16px' }}
                       >
                         + 추가
                       </button>
                     </div>
 
                     {isLoadingCategories ? (
-                      <div className="text-center text-text-muted py-6">로딩 중...</div>
+                      <div className="text-center text-text-muted py-4 text-sm">로딩 중...</div>
                     ) : incomeCategories.length > 0 ? (
-                      <div className="flex flex-col" style={{ gap: '8px' }}>
+                      <div className="flex flex-col" style={{ gap: '6px' }}>
                         {incomeCategories.map((category) => (
                           <div
                             key={category.id}
-                            className="flex items-center bg-bg-secondary rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
-                            style={{ padding: '12px' }}
+                            className="flex items-center bg-bg-secondary rounded-[8px] sm:rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
+                            style={{ padding: '10px' }}
                             onClick={() => {
                               setEditingCategory(category);
                               setCategoryName(category.name);
@@ -682,29 +712,29 @@ export default function SettingsPage() {
                             }}
                           >
                             <div
-                              className="w-9 h-9 rounded-[8px] flex items-center justify-center text-base"
-                              style={{ marginRight: '12px', backgroundColor: `${category.color}20` }}
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
+                              style={{ marginRight: '10px', backgroundColor: `${category.color}20` }}
                             >
                               {category.icon}
                             </div>
-                            <div className="flex-1">
-                              <div className="text-sm font-medium">{category.name}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs sm:text-sm font-medium truncate">{category.name}</div>
                             </div>
-                            <div className="text-xs text-text-muted">수정 →</div>
+                            <div className="text-[10px] sm:text-xs text-text-muted">수정 →</div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center text-text-muted py-6">수입 카테고리가 없습니다</div>
+                      <div className="text-center text-text-muted py-4 text-xs sm:text-sm">수입 카테고리가 없습니다</div>
                     )}
                   </div>
 
                   {/* 지출 카테고리 */}
-                  <div className="bg-bg-card border border-[var(--border)] rounded-[16px]" style={{ padding: '24px' }}>
-                    <div className="flex justify-between items-center" style={{ marginBottom: '20px' }}>
-                      <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <span>💳</span> 지출 카테고리
-                        <span className="text-sm text-text-muted font-normal">({expenseCategories.length}/20)</span>
+                  <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
+                    <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
+                      <h2 className="text-sm sm:text-lg font-semibold flex items-center gap-1 sm:gap-2">
+                        <span className="text-sm sm:text-base">💳</span> 지출
+                        <span className="text-xs sm:text-sm text-text-muted font-normal">({expenseCategories.length}/20)</span>
                       </h2>
                       <button
                         onClick={() => {
@@ -713,22 +743,22 @@ export default function SettingsPage() {
                           setCategoryColor('#EF4444');
                           setIsAddCategoryModalOpen(true);
                         }}
-                        className="bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary rounded-[10px] font-medium hover:shadow-lg transition-all cursor-pointer"
-                        style={{ padding: '12px 24px', fontSize: '15px' }}
+                        className="bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary rounded-[8px] sm:rounded-[10px] font-medium text-xs sm:text-sm hover:shadow-lg transition-all cursor-pointer"
+                        style={{ padding: '8px 16px' }}
                       >
                         + 추가
                       </button>
                     </div>
 
                     {isLoadingCategories ? (
-                      <div className="text-center text-text-muted py-6">로딩 중...</div>
+                      <div className="text-center text-text-muted py-4 text-sm">로딩 중...</div>
                     ) : expenseCategories.length > 0 ? (
-                      <div className="flex flex-col" style={{ gap: '8px' }}>
+                      <div className="flex flex-col" style={{ gap: '6px' }}>
                         {expenseCategories.map((category) => (
                           <div
                             key={category.id}
-                            className="flex items-center bg-bg-secondary rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
-                            style={{ padding: '12px' }}
+                            className="flex items-center bg-bg-secondary rounded-[8px] sm:rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
+                            style={{ padding: '10px' }}
                             onClick={() => {
                               setEditingCategory(category);
                               setCategoryName(category.name);
@@ -739,20 +769,20 @@ export default function SettingsPage() {
                             }}
                           >
                             <div
-                              className="w-9 h-9 rounded-[8px] flex items-center justify-center text-base"
-                              style={{ marginRight: '12px', backgroundColor: `${category.color}20` }}
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
+                              style={{ marginRight: '10px', backgroundColor: `${category.color}20` }}
                             >
                               {category.icon}
                             </div>
-                            <div className="flex-1">
-                              <div className="text-sm font-medium">{category.name}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs sm:text-sm font-medium truncate">{category.name}</div>
                             </div>
-                            <div className="text-xs text-text-muted">수정 →</div>
+                            <div className="text-[10px] sm:text-xs text-text-muted">수정 →</div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center text-text-muted py-6">지출 카테고리가 없습니다</div>
+                      <div className="text-center text-text-muted py-4 text-xs sm:text-sm">지출 카테고리가 없습니다</div>
                     )}
                   </div>
                 </div>
