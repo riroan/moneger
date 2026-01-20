@@ -38,9 +38,26 @@ export default function Home() {
   const [dailyBalances, setDailyBalances] = useState<any[]>([]);
   const [isLoadingDailyBalances, setIsLoadingDailyBalances] = useState(false);
   const [lastMonthBalance, setLastMonthBalance] = useState<number>(0);
+  const [editingTransaction, setEditingTransaction] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const datePickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // 모달이 열렸을 때 body 스크롤 비활성화
+  useEffect(() => {
+    if (isModalOpen || isEditModalOpen || isDeleteConfirmOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen, isEditModalOpen, isDeleteConfirmOpen]);
 
   // 인증 확인
   useEffect(() => {
@@ -384,6 +401,151 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to create transaction:', error);
       alert(error instanceof Error ? error.message : '거래 추가에 실패했습니다');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 거래 수정 핸들러
+  const handleEditTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!userId || !editingTransaction) {
+      return;
+    }
+
+    // 유효성 검사
+    let hasError = false;
+
+    if (!amount || amountError) {
+      setAmountError('금액을 입력해주세요');
+      hasError = true;
+    }
+
+    if (!description || description.trim() === '') {
+      setDescriptionError('내용을 입력해주세요');
+      hasError = true;
+    }
+
+    if (!selectedCategory) {
+      setCategoryError('카테고리를 선택해주세요');
+      hasError = true;
+    }
+
+    if (hasError) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const rawAmount = amount.replace(/,/g, '');
+
+      const response = await fetch(`/api/transactions/${editingTransaction.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          type: transactionType,
+          amount: parseInt(rawAmount),
+          description: description || null,
+          categoryId: selectedCategory || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '거래 수정에 실패했습니다');
+      }
+
+      // 성공 시 모달 닫고 폼 리셋
+      setIsEditModalOpen(false);
+      setEditingTransaction(null);
+      setAmount('');
+      setDescription('');
+      setSelectedCategory('');
+      setAmountError('');
+      setDescriptionError('');
+      setCategoryError('');
+
+      // 최근 거래 목록 새로고침
+      const recentResponse = await fetch(`/api/transactions/recent?userId=${userId}&limit=5`);
+      const recentData = await recentResponse.json();
+      if (recentData.success) {
+        setRecentTransactions(recentData.data);
+      }
+
+      // 요약 통계 새로고침
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+      const summaryResponse = await fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`);
+      const summaryData = await summaryResponse.json();
+      if (summaryData.success) {
+        setSummary(summaryData.data);
+      }
+    } catch (error) {
+      console.error('Failed to update transaction:', error);
+      alert(error instanceof Error ? error.message : '거래 수정에 실패했습니다');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 거래 삭제 핸들러
+  const handleDeleteTransaction = async () => {
+    if (!userId || !editingTransaction) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/transactions/${editingTransaction.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '거래 삭제에 실패했습니다');
+      }
+
+      // 성공 시 모달 닫고 폼 리셋
+      setIsDeleteConfirmOpen(false);
+      setIsEditModalOpen(false);
+      setEditingTransaction(null);
+      setAmount('');
+      setDescription('');
+      setSelectedCategory('');
+      setAmountError('');
+      setDescriptionError('');
+      setCategoryError('');
+
+      // 최근 거래 목록 새로고침
+      const recentResponse = await fetch(`/api/transactions/recent?userId=${userId}&limit=5`);
+      const recentData = await recentResponse.json();
+      if (recentData.success) {
+        setRecentTransactions(recentData.data);
+      }
+
+      // 요약 통계 새로고침
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+      const summaryResponse = await fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`);
+      const summaryData = await summaryResponse.json();
+      if (summaryData.success) {
+        setSummary(summaryData.data);
+      }
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+      alert(error instanceof Error ? error.message : '거래 삭제에 실패했습니다');
     } finally {
       setIsSubmitting(false);
     }
@@ -796,7 +958,7 @@ export default function Home() {
             <div className="bg-bg-card border border-[var(--border)] rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '24px' }}>
               <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
                 <h2 className="text-lg font-semibold flex items-center gap-2.5">
-                  <span className="text-xl">📝</span> 최근 거래
+                  <span className="text-xl">📝</span> 최근 내역
                 </h2>
               </div>
 
@@ -817,8 +979,17 @@ export default function Home() {
                   return (
                     <div
                       key={tx.id}
-                      className="flex items-center bg-bg-secondary rounded-[14px] transition-colors hover:bg-bg-card-hover"
+                      className="flex items-center bg-bg-secondary rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
                       style={{ padding: '14px' }}
+                      onClick={() => {
+                        setEditingTransaction(tx);
+                        setTransactionType(tx.type);
+                        setAmount(tx.amount.toLocaleString('ko-KR'));
+                        setDescription(tx.description || '');
+                        setSelectedCategory(tx.categoryId || '');
+                        setSelectedDate(new Date(tx.date));
+                        setIsEditModalOpen(true);
+                      }}
                     >
                       <div className="w-10 h-10 rounded-[10px] bg-bg-card flex items-center justify-center text-lg" style={{ marginRight: '12px' }}>
                         {icon}
@@ -873,7 +1044,7 @@ export default function Home() {
           >
             {/* Modal Header */}
             <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-              <h2 className="text-xl font-bold">거래 추가</h2>
+              <h2 className="text-xl font-bold">내역 추가</h2>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-text-secondary hover:text-text-primary transition-colors text-2xl w-8 h-8 flex items-center justify-center cursor-pointer"
@@ -948,7 +1119,7 @@ export default function Home() {
                 </label>
                 <input
                   type="text"
-                  placeholder="거래 내용을 입력하세요"
+                  placeholder="예: 점심 식사, 월급 등"
                   value={description}
                   onChange={(e) => {
                     setDescription(e.target.value);
@@ -1008,8 +1179,8 @@ export default function Home() {
 
                   {isCategoryOpen && (
                     <div
-                      className="absolute top-full left-0 right-0 mt-2 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-hidden z-10"
-                      style={{ boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)' }}
+                      className="absolute top-full left-0 right-0 mt-2 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-10"
+                      style={{ boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)', maxHeight: '240px' }}
                     >
                       {currentCategories.map((category) => (
                         <button
@@ -1069,6 +1240,253 @@ export default function Home() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {isEditModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200] animate-[fadeIn_0.2s_ease-out]"
+          onClick={() => {
+            setIsEditModalOpen(false);
+            setEditingTransaction(null);
+            setAmount('');
+            setDescription('');
+            setSelectedCategory('');
+            setAmountError('');
+            setDescriptionError('');
+            setCategoryError('');
+          }}
+        >
+          <div
+            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out]"
+            style={{ padding: '32px', margin: '20px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-2xl font-bold text-text-primary" style={{ marginBottom: '24px' }}>
+              내역 수정
+            </h2>
+
+            <form onSubmit={handleEditTransaction}>
+              {/* Transaction Type Display (Read-only) */}
+              <div className="flex rounded-[14px] bg-bg-secondary p-1.5" style={{ marginBottom: '20px' }}>
+                <div
+                  className={`flex-1 rounded-[10px] font-medium transition-all ${
+                    transactionType === 'EXPENSE'
+                      ? 'bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary shadow-lg'
+                      : 'text-text-secondary'
+                  }`}
+                  style={{ padding: '10px', textAlign: 'center', opacity: transactionType === 'EXPENSE' ? 1 : 0.5 }}
+                >
+                  지출
+                </div>
+                <div
+                  className={`flex-1 rounded-[10px] font-medium transition-all ${
+                    transactionType === 'INCOME'
+                      ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary shadow-lg'
+                      : 'text-text-secondary'
+                  }`}
+                  style={{ padding: '10px', textAlign: 'center', opacity: transactionType === 'INCOME' ? 1 : 0.5 }}
+                >
+                  수입
+                </div>
+              </div>
+
+              {/* Amount Input */}
+              <div style={{ marginBottom: '20px' }}>
+                <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+                  금액
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={amount}
+                  onChange={handleAmountChange}
+                  className={`w-full bg-bg-secondary border ${amountError ? 'border-accent-coral' : 'border-[var(--border)]'} rounded-[12px] text-text-primary font-mono text-lg focus:outline-none focus:border-accent-blue transition-colors`}
+                  style={{ padding: '14px 16px' }}
+                  placeholder="0"
+                />
+                {amountError && (
+                  <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
+                    {amountError}
+                  </p>
+                )}
+              </div>
+
+              {/* Description Input */}
+              <div style={{ marginBottom: '20px' }}>
+                <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+                  내용
+                </label>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    setDescriptionError('');
+                  }}
+                  className={`w-full bg-bg-secondary border ${descriptionError ? 'border-accent-coral' : 'border-[var(--border)]'} rounded-[12px] text-text-primary focus:outline-none focus:border-accent-blue transition-colors`}
+                  style={{ padding: '14px 16px' }}
+                  placeholder="예: 점심 식사, 월급 등"
+                />
+                {descriptionError && (
+                  <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
+                    {descriptionError}
+                  </p>
+                )}
+              </div>
+
+              {/* Category Dropdown */}
+              <div style={{ marginBottom: '24px' }}>
+                <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+                  카테고리
+                </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                    className={`w-full bg-bg-secondary border ${categoryError ? 'border-accent-coral' : 'border-[var(--border)]'} rounded-[12px] text-left flex items-center justify-between focus:outline-none focus:border-accent-blue transition-colors cursor-pointer`}
+                    style={{ padding: '14px 16px' }}
+                  >
+                    <span className={selectedCategory ? 'text-text-primary' : 'text-text-muted'}>
+                      {selectedCategory
+                        ? `${currentCategories.find(c => c.id === selectedCategory)?.icon} ${currentCategories.find(c => c.id === selectedCategory)?.name}`
+                        : '카테고리 선택'}
+                    </span>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={`transition-transform text-text-secondary ${isCategoryOpen ? 'rotate-180' : ''}`}
+                    >
+                      <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+
+                  {isCategoryOpen && (
+                    <div
+                      className="absolute top-full left-0 right-0 mt-2 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-10"
+                      style={{ boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)', maxHeight: '240px' }}
+                    >
+                      {currentCategories.map((category) => (
+                        <button
+                          key={category.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory(category.id);
+                            setCategoryError('');
+                            setIsCategoryOpen(false);
+                          }}
+                          className="w-full text-left hover:bg-bg-card-hover transition-colors text-text-primary border-b border-[var(--border)] last:border-b-0 cursor-pointer"
+                          style={{ padding: '12px 16px', fontSize: '15px' }}
+                        >
+                          {category.icon} {category.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {categoryError && (
+                  <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
+                    {categoryError}
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3" style={{ marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingTransaction(null);
+                    setAmount('');
+                    setDescription('');
+                    setSelectedCategory('');
+                    setAmountError('');
+                    setDescriptionError('');
+                    setCategoryError('');
+                  }}
+                  className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
+                  style={{ padding: '14px' }}
+                  disabled={isSubmitting}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteConfirmOpen(true)}
+                  className="flex-1 bg-gradient-to-br from-accent-coral to-red-600 text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ padding: '14px' }}
+                  disabled={isSubmitting}
+                >
+                  삭제
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !!amountError || !amount}
+                  className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                    transactionType === 'EXPENSE'
+                      ? 'bg-gradient-to-br from-accent-coral to-accent-yellow'
+                      : 'bg-gradient-to-br from-accent-mint to-accent-blue'
+                  } text-bg-primary`}
+                  style={{ padding: '14px' }}
+                >
+                  {isSubmitting ? '수정 중...' : '수정'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[300] animate-[fadeIn_0.2s_ease-out]"
+          onClick={() => setIsDeleteConfirmOpen(false)}
+        >
+          <div
+            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out]"
+            style={{ padding: '32px', margin: '20px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center" style={{ marginBottom: '24px' }}>
+              <div className="w-16 h-16 rounded-full bg-[var(--glow-coral)] flex items-center justify-center text-3xl" style={{ marginBottom: '16px' }}>
+                ⚠️
+              </div>
+              <h2 className="text-xl font-bold text-text-primary" style={{ marginBottom: '8px' }}>
+                내역 삭제
+              </h2>
+              <p className="text-sm text-text-secondary text-center">
+                이 내역을 정말 삭제하시겠습니까?<br />
+                삭제된 내역은 복구할 수 없습니다.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
+                style={{ padding: '14px' }}
+                disabled={isSubmitting}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteTransaction}
+                className="flex-1 bg-gradient-to-br from-accent-coral to-red-600 text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ padding: '14px' }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? '삭제 중...' : '삭제'}
+              </button>
+            </div>
           </div>
         </div>
       )}

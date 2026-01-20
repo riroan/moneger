@@ -201,36 +201,111 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 거래 생성
-    const transaction = await prisma.transaction.create({
-      data: {
-        userId,
-        type,
-        amount: parseFloat(amount),
-        description: description || null,
-        categoryId: categoryId || null,
-        date: date ? new Date(date) : new Date(),
-      },
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            color: true,
-            icon: true,
+    // 트랜잭션으로 거래 생성과 일별 잔액 업데이트를 원자적으로 처리
+    const result = await prisma.$transaction(async (tx) => {
+      // 거래 생성
+      const transaction = await tx.transaction.create({
+        data: {
+          userId,
+          type,
+          amount: parseFloat(amount),
+          description: description || null,
+          categoryId: categoryId || null,
+          date: date ? new Date(date) : new Date(),
+        },
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              color: true,
+              icon: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    // 일별 스냅샷 업데이트
-    await updateDailyBalance(userId, transaction.date);
+      // 일별 잔액 업데이트
+      const targetDate = new Date(transaction.date);
+      targetDate.setHours(0, 0, 0, 0);
+
+      // 해당 날짜까지의 모든 거래 조회
+      const allTransactions = await tx.transaction.findMany({
+        where: {
+          userId,
+          date: {
+            lte: targetDate,
+          },
+          deletedAt: null,
+        },
+      });
+
+      // 해당 날짜의 거래만 조회
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const dayTransactions = await tx.transaction.findMany({
+        where: {
+          userId,
+          date: {
+            gte: targetDate,
+            lte: endOfDay,
+          },
+          deletedAt: null,
+        },
+      });
+
+      // 누적 잔액 계산
+      let balance = 0;
+      allTransactions.forEach((t) => {
+        if (t.type === 'INCOME') {
+          balance += t.amount;
+        } else {
+          balance -= t.amount;
+        }
+      });
+
+      // 해당 일의 수입/지출 계산
+      let dailyIncome = 0;
+      let dailyExpense = 0;
+      dayTransactions.forEach((t) => {
+        if (t.type === 'INCOME') {
+          dailyIncome += t.amount;
+        } else {
+          dailyExpense += t.amount;
+        }
+      });
+
+      // DailyBalance 업데이트 또는 생성
+      await tx.dailyBalance.upsert({
+        where: {
+          userId_date: {
+            userId,
+            date: targetDate,
+          },
+        },
+        update: {
+          balance,
+          income: dailyIncome,
+          expense: dailyExpense,
+        },
+        create: {
+          userId,
+          date: targetDate,
+          balance,
+          income: dailyIncome,
+          expense: dailyExpense,
+        },
+      });
+
+      return transaction;
+    });
 
     return NextResponse.json(
       {
         success: true,
-        data: transaction,
+        data: result,
         message: 'Transaction created successfully',
       },
       { status: 201 }
