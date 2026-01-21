@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { formatYearMonth } from '@/utils/formatters';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface HeaderProps {
   userName: string;
@@ -26,6 +27,7 @@ export default function Header({
 }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, toggleTheme } = useTheme();
   const datePickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -194,6 +196,24 @@ export default function Header({
                 <div className="text-text-secondary" style={{ fontSize: '12px', marginTop: '2px' }}>{userEmail}</div>
               </div>
               <div style={{ padding: '6px 0' }}>
+                <div
+                  className="flex items-center justify-between text-text-primary"
+                  style={{ padding: '10px 14px', fontSize: '14px' }}
+                >
+                  <span>{theme === 'dark' ? '🌙 다크 모드' : '☀️ 라이트 모드'}</span>
+                  <button
+                    onClick={toggleTheme}
+                    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                      theme === 'dark' ? 'bg-accent-purple' : 'bg-accent-mint'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        theme === 'dark' ? 'left-0.5' : 'translate-x-5 left-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
                 <button
                   className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
                   style={{ padding: '10px 14px', fontSize: '14px' }}
