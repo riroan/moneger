@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
 import { useTransactions } from '@/hooks/useTransactions';
 import Header from '@/components/layout/Header';
@@ -9,9 +10,11 @@ import CategoryChart from '@/components/dashboard/CategoryChart';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import TransactionList from '@/components/transactions/TransactionList';
 import FilterPanel, { DateRange, AmountRange } from '@/components/transactions/FilterPanel';
-import TransactionModal from '@/components/modals/TransactionModal';
-import EditTransactionModal from '@/components/modals/EditTransactionModal';
-import DeleteConfirmModal from '@/components/modals/DeleteConfirmModal';
+
+// 모달 컴포넌트 동적 임포트 (코드 스플리팅)
+const TransactionModal = dynamic(() => import('@/components/modals/TransactionModal'), { ssr: false });
+const EditTransactionModal = dynamic(() => import('@/components/modals/EditTransactionModal'), { ssr: false });
+const DeleteConfirmModal = dynamic(() => import('@/components/modals/DeleteConfirmModal'), { ssr: false });
 
 export default function Home() {
   const { userId, userName, userEmail, isLoading: isAuthLoading, logout } = useAuth();
@@ -73,15 +76,27 @@ export default function Home() {
     return () => { document.body.style.overflow = 'unset'; };
   }, [isModalOpen, isEditModalOpen, isDeleteConfirmOpen]);
 
-  // 카테고리 데이터
+  // 초기 데이터 병렬 로딩 (카테고리 + 가장 오래된 거래 날짜 + 최근 거래)
   useEffect(() => {
     if (!userId) return;
-    const fetchCategories = async () => {
+    const fetchInitialData = async () => {
+      setIsLoadingTransactions(true);
       try {
-        const response = await fetch(`/api/categories?userId=${userId}`);
-        const data = await response.json();
-        if (data.success && data.data.length > 0) {
-          setCategories(data.data);
+        const [categoriesRes, oldestDateRes, recentRes] = await Promise.all([
+          fetch(`/api/categories?userId=${userId}`),
+          fetch(`/api/transactions/oldest-date?userId=${userId}`),
+          fetch(`/api/transactions/recent?userId=${userId}&limit=10`),
+        ]);
+
+        const [categoriesData, oldestDateData, recentData] = await Promise.all([
+          categoriesRes.json(),
+          oldestDateRes.json(),
+          recentRes.json(),
+        ]);
+
+        // 카테고리 처리
+        if (categoriesData.success && categoriesData.data.length > 0) {
+          setCategories(categoriesData.data);
         } else {
           const seedResponse = await fetch('/api/categories/seed', {
             method: 'POST',
@@ -91,31 +106,24 @@ export default function Home() {
           const seedData = await seedResponse.json();
           if (seedData.success) setCategories(seedData.data);
         }
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
-      }
-    };
-    fetchCategories();
-  }, [userId]);
 
-  // 가장 오래된 거래 날짜 조회
-  useEffect(() => {
-    if (!userId) return;
-    const fetchOldestDate = async () => {
-      try {
-        const response = await fetch(`/api/transactions/oldest-date?userId=${userId}`);
-        const data = await response.json();
-        if (data.success && data.data.year && data.data.month) {
-          setOldestTransactionDate({ year: data.data.year, month: data.data.month });
+        // 가장 오래된 날짜 처리
+        if (oldestDateData.success && oldestDateData.data.year && oldestDateData.data.month) {
+          setOldestTransactionDate({ year: oldestDateData.data.year, month: oldestDateData.data.month });
         }
+
+        // 최근 거래 처리
+        if (recentData.success) setRecentTransactions(recentData.data);
       } catch (error) {
-        console.error('Failed to fetch oldest transaction date:', error);
+        console.error('Failed to fetch initial data:', error);
+      } finally {
+        setIsLoadingTransactions(false);
       }
     };
-    fetchOldestDate();
+    fetchInitialData();
   }, [userId]);
 
-  // 요약 데이터
+  // 요약 데이터 (현재 월 + 이전 월 병렬 조회)
   useEffect(() => {
     if (!userId) return;
     const fetchSummary = async () => {
@@ -123,14 +131,18 @@ export default function Home() {
       try {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth() + 1;
-        const response = await fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`);
-        const data = await response.json();
-        if (data.success) setSummary(data.data);
-
         const lastMonth = new Date(currentDate);
         lastMonth.setMonth(lastMonth.getMonth() - 1);
-        const lastResponse = await fetch(`/api/transactions/summary?userId=${userId}&year=${lastMonth.getFullYear()}&month=${lastMonth.getMonth() + 1}`);
-        const lastData = await lastResponse.json();
+
+        // 병렬 호출
+        const [currentRes, lastRes] = await Promise.all([
+          fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`),
+          fetch(`/api/transactions/summary?userId=${userId}&year=${lastMonth.getFullYear()}&month=${lastMonth.getMonth() + 1}`),
+        ]);
+
+        const [currentData, lastData] = await Promise.all([currentRes.json(), lastRes.json()]);
+
+        if (currentData.success) setSummary(currentData.data);
         if (lastData.success) setLastMonthBalance(lastData.data.summary.balance || 0);
       } catch (error) {
         console.error('Failed to fetch summary:', error);
@@ -140,24 +152,6 @@ export default function Home() {
     };
     fetchSummary();
   }, [userId, currentDate]);
-
-  // 최근 거래
-  useEffect(() => {
-    if (!userId) return;
-    const fetchRecent = async () => {
-      setIsLoadingTransactions(true);
-      try {
-        const response = await fetch(`/api/transactions/recent?userId=${userId}&limit=10`);
-        const data = await response.json();
-        if (data.success) setRecentTransactions(data.data);
-      } catch (error) {
-        console.error('Failed to fetch recent transactions:', error);
-      } finally {
-        setIsLoadingTransactions(false);
-      }
-    };
-    fetchRecent();
-  }, [userId]);
 
   // 무한 스크롤
   useEffect(() => {
@@ -257,8 +251,8 @@ export default function Home() {
   };
   const handleMonthSelect = (year: number, month: number) => setCurrentDate(new Date(year, month, 1));
 
-  // 카테고리 클릭 핸들러
-  const handleCategoryClick = (categoryId: string) => {
+  // 카테고리 클릭 핸들러 (useCallback으로 메모이제이션)
+  const handleCategoryClick = useCallback((categoryId: string) => {
     setFilterType('EXPENSE');
     setFilterCategories([categoryId]);
     setSortOrder('recent');
@@ -270,17 +264,43 @@ export default function Home() {
       endMonth: currentDate.getMonth(),
     });
     setActiveTab('transactions');
-  };
+  }, [currentDate]);
 
-  // 데이터 가공
+  // 수입/지출 클릭 핸들러 (useCallback으로 메모이제이션)
+  const handleIncomeClick = useCallback(() => {
+    const month = currentDate.getMonth();
+    const year = currentDate.getFullYear();
+    setFilterType('INCOME');
+    setFilterCategories([]);
+    setSearchKeyword('');
+    setSortOrder('recent');
+    setDateRange({ startYear: year, startMonth: month, endYear: year, endMonth: month });
+    setActiveTab('transactions');
+  }, [currentDate]);
+
+  const handleExpenseClick = useCallback(() => {
+    const month = currentDate.getMonth();
+    const year = currentDate.getFullYear();
+    setFilterType('EXPENSE');
+    setFilterCategories([]);
+    setSearchKeyword('');
+    setSortOrder('recent');
+    setDateRange({ startYear: year, startMonth: month, endYear: year, endMonth: month });
+    setActiveTab('transactions');
+  }, [currentDate]);
+
+  // 데이터 가공 (useMemo로 메모이제이션)
   const totalIncome = summary?.summary?.totalIncome || 0;
   const totalExpense = summary?.summary?.totalExpense || 0;
   const balance = summary?.summary?.netAmount || 0;
-  const categoryList = (summary?.categories || []).map((cat: any, index: number) => ({
-    ...cat,
-    colorIndex: index % 6,
-    amount: cat.total,
-  }));
+  const categoryList = useMemo(() =>
+    (summary?.categories || []).map((cat: any, index: number) => ({
+      ...cat,
+      colorIndex: index % 6,
+      amount: cat.total,
+    })),
+    [summary?.categories]
+  );
 
   if (isAuthLoading) return null;
 
@@ -332,26 +352,8 @@ export default function Home() {
               lastMonthBalance={lastMonthBalance}
               incomeCount={summary?.transactionCount?.income || 0}
               expenseCount={summary?.transactionCount?.expense || 0}
-              onIncomeClick={() => {
-                const month = currentDate.getMonth(); // 0-based
-                const year = currentDate.getFullYear();
-                setFilterType('INCOME');
-                setFilterCategories([]);
-                setSearchKeyword('');
-                setSortOrder('recent');
-                setDateRange({ startYear: year, startMonth: month, endYear: year, endMonth: month });
-                setActiveTab('transactions');
-              }}
-              onExpenseClick={() => {
-                const month = currentDate.getMonth(); // 0-based
-                const year = currentDate.getFullYear();
-                setFilterType('EXPENSE');
-                setFilterCategories([]);
-                setSearchKeyword('');
-                setSortOrder('recent');
-                setDateRange({ startYear: year, startMonth: month, endYear: year, endMonth: month });
-                setActiveTab('transactions');
-              }}
+              onIncomeClick={handleIncomeClick}
+              onExpenseClick={handleExpenseClick}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]" style={{ gap: '16px' }}>

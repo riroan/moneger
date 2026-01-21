@@ -42,6 +42,7 @@ model Category {
   transactions Transaction[]
 
   @@unique([userId, name, type])
+  @@index([userId, deletedAt])
 }
 
 model Transaction {
@@ -60,6 +61,8 @@ model Transaction {
 
   @@index([userId, date])
   @@index([categoryId])
+  @@index([userId, type])
+  @@index([userId, deletedAt, date])
 }
 
 model Budget {

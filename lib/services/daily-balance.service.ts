@@ -48,7 +48,7 @@ function getDayBoundaries(date: Date): { startOfDay: Date; endOfDay: Date } {
 }
 
 /**
- * 일별 잔액 업데이트 (Prisma 트랜잭션 내에서 사용)
+ * 일별 잔액 업데이트 (Prisma 트랜잭션 내에서 사용) - DB 집계로 최적화
  */
 export async function updateDailyBalanceInTransaction(
   tx: TransactionClient,
@@ -57,28 +57,35 @@ export async function updateDailyBalanceInTransaction(
 ): Promise<void> {
   const { startOfDay, endOfDay } = getDayBoundaries(date);
 
-  // 해당 날짜까지의 모든 거래 조회 (누적 잔액용)
-  const allTransactions = await tx.transaction.findMany({
-    where: {
-      userId,
-      date: { lte: startOfDay },
-      deletedAt: null,
-    },
-    select: { type: true, amount: true },
-  });
+  // 병렬로 DB 집계 쿼리 실행
+  const [incomeAgg, expenseAgg, dayIncomeAgg, dayExpenseAgg] = await Promise.all([
+    // 누적 수입 합계
+    tx.transaction.aggregate({
+      where: { userId, date: { lte: endOfDay }, type: 'INCOME', deletedAt: null },
+      _sum: { amount: true },
+    }),
+    // 누적 지출 합계
+    tx.transaction.aggregate({
+      where: { userId, date: { lte: endOfDay }, type: 'EXPENSE', deletedAt: null },
+      _sum: { amount: true },
+    }),
+    // 당일 수입 합계
+    tx.transaction.aggregate({
+      where: { userId, date: { gte: startOfDay, lte: endOfDay }, type: 'INCOME', deletedAt: null },
+      _sum: { amount: true },
+    }),
+    // 당일 지출 합계
+    tx.transaction.aggregate({
+      where: { userId, date: { gte: startOfDay, lte: endOfDay }, type: 'EXPENSE', deletedAt: null },
+      _sum: { amount: true },
+    }),
+  ]);
 
-  // 해당 날짜의 거래만 조회 (일별 수입/지출용)
-  const dayTransactions = await tx.transaction.findMany({
-    where: {
-      userId,
-      date: { gte: startOfDay, lte: endOfDay },
-      deletedAt: null,
-    },
-    select: { type: true, amount: true },
-  });
-
-  const balance = calculateBalance(allTransactions as Transaction[]);
-  const { income, expense } = calculateDailyStats(dayTransactions as Transaction[]);
+  const totalIncome = incomeAgg._sum.amount || 0;
+  const totalExpense = expenseAgg._sum.amount || 0;
+  const balance = totalIncome - totalExpense;
+  const income = dayIncomeAgg._sum.amount || 0;
+  const expense = dayExpenseAgg._sum.amount || 0;
 
   await tx.dailyBalance.upsert({
     where: {
@@ -90,32 +97,37 @@ export async function updateDailyBalanceInTransaction(
 }
 
 /**
- * 일별 잔액 업데이트 (독립적 호출용)
+ * 일별 잔액 업데이트 (독립적 호출용) - DB 집계로 최적화
  */
 export async function updateDailyBalance(userId: string, date: Date): Promise<void> {
   try {
     const { startOfDay, endOfDay } = getDayBoundaries(date);
 
-    const allTransactions = await prisma.transaction.findMany({
-      where: {
-        userId,
-        date: { lte: startOfDay },
-        deletedAt: null,
-      },
-      select: { type: true, amount: true },
-    });
+    // 병렬로 DB 집계 쿼리 실행
+    const [incomeAgg, expenseAgg, dayIncomeAgg, dayExpenseAgg] = await Promise.all([
+      prisma.transaction.aggregate({
+        where: { userId, date: { lte: endOfDay }, type: 'INCOME', deletedAt: null },
+        _sum: { amount: true },
+      }),
+      prisma.transaction.aggregate({
+        where: { userId, date: { lte: endOfDay }, type: 'EXPENSE', deletedAt: null },
+        _sum: { amount: true },
+      }),
+      prisma.transaction.aggregate({
+        where: { userId, date: { gte: startOfDay, lte: endOfDay }, type: 'INCOME', deletedAt: null },
+        _sum: { amount: true },
+      }),
+      prisma.transaction.aggregate({
+        where: { userId, date: { gte: startOfDay, lte: endOfDay }, type: 'EXPENSE', deletedAt: null },
+        _sum: { amount: true },
+      }),
+    ]);
 
-    const dayTransactions = await prisma.transaction.findMany({
-      where: {
-        userId,
-        date: { gte: startOfDay, lte: endOfDay },
-        deletedAt: null,
-      },
-      select: { type: true, amount: true },
-    });
-
-    const balance = calculateBalance(allTransactions as Transaction[]);
-    const { income, expense } = calculateDailyStats(dayTransactions as Transaction[]);
+    const totalIncome = incomeAgg._sum.amount || 0;
+    const totalExpense = expenseAgg._sum.amount || 0;
+    const balance = totalIncome - totalExpense;
+    const income = dayIncomeAgg._sum.amount || 0;
+    const expense = dayExpenseAgg._sum.amount || 0;
 
     await prisma.dailyBalance.upsert({
       where: {
