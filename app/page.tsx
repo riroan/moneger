@@ -371,9 +371,17 @@ export default function Home() {
 
               <div className="flex flex-col order-1 lg:order-2" style={{ gap: '16px' }}>
                 <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '16px' }}>
-                  <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
-                    <span className="text-lg sm:text-xl">📝</span> 최근 내역
-                  </h2>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                      <span className="text-lg sm:text-xl">📝</span> 최근 내역
+                    </h2>
+                    <button
+                      onClick={() => setActiveTab('transactions')}
+                      className="text-xs sm:text-sm text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+                    >
+                      전체보기 →
+                    </button>
+                  </div>
                   <div className="flex flex-col" style={{ gap: '8px' }}>
                     {isLoadingTransactions ? (
                       <div className="text-center text-text-muted py-6">로딩 중...</div>
