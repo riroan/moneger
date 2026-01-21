@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useTheme } from '@/contexts/ThemeContext';
+import { formatNumber } from '@/utils/formatters';
 
-type SettingTab = 'account' | 'category';
+type SettingTab = 'account' | 'category' | 'budget';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function SettingsPage() {
   const [categoryType, setCategoryType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
   const [categoryIcon, setCategoryIcon] = useState('📦');
   const [categoryColor, setCategoryColor] = useState('#EF4444');
+  const [categoryDefaultBudget, setCategoryDefaultBudget] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 에러 상태
@@ -52,6 +54,22 @@ export default function SettingsPage() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
+  // 예산 관리 상태
+  const [budgetDate, setBudgetDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [isLoadingBudgets, setIsLoadingBudgets] = useState(false);
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [editingBudgetCategory, setEditingBudgetCategory] = useState<any>(null);
+  const [budgetAmount, setBudgetAmount] = useState('');
+  const [isSavingBudget, setIsSavingBudget] = useState(false);
+  const [oldestTransactionDate, setOldestTransactionDate] = useState<{ year: number; month: number } | null>(null);
+  const [isBudgetDatePickerOpen, setIsBudgetDatePickerOpen] = useState(false);
+  const [budgetPickerYear, setBudgetPickerYear] = useState(() => new Date().getFullYear());
+  const budgetDatePickerRef = useRef<HTMLDivElement>(null);
+
   // 인증 확인
   useEffect(() => {
     const storedUserId = localStorage.getItem('userId');
@@ -69,28 +87,64 @@ export default function SettingsPage() {
     setIsLoading(false);
   }, [router]);
 
-  // 카테고리 목록 가져오기
+  // 카테고리 목록 및 가장 오래된 거래 날짜 가져오기
   useEffect(() => {
     if (!userId) return;
 
-    const fetchCategories = async () => {
+    const fetchInitialData = async () => {
       setIsLoadingCategories(true);
       try {
-        const response = await fetch(`/api/categories?userId=${userId}`);
-        const data = await response.json();
+        const [categoriesRes, oldestDateRes] = await Promise.all([
+          fetch(`/api/categories?userId=${userId}`),
+          fetch(`/api/transactions/oldest-date?userId=${userId}`),
+        ]);
 
-        if (data.success) {
-          setCategories(data.data);
+        const [categoriesData, oldestDateData] = await Promise.all([
+          categoriesRes.json(),
+          oldestDateRes.json(),
+        ]);
+
+        if (categoriesData.success) {
+          setCategories(categoriesData.data);
+        }
+
+        if (oldestDateData.success && oldestDateData.data.year && oldestDateData.data.month) {
+          setOldestTransactionDate({ year: oldestDateData.data.year, month: oldestDateData.data.month });
         }
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
+        console.error('Failed to fetch initial data:', error);
       } finally {
         setIsLoadingCategories(false);
       }
     };
 
-    fetchCategories();
+    fetchInitialData();
   }, [userId]);
+
+  // 예산 데이터 가져오기
+  useEffect(() => {
+    if (!userId || activeTab !== 'budget') return;
+
+    const fetchBudgets = async () => {
+      setIsLoadingBudgets(true);
+      try {
+        const year = budgetDate.getFullYear();
+        const month = budgetDate.getMonth() + 1;
+        const response = await fetch(`/api/budgets?userId=${userId}&year=${year}&month=${month}`);
+        const data = await response.json();
+
+        if (data.success) {
+          setBudgets(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch budgets:', error);
+      } finally {
+        setIsLoadingBudgets(false);
+      }
+    };
+
+    fetchBudgets();
+  }, [userId, activeTab, budgetDate]);
 
   // 프로필 메뉴 외부 클릭 시 닫기
   useEffect(() => {
@@ -104,9 +158,21 @@ export default function SettingsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 예산 날짜 선택기 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!isBudgetDatePickerOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (budgetDatePickerRef.current && !budgetDatePickerRef.current.contains(event.target as Node)) {
+        setIsBudgetDatePickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isBudgetDatePickerOpen]);
+
   // 모달이 열렸을 때 body 스크롤 비활성화
   useEffect(() => {
-    if (isAddCategoryModalOpen || isEditCategoryModalOpen || isDeleteCategoryConfirmOpen || isDeleteAccountModalOpen) {
+    if (isAddCategoryModalOpen || isEditCategoryModalOpen || isDeleteCategoryConfirmOpen || isDeleteAccountModalOpen || isBudgetModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -115,7 +181,7 @@ export default function SettingsPage() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isAddCategoryModalOpen, isEditCategoryModalOpen, isDeleteCategoryConfirmOpen, isDeleteAccountModalOpen]);
+  }, [isAddCategoryModalOpen, isEditCategoryModalOpen, isDeleteCategoryConfirmOpen, isDeleteAccountModalOpen, isBudgetModalOpen]);
 
   const handleLogout = () => {
     localStorage.removeItem('userId');
@@ -254,6 +320,9 @@ export default function SettingsPage() {
           type: categoryType,
           icon: categoryIcon,
           color: categoryColor,
+          defaultBudget: categoryType === 'EXPENSE' && categoryDefaultBudget
+            ? parseInt(categoryDefaultBudget, 10)
+            : null,
         }),
       });
 
@@ -269,6 +338,7 @@ export default function SettingsPage() {
       setCategoryType('EXPENSE');
       setCategoryIcon('📦');
       setCategoryColor('#EF4444');
+      setCategoryDefaultBudget('');
       setNameError('');
 
       // 카테고리 목록 새로고침
@@ -310,6 +380,9 @@ export default function SettingsPage() {
           name: categoryName,
           icon: categoryIcon,
           color: categoryColor,
+          defaultBudget: categoryType === 'EXPENSE' && categoryDefaultBudget
+            ? parseInt(categoryDefaultBudget, 10)
+            : null,
         }),
       });
 
@@ -326,6 +399,7 @@ export default function SettingsPage() {
       setCategoryType('EXPENSE');
       setCategoryIcon('📦');
       setCategoryColor('#EF4444');
+      setCategoryDefaultBudget('');
       setNameError('');
 
       // 카테고리 목록 새로고침
@@ -383,6 +457,121 @@ export default function SettingsPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // 예산 모달 열기
+  const openBudgetModal = (category: any) => {
+    setEditingBudgetCategory(category);
+    const existingBudget = budgets.find(b => b.categoryId === category.id);
+    setBudgetAmount(existingBudget ? existingBudget.amount.toString() : '');
+    setIsBudgetModalOpen(true);
+  };
+
+  // 예산 모달 닫기
+  const closeBudgetModal = () => {
+    setIsBudgetModalOpen(false);
+    setEditingBudgetCategory(null);
+    setBudgetAmount('');
+  };
+
+  // 예산 저장
+  const handleSaveBudget = async () => {
+    if (!userId || !editingBudgetCategory) return;
+
+    const amount = parseInt(budgetAmount || '0', 10);
+
+    setIsSavingBudget(true);
+    try {
+      const response = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          categoryId: editingBudgetCategory.id,
+          amount,
+          year: budgetDate.getFullYear(),
+          month: budgetDate.getMonth() + 1,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setBudgets(prev => {
+          const existing = prev.findIndex(b => b.categoryId === editingBudgetCategory.id);
+          if (existing >= 0) {
+            const updated = [...prev];
+            updated[existing] = data.data;
+            return updated;
+          }
+          return [...prev, data.data];
+        });
+        closeBudgetModal();
+      }
+    } catch (error) {
+      console.error('Failed to save budget:', error);
+    } finally {
+      setIsSavingBudget(false);
+    }
+  };
+
+  // 예산 날짜 변경
+  const isBudgetPreviousMonthDisabled = () => {
+    if (!oldestTransactionDate) return false;
+    const oldestMonth = oldestTransactionDate.month - 1; // API returns 1-based month
+    // 현재 월이 가장 오래된 거래 월과 같으면 이전으로 이동 불가
+    return budgetDate.getFullYear() === oldestTransactionDate.year && budgetDate.getMonth() === oldestMonth;
+  };
+
+  const isBudgetNextMonthDisabled = () => {
+    const nextMonth = new Date(budgetDate);
+    nextMonth.setMonth(budgetDate.getMonth() + 1);
+    const now = new Date();
+    return nextMonth.getFullYear() > now.getFullYear() ||
+      (nextMonth.getFullYear() === now.getFullYear() && nextMonth.getMonth() > now.getMonth());
+  };
+
+  const handleBudgetPreviousMonth = () => {
+    if (!isBudgetPreviousMonthDisabled()) {
+      setBudgetDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    }
+  };
+
+  const handleBudgetNextMonth = () => {
+    if (!isBudgetNextMonthDisabled()) {
+      setBudgetDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    }
+  };
+
+  const handleBudgetDatePickerToggle = () => {
+    if (!isBudgetDatePickerOpen) {
+      setBudgetPickerYear(budgetDate.getFullYear());
+    }
+    setIsBudgetDatePickerOpen(!isBudgetDatePickerOpen);
+  };
+
+  const handleBudgetMonthSelect = (year: number, month: number) => {
+    setBudgetDate(new Date(year, month, 1));
+    setIsBudgetDatePickerOpen(false);
+  };
+
+  const isBudgetPastMonth = (year: number, month: number) => {
+    if (!oldestTransactionDate) return false;
+    const oldestMonth = oldestTransactionDate.month - 1;
+    return year < oldestTransactionDate.year ||
+      (year === oldestTransactionDate.year && month < oldestMonth);
+  };
+
+  const isBudgetPastYear = (year: number) => {
+    if (!oldestTransactionDate) return false;
+    return year < oldestTransactionDate.year;
+  };
+
+  const formatYearMonth = (date: Date) => {
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+  };
+
+  const getBudgetForCategory = (categoryId: string) => {
+    return budgets.find(b => b.categoryId === categoryId);
   };
 
   // 아이콘 목록
@@ -508,27 +697,36 @@ export default function SettingsPage() {
             <nav className="flex gap-2 bg-bg-card border border-[var(--border)] rounded-[12px] p-1">
               <button
                 onClick={() => setActiveTab('account')}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-[10px] transition-all cursor-pointer ${
+                className={`flex-1 flex items-center justify-center rounded-[10px] transition-all cursor-pointer ${
                   activeTab === 'account'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                     : 'text-text-secondary'
                 }`}
-                style={{ padding: '10px 12px' }}
+                style={{ padding: '12px' }}
               >
-                <span className="text-base">👤</span>
-                <span className="font-medium text-sm">계정</span>
+                <span className="text-xl">👤</span>
               </button>
               <button
                 onClick={() => setActiveTab('category')}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-[10px] transition-all cursor-pointer ${
+                className={`flex-1 flex items-center justify-center rounded-[10px] transition-all cursor-pointer ${
                   activeTab === 'category'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                     : 'text-text-secondary'
                 }`}
-                style={{ padding: '10px 12px' }}
+                style={{ padding: '12px' }}
               >
-                <span className="text-base">📂</span>
-                <span className="font-medium text-sm">카테고리</span>
+                <span className="text-xl">📂</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('budget')}
+                className={`flex-1 flex items-center justify-center rounded-[10px] transition-all cursor-pointer ${
+                  activeTab === 'budget'
+                    ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                    : 'text-text-secondary'
+                }`}
+                style={{ padding: '12px' }}
+              >
+                <span className="text-xl">💰</span>
               </button>
             </nav>
           </div>
@@ -559,6 +757,18 @@ export default function SettingsPage() {
               >
                 <span className="text-xl">📂</span>
                 <span className="font-medium" style={{ fontSize: '16px' }}>카테고리</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('budget')}
+                className={`flex items-center gap-3 rounded-[12px] text-left transition-all cursor-pointer ${
+                  activeTab === 'budget'
+                    ? 'bg-bg-card border border-[var(--border)] text-text-primary'
+                    : 'text-text-secondary hover:bg-bg-card-hover'
+                }`}
+                style={{ padding: '14px 16px' }}
+              >
+                <span className="text-xl">💰</span>
+                <span className="font-medium" style={{ fontSize: '16px' }}>예산</span>
               </button>
             </nav>
           </aside>
@@ -731,6 +941,7 @@ export default function SettingsPage() {
                               setCategoryType(category.type);
                               setCategoryIcon(category.icon);
                               setCategoryColor(category.color);
+                              setCategoryDefaultBudget(category.defaultBudget ? category.defaultBudget.toString() : '');
                               setIsEditCategoryModalOpen(true);
                             }}
                           >
@@ -788,6 +999,7 @@ export default function SettingsPage() {
                               setCategoryType(category.type);
                               setCategoryIcon(category.icon);
                               setCategoryColor(category.color);
+                              setCategoryDefaultBudget(category.defaultBudget ? category.defaultBudget.toString() : '');
                               setIsEditCategoryModalOpen(true);
                             }}
                           >
@@ -808,6 +1020,158 @@ export default function SettingsPage() {
                       <div className="text-center text-text-muted py-4 text-xs sm:text-sm">지출 카테고리가 없습니다</div>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'budget' && (
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '6px' }}>
+                  예산
+                </h1>
+                <p className="text-sm sm:text-base text-text-secondary" style={{ marginBottom: '16px' }}>
+                  카테고리별 월 예산을 설정합니다. 예산을 설정하면 대시보드에서 사용량을 확인할 수 있습니다.
+                </p>
+
+                {/* 월 선택 */}
+                <div ref={budgetDatePickerRef} className="flex items-center justify-center bg-bg-card border border-[var(--border)] rounded-[12px] relative select-none" style={{ padding: '12px', marginBottom: '16px', gap: '12px' }}>
+                  <button
+                    onClick={handleBudgetPreviousMonth}
+                    disabled={isBudgetPreviousMonthDisabled()}
+                    className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    ◀
+                  </button>
+                  <span
+                    onClick={handleBudgetDatePickerToggle}
+                    className="text-base font-semibold min-w-[120px] text-center cursor-pointer"
+                  >
+                    {formatYearMonth(budgetDate)}
+                  </span>
+                  <button
+                    onClick={handleBudgetNextMonth}
+                    disabled={isBudgetNextMonthDisabled()}
+                    className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    ▶
+                  </button>
+
+                  {/* 달력 Picker */}
+                  {isBudgetDatePickerOpen && (
+                    <div
+                      className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none"
+                      style={{ width: '320px', padding: '20px', marginTop: '3px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)' }}
+                    >
+                      <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                        <button
+                          onClick={() => setBudgetPickerYear(prev => prev - 1)}
+                          disabled={isBudgetPastYear(budgetPickerYear - 1)}
+                          className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          ◀
+                        </button>
+                        <div className="text-text-primary font-semibold" style={{ fontSize: '16px' }}>
+                          {budgetPickerYear}년
+                        </div>
+                        <button
+                          onClick={() => setBudgetPickerYear(prev => prev + 1)}
+                          disabled={budgetPickerYear >= new Date().getFullYear()}
+                          className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          ▶
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-4" style={{ gap: '8px' }}>
+                        {Array.from({ length: 12 }, (_, i) => i).map(month => {
+                          const isSelected = budgetDate.getFullYear() === budgetPickerYear && budgetDate.getMonth() === month;
+                          const now = new Date();
+                          const isFuture = budgetPickerYear > now.getFullYear() ||
+                            (budgetPickerYear === now.getFullYear() && month > now.getMonth());
+                          const isPast = isBudgetPastMonth(budgetPickerYear, month);
+                          const isDisabled = isFuture || isPast;
+                          return (
+                            <button
+                              key={month}
+                              onClick={() => handleBudgetMonthSelect(budgetPickerYear, month)}
+                              disabled={isDisabled}
+                              className={`rounded-[8px] font-medium transition-all ${
+                                isDisabled
+                                  ? 'bg-bg-secondary text-text-muted opacity-30 cursor-not-allowed'
+                                  : isSelected
+                                  ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary cursor-pointer'
+                                  : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover cursor-pointer'
+                              }`}
+                              style={{ padding: '10px 0', fontSize: '14px' }}
+                            >
+                              {month + 1}월
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
+                  <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
+                    <span className="text-base sm:text-lg">💳</span> 지출 카테고리별 예산
+                  </h2>
+
+                  {isLoadingBudgets || isLoadingCategories ? (
+                    <div className="text-center text-text-muted py-8 text-sm">로딩 중...</div>
+                  ) : expenseCategories.length === 0 ? (
+                    <div className="text-center text-text-muted py-8 text-sm">지출 카테고리가 없습니다</div>
+                  ) : (
+                    <div className="flex flex-col" style={{ gap: '12px' }}>
+                      {expenseCategories.map(category => {
+                        const budget = getBudgetForCategory(category.id);
+                        const hasMonthlyBudget = budget && budget.amount > 0;
+                        const hasDefaultBudget = category.defaultBudget && category.defaultBudget > 0;
+
+                        return (
+                          <div
+                            key={category.id}
+                            className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover"
+                            style={{ padding: '16px' }}
+                            onClick={() => openBudgetModal(category)}
+                          >
+                            {/* 상단: 아이콘, 카테고리명, 기본예산, 설정 버튼 */}
+                            <div className="flex items-center">
+                              <div
+                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-[10px] sm:rounded-[12px] flex items-center justify-center text-lg sm:text-xl"
+                                style={{ marginRight: '12px', backgroundColor: `${category.color}20` }}
+                              >
+                                {category.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm sm:text-base font-medium truncate">{category.name}</div>
+                                {hasDefaultBudget && (
+                                  <div className="text-[11px] sm:text-xs text-text-muted" style={{ marginTop: '2px' }}>
+                                    기본 <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(category.defaultBudget)}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-[11px] sm:text-xs text-text-muted">설정 →</span>
+                            </div>
+
+                            {/* 하단: 예산 금액 */}
+                            <div className="border-t border-[var(--border)]" style={{ marginTop: '12px', paddingTop: '12px' }}>
+                              <div className="text-right">
+                                {hasMonthlyBudget ? (
+                                  <span className="text-lg sm:text-xl font-bold text-accent-mint">
+                                    <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(budget.amount)}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm sm:text-base text-text-muted">미설정</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -909,7 +1273,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Color Selection */}
-              <div style={{ marginBottom: '24px' }}>
+              <div style={{ marginBottom: categoryType === 'EXPENSE' ? '20px' : '24px' }}>
                 <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
                   색상
                 </label>
@@ -931,6 +1295,36 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Default Budget (Expense only) */}
+              {categoryType === 'EXPENSE' && (
+                <div style={{ marginBottom: '24px' }}>
+                  <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+                    기본 예산 (선택)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={categoryDefaultBudget ? formatNumber(parseInt(categoryDefaultBudget, 10)) : ''}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                        const maxBudget = 100000000000000; // 100조
+                        if (numericValue === '' || parseInt(numericValue, 10) <= maxBudget) {
+                          setCategoryDefaultBudget(numericValue);
+                        }
+                      }}
+                      placeholder="0"
+                      className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-base font-mono text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
+                      style={{ padding: '14px 16px', paddingLeft: '32px' }}
+                    />
+                  </div>
+                  <p className="text-xs text-text-muted" style={{ marginTop: '6px' }}>
+                    월별 예산을 설정하지 않으면 기본 예산이 적용됩니다.
+                  </p>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <button
@@ -941,6 +1335,7 @@ export default function SettingsPage() {
                     setCategoryType('EXPENSE');
                     setCategoryIcon('📦');
                     setCategoryColor('#EF4444');
+                    setCategoryDefaultBudget('');
                     setNameError('');
                   }}
                   className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
@@ -1062,7 +1457,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Color Selection */}
-              <div style={{ marginBottom: '24px' }}>
+              <div style={{ marginBottom: categoryType === 'EXPENSE' ? '20px' : '24px' }}>
                 <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
                   색상
                 </label>
@@ -1084,6 +1479,36 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Default Budget (Expense only) */}
+              {categoryType === 'EXPENSE' && (
+                <div style={{ marginBottom: '24px' }}>
+                  <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+                    기본 예산 (선택)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={categoryDefaultBudget ? formatNumber(parseInt(categoryDefaultBudget, 10)) : ''}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                        const maxBudget = 100000000000000; // 100조
+                        if (numericValue === '' || parseInt(numericValue, 10) <= maxBudget) {
+                          setCategoryDefaultBudget(numericValue);
+                        }
+                      }}
+                      placeholder="0"
+                      className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-base font-mono text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
+                      style={{ padding: '14px 16px', paddingLeft: '32px' }}
+                    />
+                  </div>
+                  <p className="text-xs text-text-muted" style={{ marginTop: '6px' }}>
+                    월별 예산을 설정하지 않으면 기본 예산이 적용됩니다.
+                  </p>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex flex-col gap-3">
                 <div className="flex gap-3">
@@ -1096,6 +1521,7 @@ export default function SettingsPage() {
                       setCategoryType('EXPENSE');
                       setCategoryIcon('📦');
                       setCategoryColor('#EF4444');
+                      setCategoryDefaultBudget('');
                       setNameError('');
                     }}
                     className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
@@ -1167,6 +1593,100 @@ export default function SettingsPage() {
                 style={{ padding: '14px' }}
               >
                 {isSubmitting ? '삭제 중...' : '삭제'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Budget Edit Modal */}
+      {isBudgetModalOpen && editingBudgetCategory && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200] animate-[fadeIn_0.2s_ease-out]"
+          onClick={closeBudgetModal}
+        >
+          <div
+            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out]"
+            style={{ padding: '32px', margin: '20px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '24px' }}>
+              예산 설정
+            </h2>
+
+            {/* 카테고리 정보 */}
+            <div className="flex items-center bg-bg-secondary rounded-[12px]" style={{ padding: '12px', marginBottom: '20px' }}>
+              <div
+                className="w-10 h-10 rounded-[8px] flex items-center justify-center text-lg"
+                style={{ marginRight: '12px', backgroundColor: `${editingBudgetCategory.color}20` }}
+              >
+                {editingBudgetCategory.icon}
+              </div>
+              <div>
+                <div className="text-base font-medium">{editingBudgetCategory.name}</div>
+                <div className="text-xs text-text-muted">{formatYearMonth(budgetDate)}</div>
+              </div>
+            </div>
+
+            {/* 예산 입력 */}
+            <div style={{ marginBottom: '16px' }}>
+              <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+                월 예산
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={budgetAmount ? formatNumber(parseInt(budgetAmount, 10)) : ''}
+                  onChange={(e) => {
+                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                    const maxBudget = 100000000000000; // 100조
+                    if (numericValue === '' || parseInt(numericValue, 10) <= maxBudget) {
+                      setBudgetAmount(numericValue);
+                    }
+                  }}
+                  placeholder="0"
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-lg font-mono text-text-primary focus:outline-none focus:border-accent-mint transition-colors"
+                  style={{ padding: '14px 16px', paddingLeft: '32px' }}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* 기본값 적용 버튼 */}
+            {editingBudgetCategory.defaultBudget && editingBudgetCategory.defaultBudget > 0 && (
+              <button
+                type="button"
+                onClick={() => setBudgetAmount(editingBudgetCategory.defaultBudget.toString())}
+                className="w-full text-sm text-accent-blue hover:text-accent-mint transition-colors cursor-pointer"
+                style={{ marginBottom: '24px', textAlign: 'left' }}
+              >
+                기본값 적용 (<span style={{ marginRight: '1px' }}>₩</span>{formatNumber(editingBudgetCategory.defaultBudget)})
+              </button>
+            )}
+
+            {!editingBudgetCategory.defaultBudget && <div style={{ marginBottom: '8px' }} />}
+
+            {/* 버튼 */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={closeBudgetModal}
+                className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
+                style={{ padding: '14px' }}
+                disabled={isSavingBudget}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveBudget}
+                disabled={isSavingBudget}
+                className="flex-1 bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ padding: '14px' }}
+              >
+                {isSavingBudget ? '저장 중...' : '저장'}
               </button>
             </div>
           </div>

@@ -28,18 +28,20 @@ model User {
 }
 
 model Category {
-  id          String    @id @default(cuid())
-  name        String
-  type        TransactionType
-  color       String?
-  icon        String?
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id            String    @id @default(cuid())
+  name          String
+  type          TransactionType
+  color         String?
+  icon          String?
+  defaultBudget Float?
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
   transactions Transaction[]
+  budgets      Budget[]
 
   @@unique([userId, name, type])
   @@index([userId, deletedAt])
@@ -69,6 +71,7 @@ model Budget {
   id         String    @id @default(cuid())
   amount     Float
   categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   month      DateTime
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -77,6 +80,7 @@ model Budget {
   deletedAt  DateTime?
 
   @@unique([userId, categoryId, month])
+  @@index([userId, month])
 }
 
 model DailyBalance {

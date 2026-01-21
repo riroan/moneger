@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, name, type, color, icon } = body;
+    const { userId, name, type, color, icon, defaultBudget } = body;
 
     // 유효성 검사
     const userIdError = validateUserId(userId);
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 카테고리 생성
-    const category = await createCategory({ userId, name, type, color, icon });
+    const category = await createCategory({ userId, name, type, color, icon, defaultBudget });
 
     return successResponseWithMessage(category, 'Category created successfully', 201);
   } catch (error) {

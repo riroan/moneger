@@ -91,7 +91,7 @@ export default function SummaryCards({
                 {card.label}
               </div>
               <div
-                className={`font-mono font-bold tracking-tight text-lg sm:text-2xl ${
+                className={`font-bold tracking-tight text-lg sm:text-2xl ${
                   card.type === 'income'
                     ? 'text-accent-mint'
                     : card.type === 'expense'

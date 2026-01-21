@@ -20,7 +20,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { userId, name, type, color, icon } = body;
+    const { userId, name, type, color, icon, defaultBudget } = body;
 
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;
@@ -46,7 +46,7 @@ export async function PATCH(
     }
 
     // 카테고리 업데이트
-    const updatedCategory = await updateCategory(id, { name, type, color, icon });
+    const updatedCategory = await updateCategory(id, { name, type, color, icon, defaultBudget });
 
     return successResponseWithMessage(updatedCategory, 'Category updated successfully');
   } catch (error) {

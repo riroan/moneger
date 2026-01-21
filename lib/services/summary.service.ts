@@ -7,6 +7,8 @@ interface CategorySummary {
   color: string | null;
   count: number;
   total: number;
+  budget?: number;
+  budgetUsagePercent?: number;
 }
 
 /**
@@ -53,21 +55,37 @@ export async function getTransactionSummary(userId: string, year: number, month:
   const totalIncome = incomeAgg._sum.amount || 0;
   const totalExpense = expenseAgg._sum.amount || 0;
 
-  // 카테고리 정보 조회 (필요한 것만)
+  // 카테고리 정보 조회 (필요한 것만, defaultBudget 포함)
   const categoryIds = categoryStats.map((s) => s.categoryId!);
   const categories = categoryIds.length > 0
     ? await prisma.category.findMany({
         where: { id: { in: categoryIds } },
-        select: { id: true, name: true, icon: true, color: true },
+        select: { id: true, name: true, icon: true, color: true, defaultBudget: true },
       })
     : [];
 
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-  // 카테고리별 통계 매핑
+  // 카테고리별 예산 조회
+  const categoryBudgets = await prisma.budget.findMany({
+    where: {
+      userId,
+      month: startDate,
+      categoryId: { in: categoryIds },
+      deletedAt: null,
+    },
+  });
+  const budgetMap = new Map(categoryBudgets.map((b) => [b.categoryId, b.amount]));
+
+  // 카테고리별 통계 매핑 (예산 정보 포함)
   const categoryList: CategorySummary[] = categoryStats
-    .map((stat) => {
+    .map((stat): CategorySummary | null => {
       const category = categoryMap.get(stat.categoryId!);
+      // 월별 예산 레코드가 있으면 해당 값 사용, 없으면 기본 예산 자동 적용
+      const hasMonthlyBudget = budgetMap.has(stat.categoryId!);
+      const monthlyBudget = budgetMap.get(stat.categoryId!);
+      const effectiveBudget = hasMonthlyBudget ? monthlyBudget : (category?.defaultBudget ?? undefined);
+      const spent = stat._sum.amount || 0;
       return category
         ? {
             id: category.id,
@@ -75,7 +93,11 @@ export async function getTransactionSummary(userId: string, year: number, month:
             icon: category.icon,
             color: category.color,
             count: stat._count,
-            total: stat._sum.amount || 0,
+            total: spent,
+            budget: effectiveBudget,
+            budgetUsagePercent: effectiveBudget && effectiveBudget > 0
+              ? Math.round((spent / effectiveBudget) * 100)
+              : undefined,
           }
         : null;
     })

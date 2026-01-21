@@ -30,19 +30,11 @@ const CurrencyDisplay = ({ amount }: { amount: string }) => {
   const { sign, currencySymbol, number } = formatCurrencyDisplay(amount);
 
   return (
-    <>
-      {sign && (
-        <span style={{ fontSize: '1.3em', marginRight: '0.15em', verticalAlign: 'baseline', transform: 'translateY(0.05em)', display: 'inline-block' }}>
-          {sign}
-        </span>
-      )}
-      <span style={{ whiteSpace: 'nowrap' }}>
-        <span style={{ fontSize: '0.7em', marginRight: '0.25em', display: 'inline-block' }}>
-          {currencySymbol}
-        </span>
-        {number}
-      </span>
-    </>
+    <span style={{ whiteSpace: 'nowrap' }}>
+      {sign && <span style={{ marginRight: '2px' }}>{sign}</span>}
+      {currencySymbol && <span style={{ marginRight: '1px' }}>{currencySymbol}</span>}
+      {number}
+    </span>
   );
 };
 
@@ -70,7 +62,7 @@ export default function TransactionItem({ transaction: tx, onClick }: Transactio
             <div className="text-sm sm:text-[15px] font-medium truncate flex-1 min-w-0" style={{ marginRight: '12px' }}>
               {tx.description || tx.category?.name || '거래'}
             </div>
-            <div className={`font-mono text-sm sm:text-base font-semibold whitespace-nowrap ${
+            <div className={`text-sm sm:text-base font-semibold whitespace-nowrap ${
               tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
             }`}>
               <CurrencyDisplay amount={`${tx.type === 'EXPENSE' ? '-' : '+'}₩${formatNumber(tx.amount)}`} />

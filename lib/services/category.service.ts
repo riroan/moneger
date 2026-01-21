@@ -7,6 +7,7 @@ interface CreateCategoryInput {
   type: TransactionType;
   color?: string;
   icon?: string;
+  defaultBudget?: number | null;
 }
 
 interface UpdateCategoryInput {
@@ -14,6 +15,7 @@ interface UpdateCategoryInput {
   type?: TransactionType;
   color?: string;
   icon?: string;
+  defaultBudget?: number | null;
 }
 
 /**
@@ -64,6 +66,7 @@ export async function createCategory(input: CreateCategoryInput) {
       type: input.type,
       color: input.color || '#6366F1',
       icon: input.icon || '💰',
+      defaultBudget: input.type === 'EXPENSE' ? input.defaultBudget : null,
     },
   });
 }
@@ -78,6 +81,7 @@ export async function updateCategory(id: string, input: UpdateCategoryInput) {
   if (input.type !== undefined) updateData.type = input.type;
   if (input.color !== undefined) updateData.color = input.color;
   if (input.icon !== undefined) updateData.icon = input.icon;
+  if (input.defaultBudget !== undefined) updateData.defaultBudget = input.defaultBudget;
 
   return prisma.category.update({
     where: { id },
