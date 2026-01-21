@@ -7,6 +7,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import Header from '@/components/layout/Header';
 import SummaryCards from '@/components/dashboard/SummaryCards';
 import CategoryChart from '@/components/dashboard/CategoryChart';
+import TodaySummaryCard from '@/components/dashboard/TodaySummaryCard';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import TransactionList from '@/components/transactions/TransactionList';
 import FilterPanel, { DateRange, AmountRange } from '@/components/transactions/FilterPanel';
@@ -49,6 +50,8 @@ export default function Home() {
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [oldestTransactionDate, setOldestTransactionDate] = useState<{ year: number; month: number } | null>(null);
+  const [todaySummary, setTodaySummary] = useState<any>(null);
+  const [isLoadingTodaySummary, setIsLoadingTodaySummary] = useState(false);
 
   const transactionsEndRef = useRef<HTMLDivElement>(null);
 
@@ -76,22 +79,25 @@ export default function Home() {
     return () => { document.body.style.overflow = 'unset'; };
   }, [isModalOpen, isEditModalOpen, isDeleteConfirmOpen]);
 
-  // 초기 데이터 병렬 로딩 (카테고리 + 가장 오래된 거래 날짜 + 최근 거래)
+  // 초기 데이터 병렬 로딩 (카테고리 + 가장 오래된 거래 날짜 + 최근 거래 + 오늘 요약)
   useEffect(() => {
     if (!userId) return;
     const fetchInitialData = async () => {
       setIsLoadingTransactions(true);
+      setIsLoadingTodaySummary(true);
       try {
-        const [categoriesRes, oldestDateRes, recentRes] = await Promise.all([
+        const [categoriesRes, oldestDateRes, recentRes, todayRes] = await Promise.all([
           fetch(`/api/categories?userId=${userId}`),
           fetch(`/api/transactions/oldest-date?userId=${userId}`),
           fetch(`/api/transactions/recent?userId=${userId}&limit=10`),
+          fetch(`/api/transactions/today?userId=${userId}`),
         ]);
 
-        const [categoriesData, oldestDateData, recentData] = await Promise.all([
+        const [categoriesData, oldestDateData, recentData, todayData] = await Promise.all([
           categoriesRes.json(),
           oldestDateRes.json(),
           recentRes.json(),
+          todayRes.json(),
         ]);
 
         // 카테고리 처리
@@ -114,10 +120,14 @@ export default function Home() {
 
         // 최근 거래 처리
         if (recentData.success) setRecentTransactions(recentData.data);
+
+        // 오늘 요약 처리
+        if (todayData.success) setTodaySummary(todayData.data);
       } catch (error) {
         console.error('Failed to fetch initial data:', error);
       } finally {
         setIsLoadingTransactions(false);
+        setIsLoadingTodaySummary(false);
       }
     };
     fetchInitialData();
@@ -171,13 +181,15 @@ export default function Home() {
   // 데이터 새로고침
   const refreshData = async () => {
     if (!userId) return;
-    const [recentRes, summaryRes] = await Promise.all([
+    const [recentRes, summaryRes, todayRes] = await Promise.all([
       fetch(`/api/transactions/recent?userId=${userId}&limit=10`),
       fetch(`/api/transactions/summary?userId=${userId}&year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`),
+      fetch(`/api/transactions/today?userId=${userId}`),
     ]);
-    const [recentData, summaryData] = await Promise.all([recentRes.json(), summaryRes.json()]);
+    const [recentData, summaryData, todayData] = await Promise.all([recentRes.json(), summaryRes.json(), todayRes.json()]);
     if (recentData.success) setRecentTransactions(recentData.data);
     if (summaryData.success) setSummary(summaryData.data);
+    if (todayData.success) setTodaySummary(todayData.data);
     if (activeTab === 'transactions') refreshAllTransactions();
   };
 
@@ -370,6 +382,9 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col order-1 lg:order-2" style={{ gap: '16px' }}>
+                {/* 오늘의 지출 요약 */}
+                <TodaySummaryCard data={todaySummary} isLoading={isLoadingTodaySummary} />
+
                 <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                     <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
