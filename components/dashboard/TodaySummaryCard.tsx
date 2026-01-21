@@ -2,6 +2,8 @@
 
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
+import { MdToday } from 'react-icons/md';
+import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 
 interface TodaySummary {
   date: string;
@@ -52,7 +54,7 @@ export default function TodaySummaryCard({ data, isLoading }: TodaySummaryCardPr
     >
       {/* 날짜 헤더 */}
       <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
-        <span className="text-lg sm:text-xl">📅</span>
+        <MdToday className="text-lg sm:text-xl text-accent-yellow" />
         <span className="text-sm sm:text-base font-semibold text-text-primary">
           오늘 ({month}월 {day}일 {DAY_NAMES[dayOfWeek]})
         </span>
@@ -63,7 +65,7 @@ export default function TodaySummaryCard({ data, isLoading }: TodaySummaryCardPr
         {/* 수입 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-base sm:text-lg">💰</span>
+            <FaMoneyBillWave className="text-base sm:text-lg text-accent-mint" />
             <span className="text-xs sm:text-sm text-text-secondary">수입</span>
           </div>
           <div className="text-right">
@@ -85,7 +87,7 @@ export default function TodaySummaryCard({ data, isLoading }: TodaySummaryCardPr
         {/* 지출 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-base sm:text-lg">💸</span>
+            <FaCreditCard className="text-base sm:text-lg text-accent-coral" />
             <span className="text-xs sm:text-sm text-text-secondary">지출</span>
           </div>
           <div className="text-right">

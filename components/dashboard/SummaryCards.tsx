@@ -2,6 +2,8 @@
 
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
+import { FaMoneyBillWave, FaCreditCard, FaWallet } from 'react-icons/fa';
+import { ReactNode } from 'react';
 
 interface SummaryCardsProps {
   totalIncome: number;
@@ -28,10 +30,21 @@ export default function SummaryCards({
 }: SummaryCardsProps) {
   const balanceDiff = balance - lastMonthBalance;
 
-  const cards = [
+  const cards: {
+    type: string;
+    icon: ReactNode;
+    label: string;
+    amount: string;
+    change: string;
+    positive: boolean;
+    iconBg: string;
+    barColor: string;
+    badgeBg: string;
+    badgeText: string;
+  }[] = [
     {
       type: 'income',
-      icon: '💼',
+      icon: <FaMoneyBillWave className="text-white text-xl sm:text-2xl" />,
       label: '이번 달 수입',
       amount: `₩${formatNumber(totalIncome)}`,
       change: `${incomeCount}건의 수입`,
@@ -43,7 +56,7 @@ export default function SummaryCards({
     },
     {
       type: 'expense',
-      icon: '💳',
+      icon: <FaCreditCard className="text-white text-xl sm:text-2xl" />,
       label: '이번 달 지출',
       amount: `₩${formatNumber(totalExpense)}`,
       change: `${expenseCount}건의 지출`,
@@ -55,8 +68,8 @@ export default function SummaryCards({
     },
     {
       type: 'balance',
-      icon: '✨',
-      label: '남은 금액',
+      icon: <FaWallet className="text-white text-xl sm:text-2xl" />,
+      label: '잔액',
       amount: `₩${formatNumber(balance)}`,
       change: `지난달 대비 ${balanceDiff >= 0 ? '+' : ''}₩${formatNumber(Math.abs(balanceDiff))}`,
       positive: balanceDiff >= 0,

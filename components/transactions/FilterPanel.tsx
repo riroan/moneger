@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { MdSearch } from 'react-icons/md';
+import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 
 interface Category {
   id: string;
@@ -257,7 +259,7 @@ export default function FilterPanel({
         style={{ padding: '12px 16px', marginBottom: '12px' }}
       >
         <span className="text-sm font-medium flex items-center gap-2">
-          <span>🔍</span> 필터 {hasActiveFilters && <span className="text-accent-mint">(적용됨)</span>}
+          <MdSearch className="text-lg" /> 필터 {hasActiveFilters && <span className="text-accent-mint">(적용됨)</span>}
         </span>
         <span className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`}>▼</span>
       </button>
@@ -265,7 +267,7 @@ export default function FilterPanel({
       {/* 필터 내용 */}
       <div className={`${isFilterOpen ? 'block' : 'hidden'} lg:block bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]`} style={{ padding: '16px' }}>
         <h3 className="text-base font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
-          <span>🔍</span> 필터
+          <MdSearch className="text-lg" /> 필터
         </h3>
 
         {/* 검색 */}
@@ -472,7 +474,7 @@ export default function FilterPanel({
                   style={{ padding: '10px 12px' }}
                 >
                   <span className="text-sm font-medium text-accent-mint flex items-center gap-2">
-                    <span>💼</span> 수입
+                    <FaMoneyBillWave className="text-sm" /> 수입
                     <span className="text-text-muted font-normal">
                       ({categories.filter(c => c.type === 'INCOME').length})
                     </span>
@@ -527,7 +529,7 @@ export default function FilterPanel({
                   style={{ padding: '10px 12px' }}
                 >
                   <span className="text-sm font-medium text-accent-coral flex items-center gap-2">
-                    <span>💳</span> 지출
+                    <FaCreditCard className="text-sm" /> 지출
                     <span className="text-text-muted font-normal">
                       ({categories.filter(c => c.type === 'EXPENSE').length})
                     </span>

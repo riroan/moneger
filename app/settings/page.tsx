@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useOutsideClick, useBodyScrollLock } from '@/hooks';
 import type { Category, Budget } from '@/types';
+import { MdDarkMode, MdLightMode, MdDashboard, MdLogout, MdPerson, MdCategory, MdAccountBalanceWallet } from 'react-icons/md';
 import {
   AccountTab,
   CategoryTab,
@@ -353,7 +354,10 @@ export default function SettingsPage() {
                       className="flex items-center justify-between text-text-primary"
                       style={{ padding: '10px 14px', fontSize: '14px' }}
                     >
-                      <span>{theme === 'dark' ? '🌙 다크 모드' : '☀️ 라이트 모드'}</span>
+                      <span className="flex items-center gap-2">
+                      {theme === 'dark' ? <MdDarkMode className="text-lg" /> : <MdLightMode className="text-lg" />}
+                      {theme === 'dark' ? '다크 모드' : '라이트 모드'}
+                    </span>
                       <button
                         onClick={toggleTheme}
                         className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
@@ -375,7 +379,7 @@ export default function SettingsPage() {
                         router.push('/');
                       }}
                     >
-                      🏠 대시보드
+                      <span className="flex items-center gap-2"><MdDashboard className="text-lg" /> 대시보드</span>
                     </button>
                     <button
                       className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
@@ -385,7 +389,7 @@ export default function SettingsPage() {
                         handleLogout();
                       }}
                     >
-                      🚪 로그아웃
+                      <span className="flex items-center gap-2"><MdLogout className="text-lg" /> 로그아웃</span>
                     </button>
                   </div>
                 </div>
@@ -447,7 +451,7 @@ export default function SettingsPage() {
                 }`}
                 style={{ padding: '14px 16px', marginBottom: '8px' }}
               >
-                <span className="text-lg">👤</span>
+                <MdPerson className="text-lg" />
                 계정
               </button>
               <button
@@ -459,7 +463,7 @@ export default function SettingsPage() {
                 }`}
                 style={{ padding: '14px 16px', marginBottom: '8px' }}
               >
-                <span className="text-lg">📂</span>
+                <MdCategory className="text-lg" />
                 카테고리
               </button>
               <button
@@ -471,7 +475,7 @@ export default function SettingsPage() {
                 }`}
                 style={{ padding: '14px 16px' }}
               >
-                <span className="text-lg">💰</span>
+                <MdAccountBalanceWallet className="text-lg" />
                 예산
               </button>
             </nav>

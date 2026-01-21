@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { useOutsideClick } from '@/hooks';
 import type { Category, Budget } from '@/types';
+import { FaCreditCard } from 'react-icons/fa';
 
 interface BudgetTabProps {
   categories: Category[];
@@ -183,7 +184,7 @@ export default function BudgetTab({
 
       <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
         <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
-          <span className="text-base sm:text-lg">💳</span> 지출 카테고리별 예산
+          <FaCreditCard className="text-base sm:text-lg text-accent-coral" /> 지출 카테고리별 예산
         </h2>
 
         {isLoadingBudgets || isLoadingCategories ? (

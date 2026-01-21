@@ -13,6 +13,7 @@ import TransactionItem from '@/components/transactions/TransactionItem';
 import TransactionList from '@/components/transactions/TransactionList';
 import FilterPanel, { DateRange, AmountRange } from '@/components/transactions/FilterPanel';
 import type { Category, TransactionWithCategory, TransactionSummary, TodaySummary, CategoryChartData } from '@/types';
+import { MdDashboard, MdReceipt, MdPieChart, MdHistory } from 'react-icons/md';
 
 // 모달 컴포넌트 동적 임포트 (코드 스플리팅)
 const TransactionModal = dynamic(() => import('@/components/modals/TransactionModal'), { ssr: false });
@@ -328,6 +329,21 @@ export default function Home() {
     [summary?.categories]
   );
 
+  // 전체 내역 탭용 요약 계산
+  const allTransactionsSummary = useMemo(() => {
+    const income = allTransactions
+      .filter(tx => tx.type === 'INCOME')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    const expense = allTransactions
+      .filter(tx => tx.type === 'EXPENSE')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    return {
+      totalIncome: income,
+      totalExpense: expense,
+      balance: income - expense,
+    };
+  }, [allTransactions]);
+
   if (isAuthLoading) return null;
 
   return (
@@ -362,7 +378,7 @@ export default function Home() {
                 }`}
                 style={{ padding: '12px 20px' }}
               >
-                <span className="text-base">{tab === 'dashboard' ? '📊' : '📝'}</span>
+                {tab === 'dashboard' ? <MdDashboard className="text-lg" /> : <MdReceipt className="text-lg" />}
                 <span className="font-medium text-sm">{tab === 'dashboard' ? '대시보드' : '전체 내역'}</span>
               </button>
             ))}
@@ -386,7 +402,7 @@ export default function Home() {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]" style={{ gap: '16px' }}>
               <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-2 lg:order-1" style={{ padding: '16px' }}>
                 <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
-                  <span className="text-lg sm:text-xl">📊</span> 카테고리별 지출
+                  <MdPieChart className="text-lg sm:text-xl text-accent-blue" /> 카테고리별 지출
                 </h2>
                 <CategoryChart
                   categories={categoryList}
@@ -403,7 +419,7 @@ export default function Home() {
                 <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                     <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                      <span className="text-lg sm:text-xl">📝</span> 최근 내역
+                      <MdHistory className="text-lg sm:text-xl text-accent-mint" /> 최근 내역
                     </h2>
                     <button
                       onClick={() => setActiveTab('transactions')}
@@ -456,9 +472,35 @@ export default function Home() {
 
             <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]" style={{ padding: '16px' }}>
               <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
-                <span className="text-lg sm:text-xl">📝</span> 전체 거래 내역
+                <MdReceipt className="text-lg sm:text-xl text-accent-purple" /> 전체 거래 내역
                 {allTransactions.length > 0 && <span className="text-sm text-text-muted font-normal">({allTransactions.length}건)</span>}
               </h2>
+
+              {/* 요약 카드 */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                <div className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right" style={{ padding: '12px' }}>
+                  <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>수입</p>
+                  <p className="text-sm sm:text-base font-bold text-accent-mint">
+                    +₩{allTransactionsSummary.totalIncome.toLocaleString()}
+                  </p>
+                </div>
+                <div className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right" style={{ padding: '12px' }}>
+                  <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>지출</p>
+                  <p className="text-sm sm:text-base font-bold text-accent-coral">
+                    -₩{allTransactionsSummary.totalExpense.toLocaleString()}
+                  </p>
+                </div>
+                <div className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right" style={{ padding: '12px' }}>
+                  <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>잔액</p>
+                  <p className="text-sm sm:text-base font-bold text-accent-purple">
+                    {allTransactionsSummary.balance >= 0 ? '+' : ''}₩{allTransactionsSummary.balance.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* 구분선 */}
+              <div className="border-t border-[var(--border)]" style={{ margin: '16px 0' }} />
+
               <TransactionList
                 ref={transactionsEndRef}
                 transactions={allTransactions}

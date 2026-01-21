@@ -1,6 +1,7 @@
 'use client';
 
 import type { Category } from '@/types';
+import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 
 interface CategoryTabProps {
   categories: Category[];
@@ -27,7 +28,7 @@ export default function CategoryTab({ categories, isLoading, onAddCategory, onEd
         <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
           <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
             <h2 className="text-sm sm:text-lg font-semibold flex items-center gap-1 sm:gap-2">
-              <span className="text-sm sm:text-base">💼</span> 수입
+              <FaMoneyBillWave className="text-sm sm:text-base text-accent-mint" /> 수입
               <span className="text-xs sm:text-sm text-text-muted font-normal">({incomeCategories.length}/20)</span>
             </h2>
             <button
@@ -72,7 +73,7 @@ export default function CategoryTab({ categories, isLoading, onAddCategory, onEd
         <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
           <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
             <h2 className="text-sm sm:text-lg font-semibold flex items-center gap-1 sm:gap-2">
-              <span className="text-sm sm:text-base">💳</span> 지출
+              <FaCreditCard className="text-sm sm:text-base text-accent-coral" /> 지출
               <span className="text-xs sm:text-sm text-text-muted font-normal">({expenseCategories.length}/20)</span>
             </h2>
             <button

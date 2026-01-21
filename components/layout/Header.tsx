@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { formatYearMonth } from '@/utils/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
+import { MdSettings, MdLogout, MdDarkMode, MdLightMode } from 'react-icons/md';
 
 interface HeaderProps {
   userName: string;
@@ -225,7 +226,10 @@ export default function Header({
                   className="flex items-center justify-between text-text-primary"
                   style={{ padding: '10px 14px', fontSize: '14px' }}
                 >
-                  <span>{theme === 'dark' ? '🌙 다크 모드' : '☀️ 라이트 모드'}</span>
+                  <span className="flex items-center gap-2">
+                    {theme === 'dark' ? <MdDarkMode className="text-lg" /> : <MdLightMode className="text-lg" />}
+                    {theme === 'dark' ? '다크 모드' : '라이트 모드'}
+                  </span>
                   <button
                     onClick={toggleTheme}
                     className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
@@ -247,7 +251,7 @@ export default function Header({
                     router.push('/settings');
                   }}
                 >
-                  ⚙️ 설정
+                  <span className="flex items-center gap-2"><MdSettings className="text-lg" /> 설정</span>
                 </button>
                 <button
                   className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
@@ -257,7 +261,7 @@ export default function Header({
                     onLogout();
                   }}
                 >
-                  🚪 로그아웃
+                  <span className="flex items-center gap-2"><MdLogout className="text-lg" /> 로그아웃</span>
                 </button>
               </div>
             </div>
