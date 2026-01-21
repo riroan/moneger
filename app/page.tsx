@@ -301,6 +301,17 @@ export default function Home() {
     setActiveTab('transactions');
   }, [currentDate]);
 
+  const handleBalanceClick = useCallback(() => {
+    const month = currentDate.getMonth();
+    const year = currentDate.getFullYear();
+    setFilterType('ALL');
+    setFilterCategories([]);
+    setSearchKeyword('');
+    setSortOrder('recent');
+    setDateRange({ startYear: year, startMonth: month, endYear: year, endMonth: month });
+    setActiveTab('transactions');
+  }, [currentDate]);
+
   // 데이터 가공 (useMemo로 메모이제이션)
   const totalIncome = summary?.summary?.totalIncome || 0;
   const totalExpense = summary?.summary?.totalExpense || 0;
@@ -366,6 +377,7 @@ export default function Home() {
               expenseCount={summary?.transactionCount?.expense || 0}
               onIncomeClick={handleIncomeClick}
               onExpenseClick={handleExpenseClick}
+              onBalanceClick={handleBalanceClick}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]" style={{ gap: '16px' }}>

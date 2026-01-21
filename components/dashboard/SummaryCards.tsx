@@ -12,6 +12,7 @@ interface SummaryCardsProps {
   expenseCount: number;
   onIncomeClick?: () => void;
   onExpenseClick?: () => void;
+  onBalanceClick?: () => void;
 }
 
 export default function SummaryCards({
@@ -23,6 +24,7 @@ export default function SummaryCards({
   expenseCount,
   onIncomeClick,
   onExpenseClick,
+  onBalanceClick,
 }: SummaryCardsProps) {
   const cards = [
     {
@@ -57,8 +59,8 @@ export default function SummaryCards({
       style={{ gap: '12px', marginBottom: '24px' }}
     >
       {cards.map((card, i) => {
-        const isClickable = card.type === 'income' || card.type === 'expense';
-        const handleClick = card.type === 'income' ? onIncomeClick : card.type === 'expense' ? onExpenseClick : undefined;
+        const isClickable = card.type === 'income' || card.type === 'expense' || card.type === 'balance';
+        const handleClick = card.type === 'income' ? onIncomeClick : card.type === 'expense' ? onExpenseClick : card.type === 'balance' ? onBalanceClick : undefined;
 
         return (
         <div

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
@@ -38,6 +39,8 @@ export default function CategoryChart({
   isLoading,
   onCategoryClick,
 }: CategoryChartProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
   if (isLoading) {
     return (
       <div className="text-center text-text-muted py-8">
@@ -54,67 +57,101 @@ export default function CategoryChart({
     );
   }
 
+  const chartData = categories.map((category, index) => ({
+    name: category.name,
+    value: category.amount,
+    colorIndex: category.colorIndex,
+    index,
+  }));
+
   return (
     <>
       {/* Donut Chart */}
       <div
         className="flex justify-center items-center relative"
-        style={{ marginBottom: '24px', height: '200px', pointerEvents: 'none' }}
+        style={{ marginBottom: '24px', height: '200px' }}
       >
         <ResponsiveContainer width="100%" height="100%">
           <PieChart style={{ outline: 'none' }}>
             <Pie
-              data={categories.map((category) => ({
-                name: category.name,
-                value: category.amount,
-                colorIndex: category.colorIndex,
-              }))}
+              data={chartData}
               cx="50%"
               cy="50%"
-              innerRadius={50}
+              innerRadius={hoveredIndex !== null ? 47 : 50}
               outerRadius={80}
               paddingAngle={1}
               dataKey="value"
               startAngle={90}
               endAngle={-270}
               isAnimationActive={false}
+              onMouseEnter={(_, index) => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
             >
-              {categories.map((category, index) => (
+              {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={COLORS[category.colorIndex % COLORS.length]}
-                  opacity={0.9}
+                  fill={COLORS[entry.colorIndex % COLORS.length]}
+                  opacity={hoveredIndex === null || hoveredIndex === index ? 0.9 : 0.4}
+                  style={{
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    transform: hoveredIndex === index ? 'scale(1.05)' : 'scale(1)',
+                    transformOrigin: 'center',
+                  }}
                 />
               ))}
             </Pie>
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-          <div className="font-bold text-text-primary text-sm sm:text-base">
-            {formatNumber(totalExpense)}
-          </div>
-          <div className="text-[10px] sm:text-xs text-text-muted" style={{ marginTop: '2px' }}>
-            총 지출
-          </div>
+          {hoveredIndex !== null ? (
+            <>
+              <div className="font-bold text-text-primary text-sm sm:text-base">
+                {formatNumber(categories[hoveredIndex].amount)}
+              </div>
+              <div className="text-[10px] sm:text-xs text-text-muted" style={{ marginTop: '2px' }}>
+                {categories[hoveredIndex].name}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="font-bold text-text-primary text-sm sm:text-base">
+                {formatNumber(totalExpense)}
+              </div>
+              <div className="text-[10px] sm:text-xs text-text-muted" style={{ marginTop: '2px' }}>
+                총 지출
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Category List */}
       <div className="flex flex-col" style={{ gap: '8px' }}>
-        {categories.map((category) => {
-          const hasExceeded = category.budget && category.budget > 0 && category.amount > category.budget;
+        {categories.map((category, index) => {
           const usagePercent = category.budgetUsagePercent ?? 0;
+          const isHovered = hoveredIndex === index;
 
           return (
             <div
               key={category.id}
-              className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover hover:translate-x-1"
-              style={{ padding: '12px' }}
+              className={`bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all ${
+                isHovered ? 'bg-bg-card-hover translate-x-1 ring-2 ring-offset-2 ring-offset-bg-card' : 'hover:bg-bg-card-hover hover:translate-x-1'
+              }`}
+              style={{
+                padding: '12px',
+                ...(isHovered && {
+                  ringColor: COLORS[category.colorIndex % COLORS.length],
+                  boxShadow: `0 0 0 2px var(--bg-card), 0 0 0 4px ${COLORS[category.colorIndex % COLORS.length]}40`
+                })
+              }}
               onClick={() => onCategoryClick(category.id)}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
             >
               <div className="flex items-center">
                 <div
-                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-xl ${BG_COLORS[category.colorIndex % BG_COLORS.length]}`}
+                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-xl ${BG_COLORS[category.colorIndex % BG_COLORS.length]} transition-transform ${isHovered ? 'scale-110' : ''}`}
                   style={{ marginRight: '12px' }}
                 >
                   {category.icon}
