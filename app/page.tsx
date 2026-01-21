@@ -472,7 +472,7 @@ export default function Home() {
 
             <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]" style={{ padding: '16px' }}>
               <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
-                <MdReceipt className="text-lg sm:text-xl text-accent-purple" /> 전체 거래 내역
+                <MdReceipt className="text-lg sm:text-xl text-accent-purple" /> 전체 내역
                 {allTransactions.length > 0 && <span className="text-sm text-text-muted font-normal">({allTransactions.length}건)</span>}
               </h2>
 
@@ -493,7 +493,7 @@ export default function Home() {
                 <div className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right" style={{ padding: '12px' }}>
                   <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>잔액</p>
                   <p className="text-sm sm:text-base font-bold text-accent-purple">
-                    {allTransactionsSummary.balance >= 0 ? '+' : ''}₩{allTransactionsSummary.balance.toLocaleString()}
+                    {allTransactionsSummary.balance >= 0 ? '+' : '-'}₩{Math.abs(allTransactionsSummary.balance).toLocaleString()}
                   </p>
                 </div>
               </div>
