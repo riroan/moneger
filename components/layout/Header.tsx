@@ -14,6 +14,7 @@ interface HeaderProps {
   onNextMonth: () => void;
   onMonthSelect: (year: number, month: number) => void;
   onLogout: () => void;
+  oldestDate?: { year: number; month: number } | null;
 }
 
 export default function Header({
@@ -24,6 +25,7 @@ export default function Header({
   onNextMonth,
   onMonthSelect,
   onLogout,
+  oldestDate,
 }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -73,6 +75,25 @@ export default function Header({
       (nextMonth.getFullYear() === now.getFullYear() && nextMonth.getMonth() > now.getMonth());
   };
 
+  const isPreviousMonthDisabled = () => {
+    if (!oldestDate) return false;
+    const oldestMonth = oldestDate.month - 1; // API returns 1-based month
+    return currentDate.getFullYear() < oldestDate.year ||
+      (currentDate.getFullYear() === oldestDate.year && currentDate.getMonth() <= oldestMonth);
+  };
+
+  const isPastMonth = (year: number, month: number) => {
+    if (!oldestDate) return false;
+    const oldestMonth = oldestDate.month - 1; // API returns 1-based month
+    return year < oldestDate.year ||
+      (year === oldestDate.year && month < oldestMonth);
+  };
+
+  const isPastYear = (year: number) => {
+    if (!oldestDate) return false;
+    return year < oldestDate.year;
+  };
+
   return (
     <header
       className="flex justify-between items-center animate-[fadeInDown_0.6s_ease-out]"
@@ -104,7 +125,8 @@ export default function Header({
         <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none" style={{ padding: '8px 12px', gap: '8px' }}>
           <button
             onClick={onPreviousMonth}
-            className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer"
+            disabled={isPreviousMonthDisabled()}
+            className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
           >
             ◀
           </button>
@@ -130,7 +152,8 @@ export default function Header({
               <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                 <button
                   onClick={() => setPickerYear(prev => prev - 1)}
-                  className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center"
+                  disabled={isPastYear(pickerYear - 1)}
+                  className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   ◀
                 </button>
@@ -152,6 +175,8 @@ export default function Header({
                   const now = new Date();
                   const isFuture = pickerYear > now.getFullYear() ||
                     (pickerYear === now.getFullYear() && month > now.getMonth());
+                  const isPast = isPastMonth(pickerYear, month);
+                  const isDisabled = isFuture || isPast;
                   return (
                     <button
                       key={month}
@@ -159,9 +184,9 @@ export default function Header({
                         onMonthSelect(pickerYear, month);
                         setIsDatePickerOpen(false);
                       }}
-                      disabled={isFuture}
+                      disabled={isDisabled}
                       className={`rounded-[8px] font-medium transition-all ${
-                        isFuture
+                        isDisabled
                           ? 'bg-bg-secondary text-text-muted opacity-30 cursor-not-allowed'
                           : isSelected
                           ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary cursor-pointer'

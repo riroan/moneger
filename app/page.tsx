@@ -263,6 +263,12 @@ export default function Home() {
     setFilterCategories([categoryId]);
     setSortOrder('recent');
     setSearchKeyword('');
+    setDateRange({
+      startYear: currentDate.getFullYear(),
+      startMonth: currentDate.getMonth(),
+      endYear: currentDate.getFullYear(),
+      endMonth: currentDate.getMonth(),
+    });
     setActiveTab('transactions');
   };
 
@@ -293,6 +299,7 @@ export default function Home() {
           onNextMonth={handleNextMonth}
           onMonthSelect={handleMonthSelect}
           onLogout={logout}
+          oldestDate={oldestTransactionDate}
         />
 
         {/* Tab Bar */}
