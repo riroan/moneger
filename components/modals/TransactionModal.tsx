@@ -272,7 +272,7 @@ export default function TransactionModal({
                 style={{ padding: '14px 16px' }}
               >
                 {selectedCategory && !isCategoryOpen && (
-                  <span className="text-text-primary mr-3">
+                  <span className="text-text-primary" style={{ marginRight: '5px' }}>
                     {(() => {
                       const cat = currentCategories.find(c => c.id === selectedCategory);
                       return cat ? `${cat.icon}` : '';

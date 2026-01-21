@@ -260,7 +260,7 @@ export default function EditTransactionModal({
                 style={{ padding: '14px 16px' }}
               >
                 {selectedCategory && !isCategoryOpen && (
-                  <span className="text-text-primary mr-3">
+                  <span className="text-text-primary" style={{ marginRight: '5px' }}>
                     {(() => {
                       const cat = currentCategories.find(c => c.id === selectedCategory);
                       return cat ? `${cat.icon}` : '';
@@ -356,7 +356,7 @@ export default function EditTransactionModal({
             <button
               type="button"
               onClick={onDelete}
-              className="flex-1 bg-gradient-to-br from-accent-coral to-red-600 text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ padding: '14px' }}
               disabled={isSubmitting}
             >

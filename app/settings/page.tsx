@@ -1193,15 +1193,15 @@ export default function SettingsPage() {
           }}
         >
           <div
-            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out]"
-            style={{ padding: '32px', margin: '20px' }}
+            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md max-h-[90vh] flex flex-col animate-[fadeInUp_0.3s_ease-out]"
+            style={{ margin: '20px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-bold text-text-primary" style={{ marginBottom: '24px' }}>
+            <h2 className="text-2xl font-bold text-text-primary flex-shrink-0" style={{ padding: '32px 32px 0 32px', marginBottom: '24px' }}>
               카테고리 추가
             </h2>
 
-            <form onSubmit={handleAddCategory}>
+            <form onSubmit={handleAddCategory} className="flex-1 overflow-y-auto min-h-0 flex flex-col" style={{ padding: '0 32px 32px 32px' }}>
               {/* Type Display */}
               <div className="flex rounded-[14px] bg-bg-secondary p-1.5" style={{ marginBottom: '20px' }}>
                 <div
@@ -1254,7 +1254,7 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
                   아이콘
                 </label>
-                <div className="grid grid-cols-8 gap-2">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                   {iconList.map((icon) => (
                     <button
                       key={icon}
@@ -1265,6 +1265,7 @@ export default function SettingsPage() {
                           ? 'bg-accent-blue text-white shadow-lg scale-110'
                           : 'bg-bg-secondary hover:bg-bg-card-hover'
                       }`}
+                      style={{ paddingBottom: '2px' }}
                     >
                       {icon}
                     </button>
@@ -1277,7 +1278,7 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
                   색상
                 </label>
-                <div className="grid grid-cols-8 gap-2">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                   {colorList.map((color) => (
                     <button
                       key={color.value}
@@ -1326,7 +1327,7 @@ export default function SettingsPage() {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-shrink-0" style={{ marginTop: 'auto', paddingTop: '4px' }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -1377,15 +1378,15 @@ export default function SettingsPage() {
           }}
         >
           <div
-            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out]"
-            style={{ padding: '32px', margin: '20px' }}
+            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md max-h-[90vh] flex flex-col animate-[fadeInUp_0.3s_ease-out]"
+            style={{ margin: '20px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-bold text-text-primary" style={{ marginBottom: '24px' }}>
+            <h2 className="text-2xl font-bold text-text-primary flex-shrink-0" style={{ padding: '32px 32px 0 32px', marginBottom: '24px' }}>
               카테고리 수정
             </h2>
 
-            <form onSubmit={handleEditCategory}>
+            <form onSubmit={handleEditCategory} className="flex-1 overflow-y-auto min-h-0 flex flex-col" style={{ padding: '0 32px 32px 32px' }}>
               {/* Type Display (Read-only) */}
               <div className="flex rounded-[14px] bg-bg-secondary p-1.5" style={{ marginBottom: '20px' }}>
                 <div
@@ -1438,7 +1439,7 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
                   아이콘
                 </label>
-                <div className="grid grid-cols-8 gap-2">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                   {iconList.map((icon) => (
                     <button
                       key={icon}
@@ -1449,6 +1450,7 @@ export default function SettingsPage() {
                           ? 'bg-accent-blue text-white shadow-lg scale-110'
                           : 'bg-bg-secondary hover:bg-bg-card-hover'
                       }`}
+                      style={{ paddingBottom: '2px' }}
                     >
                       {icon}
                     </button>
@@ -1461,7 +1463,7 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
                   색상
                 </label>
-                <div className="grid grid-cols-8 gap-2">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                   {colorList.map((color) => (
                     <button
                       key={color.value}
@@ -1510,47 +1512,45 @@ export default function SettingsPage() {
               )}
 
               {/* Action Buttons */}
-              <div className="flex flex-col gap-3">
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditCategoryModalOpen(false);
-                      setEditingCategory(null);
-                      setCategoryName('');
-                      setCategoryType('EXPENSE');
-                      setCategoryIcon('📦');
-                      setCategoryColor('#EF4444');
-                      setCategoryDefaultBudget('');
-                      setNameError('');
-                    }}
-                    className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-                    style={{ padding: '14px' }}
-                    disabled={isSubmitting}
-                  >
-                    취소
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || !categoryName}
-                    className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                      categoryType === 'EXPENSE'
-                        ? 'bg-gradient-to-br from-accent-coral to-accent-yellow'
-                        : 'bg-gradient-to-br from-accent-mint to-accent-blue'
-                    } text-bg-primary`}
-                    style={{ padding: '14px' }}
-                  >
-                    {isSubmitting ? '수정 중...' : '수정'}
-                  </button>
-                </div>
+              <div className="flex gap-3 flex-shrink-0" style={{ marginTop: 'auto', paddingTop: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditCategoryModalOpen(false);
+                    setEditingCategory(null);
+                    setCategoryName('');
+                    setCategoryType('EXPENSE');
+                    setCategoryIcon('📦');
+                    setCategoryColor('#EF4444');
+                    setCategoryDefaultBudget('');
+                    setNameError('');
+                  }}
+                  className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
+                  style={{ padding: '14px' }}
+                  disabled={isSubmitting}
+                >
+                  취소
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsDeleteCategoryConfirmOpen(true)}
-                  className="w-full bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer"
+                  className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ padding: '14px' }}
                   disabled={isSubmitting}
                 >
                   삭제
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !categoryName}
+                  className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                    categoryType === 'EXPENSE'
+                      ? 'bg-gradient-to-br from-accent-coral to-accent-yellow'
+                      : 'bg-gradient-to-br from-accent-mint to-accent-blue'
+                  } text-bg-primary`}
+                  style={{ padding: '14px' }}
+                >
+                  {isSubmitting ? '수정 중...' : '수정'}
                 </button>
               </div>
             </form>
