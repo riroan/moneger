@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { logger } from '@/lib/logger';
 
 // DELETE /api/auth/delete - 계정 삭제 (soft delete)
 export async function DELETE(request: NextRequest) {
@@ -55,7 +56,7 @@ export async function DELETE(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Account deletion failed:', error);
+    logger.error('Account deletion failed', error);
     return NextResponse.json(
       { error: '계정 삭제 중 오류가 발생했습니다' },
       { status: 500 }

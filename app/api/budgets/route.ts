@@ -6,6 +6,7 @@ import {
   errorResponse,
   validateUserId,
 } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 
 // GET /api/budgets - 예산 목록 조회
 export async function GET(request: NextRequest) {
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(budgets);
   } catch (error) {
-    console.error('Failed to fetch budgets:', error);
+    logger.error('Failed to fetch budgets', error);
     return errorResponse('Failed to fetch budgets', 500);
   }
 }
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     return successResponseWithMessage(budget, 'Budget saved successfully', 201);
   } catch (error) {
-    console.error('Failed to save budget:', error);
+    logger.error('Failed to save budget', error);
     return errorResponse('Failed to save budget', 500);
   }
 }
@@ -141,7 +142,7 @@ export async function DELETE(request: NextRequest) {
 
     return successResponseWithMessage(null, 'Budget deleted successfully');
   } catch (error) {
-    console.error('Failed to delete budget:', error);
+    logger.error('Failed to delete budget', error);
     return errorResponse('Failed to delete budget', 500);
   }
 }

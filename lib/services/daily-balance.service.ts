@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { logger } from '@/lib/logger';
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -137,9 +138,9 @@ export async function updateDailyBalance(userId: string, date: Date): Promise<vo
       create: { userId, date: startOfDay, balance, income, expense },
     });
 
-    console.log(`Daily balance updated for ${startOfDay.toISOString().split('T')[0]}: balance=${balance}`);
+    logger.debug(`Daily balance updated for ${startOfDay.toISOString().split('T')[0]}`, { balance });
   } catch (error) {
-    console.error('Failed to update daily balance:', error);
+    logger.error('Failed to update daily balance', error);
     throw error;
   }
 }

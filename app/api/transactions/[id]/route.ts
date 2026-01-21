@@ -6,6 +6,7 @@ import {
   validateTransactionType,
   validateAmount,
 } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 import {
   findTransaction,
   updateTransaction,
@@ -70,7 +71,7 @@ export async function PATCH(
 
     return successResponseWithMessage(transaction, 'Transaction updated successfully');
   } catch (error) {
-    console.error('Failed to update transaction:', error);
+    logger.error('Failed to update transaction', error);
     return errorResponse('Failed to update transaction', 500);
   }
 }
@@ -100,7 +101,7 @@ export async function DELETE(
 
     return successResponseWithMessage(null, 'Transaction deleted successfully');
   } catch (error) {
-    console.error('Failed to delete transaction:', error);
+    logger.error('Failed to delete transaction', error);
     return errorResponse('Failed to delete transaction', 500);
   }
 }

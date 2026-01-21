@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { logger } from '@/lib/logger';
 
 // POST /api/auth/signup - 회원가입
 export async function POST(request: NextRequest) {
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Signup failed:', error);
+    logger.error('Signup failed', error);
     return NextResponse.json(
       { error: '회원가입 처리 중 오류가 발생했습니다' },
       { status: 500 }

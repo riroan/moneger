@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // POST /api/categories/seed - 기본 카테고리 생성
 export async function POST(request: NextRequest) {
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Failed to seed categories:', error);
+    logger.error('Failed to seed categories', error);
     return NextResponse.json(
       { error: 'Failed to seed categories' },
       { status: 500 }

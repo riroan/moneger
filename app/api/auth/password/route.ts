@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { logger } from '@/lib/logger';
 
 // PATCH /api/auth/password - 비밀번호 변경
 export async function PATCH(request: NextRequest) {
@@ -65,7 +66,7 @@ export async function PATCH(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Password change failed:', error);
+    logger.error('Password change failed', error);
     return NextResponse.json(
       { error: '비밀번호 변경 중 오류가 발생했습니다' },
       { status: 500 }

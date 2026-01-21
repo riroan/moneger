@@ -5,6 +5,7 @@ import {
   validateUserId,
   validateTransactionType,
 } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 import {
   findCategory,
   findDuplicateCategory,
@@ -50,7 +51,7 @@ export async function PATCH(
 
     return successResponseWithMessage(updatedCategory, 'Category updated successfully');
   } catch (error) {
-    console.error('Failed to update category:', error);
+    logger.error('Failed to update category', error);
     return errorResponse('Failed to update category', 500);
   }
 }
@@ -79,7 +80,7 @@ export async function DELETE(
 
     return successResponseWithMessage(null, 'Category deleted successfully');
   } catch (error) {
-    console.error('Failed to delete category:', error);
+    logger.error('Failed to delete category', error);
     return errorResponse('Failed to delete category', 500);
   }
 }

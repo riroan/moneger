@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { TransactionType } from '@prisma/client';
 
 const CATEGORY_SELECT = {
   id: true,
@@ -15,6 +16,20 @@ interface CategoryStat {
   icon: string | null;
   count: number;
   total: number;
+}
+
+interface TransactionForStats {
+  id: string;
+  amount: number;
+  type: TransactionType;
+  date: Date;
+  category: {
+    id: string;
+    name: string;
+    type: TransactionType;
+    color: string | null;
+    icon: string | null;
+  } | null;
 }
 
 /**
@@ -104,7 +119,7 @@ export async function getMonthlyStats(userId: string, year: number, month: numbe
 /**
  * 최근 7일 일별 지출 계산
  */
-function getLast7DaysExpenses(transactions: any[]) {
+function getLast7DaysExpenses(transactions: TransactionForStats[]) {
   const last7Days: { date: string; amount: number }[] = [];
   const today = new Date();
 

@@ -5,6 +5,7 @@ import {
   errorResponse,
   validateUserId,
 } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 import {
   saveDailyBalance,
   getRecentDailyBalances,
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     return successResponseWithMessage(dailyBalance, '일별 잔액이 저장되었습니다');
   } catch (error) {
-    console.error('Daily balance save failed:', error);
+    logger.error('Daily balance save failed', error);
     return errorResponse('일별 잔액 저장 중 오류가 발생했습니다', 500);
   }
 }
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(dailyBalances);
   } catch (error) {
-    console.error('Daily balance fetch failed:', error);
+    logger.error('Daily balance fetch failed', error);
     return errorResponse('일별 잔액 조회 중 오류가 발생했습니다', 500);
   }
 }

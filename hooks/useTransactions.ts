@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { TransactionWithCategory } from '@/types';
 
 interface DateRange {
   startYear: number;
@@ -35,7 +36,7 @@ export function useTransactions({
   dateRange,
   amountRange,
 }: UseTransactionsProps) {
-  const [allTransactions, setAllTransactions] = useState<any[]>([]);
+  const [allTransactions, setAllTransactions] = useState<TransactionWithCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);

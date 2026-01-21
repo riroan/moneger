@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { successResponse, errorResponse, validateUserId } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 
 // GET /api/transactions/today - 오늘의 지출 요약 조회
 export async function GET(request: NextRequest) {
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Failed to fetch today summary:', error);
+    logger.error('Failed to fetch today summary', error);
     return errorResponse('Failed to fetch today summary', 500);
   }
 }

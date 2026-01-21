@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { TransactionType } from '@prisma/client';
+import { TransactionType, Prisma } from '@prisma/client';
 import { updateDailyBalanceInTransaction } from './daily-balance.service';
 
 const CATEGORY_SELECT = {
@@ -79,12 +79,14 @@ export async function updateTransaction(
   input: UpdateTransactionInput,
   existingDate: Date
 ) {
-  const updateData: any = {};
+  const updateData: Prisma.TransactionUpdateInput = {};
 
   if (input.type !== undefined) updateData.type = input.type;
   if (input.amount !== undefined) updateData.amount = input.amount;
   if (input.description !== undefined) updateData.description = input.description || null;
-  if (input.categoryId !== undefined) updateData.categoryId = input.categoryId;
+  if (input.categoryId !== undefined) {
+    updateData.category = input.categoryId ? { connect: { id: input.categoryId } } : { disconnect: true };
+  }
   if (input.date !== undefined) updateData.date = input.date;
 
   return prisma.$transaction(async (tx) => {
@@ -136,7 +138,7 @@ export async function getTransactions(input: GetTransactionsInput) {
   const { userId, year, month, type, categoryIds, search, sort = 'recent', cursor, limit = 20 } = input;
 
   // 필터 조건
-  const where: any = { userId, deletedAt: null };
+  const where: Prisma.TransactionWhereInput = { userId, deletedAt: null };
 
   // 날짜 범위 필터 (startYear, startMonth ~ endYear, endMonth)
   if (input.startYear !== undefined && input.startMonth !== undefined &&
@@ -167,15 +169,16 @@ export async function getTransactions(input: GetTransactionsInput) {
   }
 
   // 정렬
-  const orderBy = {
+  const orderByMap: Record<string, Prisma.TransactionOrderByWithRelationInput> = {
     recent: { date: 'desc' },
     oldest: { date: 'asc' },
     expensive: { amount: 'desc' },
     cheapest: { amount: 'asc' },
-  }[sort] as any;
+  };
+  const orderBy = orderByMap[sort];
 
   // 쿼리 옵션
-  const queryOptions: any = {
+  const queryOptions: Prisma.TransactionFindManyArgs = {
     where,
     include: { category: { select: CATEGORY_SELECT } },
     orderBy,

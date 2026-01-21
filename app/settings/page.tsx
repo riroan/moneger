@@ -1,16 +1,29 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useTheme } from '@/contexts/ThemeContext';
-import { formatNumber } from '@/utils/formatters';
+import { useToast } from '@/contexts/ToastContext';
+import { useOutsideClick, useBodyScrollLock } from '@/hooks';
+import type { Category, Budget } from '@/types';
+import {
+  AccountTab,
+  CategoryTab,
+  BudgetTab,
+  CategoryFormModal,
+  ConfirmModal,
+  BudgetEditModal,
+  DeleteAccountModal,
+} from '@/components/settings';
+import type { CategoryFormData } from '@/components/settings';
 
 type SettingTab = 'account' | 'category' | 'budget';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  const { showToast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
@@ -18,57 +31,33 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingTab>('account');
 
   // 카테고리 관리
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
-  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<any>(null);
-  const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryModalMode, setCategoryModalMode] = useState<'add' | 'edit'>('add');
+  const [categoryModalType, setCategoryModalType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isDeleteCategoryConfirmOpen, setIsDeleteCategoryConfirmOpen] = useState(false);
-
-  // 폼 상태
-  const [categoryName, setCategoryName] = useState('');
-  const [categoryType, setCategoryType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
-  const [categoryIcon, setCategoryIcon] = useState('📦');
-  const [categoryColor, setCategoryColor] = useState('#EF4444');
-  const [categoryDefaultBudget, setCategoryDefaultBudget] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 에러 상태
-  const [nameError, setNameError] = useState('');
-
-  // 비밀번호 변경 상태
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // 계정 삭제 상태
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteError, setDeleteError] = useState('');
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // 프로필 메뉴 상태
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const closeProfileMenu = useCallback(() => setIsProfileMenuOpen(false), []);
+  const profileMenuRef = useOutsideClick<HTMLDivElement>(closeProfileMenu, isProfileMenuOpen);
 
   // 예산 관리 상태
   const [budgetDate, setBudgetDate] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const [budgets, setBudgets] = useState<any[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isLoadingBudgets, setIsLoadingBudgets] = useState(false);
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
-  const [editingBudgetCategory, setEditingBudgetCategory] = useState<any>(null);
-  const [budgetAmount, setBudgetAmount] = useState('');
-  const [isSavingBudget, setIsSavingBudget] = useState(false);
+  const [editingBudgetCategory, setEditingBudgetCategory] = useState<Category | null>(null);
   const [oldestTransactionDate, setOldestTransactionDate] = useState<{ year: number; month: number } | null>(null);
-  const [isBudgetDatePickerOpen, setIsBudgetDatePickerOpen] = useState(false);
-  const [budgetPickerYear, setBudgetPickerYear] = useState(() => new Date().getFullYear());
-  const budgetDatePickerRef = useRef<HTMLDivElement>(null);
 
   // 인증 확인
   useEffect(() => {
@@ -146,42 +135,8 @@ export default function SettingsPage() {
     fetchBudgets();
   }, [userId, activeTab, budgetDate]);
 
-  // 프로필 메뉴 외부 클릭 시 닫기
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setIsProfileMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // 예산 날짜 선택기 외부 클릭 시 닫기
-  useEffect(() => {
-    if (!isBudgetDatePickerOpen) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (budgetDatePickerRef.current && !budgetDatePickerRef.current.contains(event.target as Node)) {
-        setIsBudgetDatePickerOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isBudgetDatePickerOpen]);
-
   // 모달이 열렸을 때 body 스크롤 비활성화
-  useEffect(() => {
-    if (isAddCategoryModalOpen || isEditCategoryModalOpen || isDeleteCategoryConfirmOpen || isDeleteAccountModalOpen || isBudgetModalOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isAddCategoryModalOpen, isEditCategoryModalOpen, isDeleteCategoryConfirmOpen, isDeleteAccountModalOpen, isBudgetModalOpen]);
+  useBodyScrollLock(isCategoryModalOpen || isDeleteCategoryConfirmOpen || isDeleteAccountModalOpen || isBudgetModalOpen);
 
   const handleLogout = () => {
     localStorage.removeItem('userId');
@@ -190,229 +145,77 @@ export default function SettingsPage() {
     router.push('/login');
   };
 
-  // 비밀번호 변경
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess('');
-
-    if (!userId) return;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError('모든 필드를 입력해주세요');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setPasswordError('새 비밀번호는 최소 6자 이상이어야 합니다');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError('새 비밀번호가 일치하지 않습니다');
-      return;
-    }
-
-    setIsChangingPassword(true);
-
-    try {
-      const response = await fetch('/api/auth/password', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          currentPassword,
-          newPassword,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || '비밀번호 변경에 실패했습니다');
-      }
-
-      setPasswordSuccess('비밀번호가 변경되었습니다');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error) {
-      setPasswordError(error instanceof Error ? error.message : '비밀번호 변경에 실패했습니다');
-    } finally {
-      setIsChangingPassword(false);
-    }
+  // 카테고리 모달 열기
+  const handleOpenAddCategoryModal = (type: 'INCOME' | 'EXPENSE') => {
+    setCategoryModalMode('add');
+    setCategoryModalType(type);
+    setEditingCategory(null);
+    setIsCategoryModalOpen(true);
   };
 
-  // 계정 삭제
-  const handleDeleteAccount = async () => {
-    if (!userId) return;
-
-    if (!deletePassword) {
-      setDeleteError('비밀번호를 입력해주세요');
-      return;
-    }
-
-    setIsDeletingAccount(true);
-    setDeleteError('');
-
-    try {
-      const response = await fetch('/api/auth/delete', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          password: deletePassword,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || '계정 삭제에 실패했습니다');
-      }
-
-      // 성공 시 로그아웃 처리
-      localStorage.removeItem('userId');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('userEmail');
-      router.push('/login');
-    } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : '계정 삭제에 실패했습니다');
-    } finally {
-      setIsDeletingAccount(false);
-    }
+  const handleOpenEditCategoryModal = (category: Category) => {
+    setCategoryModalMode('edit');
+    setCategoryModalType(category.type);
+    setEditingCategory(category);
+    setIsCategoryModalOpen(true);
   };
 
-  // 카테고리 추가
-  const handleAddCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // 카테고리 추가/수정
+  const handleCategorySubmit = async (data: CategoryFormData) => {
     if (!userId) return;
 
-    // 카테고리 개수 제한 (최대 20개)
-    const currentTypeCategories = categories.filter(c => c.type === categoryType);
-    if (currentTypeCategories.length >= 20) {
-      setNameError(`${categoryType === 'INCOME' ? '수입' : '지출'} 카테고리는 최대 20개까지만 추가할 수 있습니다`);
-      return;
-    }
+    if (categoryModalMode === 'add') {
+      // 카테고리 개수 제한 (최대 20개)
+      const currentTypeCategories = categories.filter(c => c.type === data.type);
+      if (currentTypeCategories.length >= 20) {
+        throw new Error(`${data.type === 'INCOME' ? '수입' : '지출'} 카테고리는 최대 20개까지만 추가할 수 있습니다`);
+      }
 
-    // 유효성 검사
-    if (!categoryName || categoryName.trim() === '') {
-      setNameError('카테고리 이름을 입력해주세요');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
       const response = await fetch('/api/categories', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          name: categoryName,
-          type: categoryType,
-          icon: categoryIcon,
-          color: categoryColor,
-          defaultBudget: categoryType === 'EXPENSE' && categoryDefaultBudget
-            ? parseInt(categoryDefaultBudget, 10)
+          name: data.name,
+          type: data.type,
+          icon: data.icon,
+          color: data.color,
+          defaultBudget: data.type === 'EXPENSE' && data.defaultBudget
+            ? parseInt(data.defaultBudget, 10)
             : null,
         }),
       });
 
-      const data = await response.json();
-
+      const result = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || '카테고리 추가에 실패했습니다');
+        throw new Error(result.error || '카테고리 추가에 실패했습니다');
       }
-
-      // 성공 시 모달 닫고 폼 리셋
-      setIsAddCategoryModalOpen(false);
-      setCategoryName('');
-      setCategoryType('EXPENSE');
-      setCategoryIcon('📦');
-      setCategoryColor('#EF4444');
-      setCategoryDefaultBudget('');
-      setNameError('');
-
-      // 카테고리 목록 새로고침
-      const categoriesResponse = await fetch(`/api/categories?userId=${userId}`);
-      const categoriesData = await categoriesResponse.json();
-      if (categoriesData.success) {
-        setCategories(categoriesData.data);
-      }
-    } catch (error) {
-      console.error('Failed to create category:', error);
-      alert(error instanceof Error ? error.message : '카테고리 추가에 실패했습니다');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // 카테고리 수정
-  const handleEditCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!userId || !editingCategory) return;
-
-    // 유효성 검사
-    if (!categoryName || categoryName.trim() === '') {
-      setNameError('카테고리 이름을 입력해주세요');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
+    } else if (editingCategory) {
       const response = await fetch(`/api/categories/${editingCategory.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          name: categoryName,
-          icon: categoryIcon,
-          color: categoryColor,
-          defaultBudget: categoryType === 'EXPENSE' && categoryDefaultBudget
-            ? parseInt(categoryDefaultBudget, 10)
+          name: data.name,
+          icon: data.icon,
+          color: data.color,
+          defaultBudget: data.type === 'EXPENSE' && data.defaultBudget
+            ? parseInt(data.defaultBudget, 10)
             : null,
         }),
       });
 
-      const data = await response.json();
-
+      const result = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || '카테고리 수정에 실패했습니다');
+        throw new Error(result.error || '카테고리 수정에 실패했습니다');
       }
+    }
 
-      // 성공 시 모달 닫고 폼 리셋
-      setIsEditCategoryModalOpen(false);
-      setEditingCategory(null);
-      setCategoryName('');
-      setCategoryType('EXPENSE');
-      setCategoryIcon('📦');
-      setCategoryColor('#EF4444');
-      setCategoryDefaultBudget('');
-      setNameError('');
-
-      // 카테고리 목록 새로고침
-      const categoriesResponse = await fetch(`/api/categories?userId=${userId}`);
-      const categoriesData = await categoriesResponse.json();
-      if (categoriesData.success) {
-        setCategories(categoriesData.data);
-      }
-    } catch (error) {
-      console.error('Failed to update category:', error);
-      alert(error instanceof Error ? error.message : '카테고리 수정에 실패했습니다');
-    } finally {
-      setIsSubmitting(false);
+    // 카테고리 목록 새로고침
+    const categoriesResponse = await fetch(`/api/categories?userId=${userId}`);
+    const categoriesData = await categoriesResponse.json();
+    if (categoriesData.success) {
+      setCategories(categoriesData.data);
     }
   };
 
@@ -435,15 +238,9 @@ export default function SettingsPage() {
         throw new Error(data.error || '카테고리 삭제에 실패했습니다');
       }
 
-      // 성공 시 모달 닫고 폼 리셋
       setIsDeleteCategoryConfirmOpen(false);
-      setIsEditCategoryModalOpen(false);
+      setIsCategoryModalOpen(false);
       setEditingCategory(null);
-      setCategoryName('');
-      setCategoryType('EXPENSE');
-      setCategoryIcon('📦');
-      setCategoryColor('#EF4444');
-      setNameError('');
 
       // 카테고리 목록 새로고침
       const categoriesResponse = await fetch(`/api/categories?userId=${userId}`);
@@ -453,149 +250,56 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert(error instanceof Error ? error.message : '카테고리 삭제에 실패했습니다');
+      showToast(error instanceof Error ? error.message : '카테고리 삭제에 실패했습니다', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // 예산 모달 열기
-  const openBudgetModal = (category: any) => {
+  const openBudgetModal = (category: Category) => {
     setEditingBudgetCategory(category);
-    const existingBudget = budgets.find(b => b.categoryId === category.id);
-    setBudgetAmount(existingBudget ? existingBudget.amount.toString() : '');
     setIsBudgetModalOpen(true);
   };
 
-  // 예산 모달 닫기
-  const closeBudgetModal = () => {
-    setIsBudgetModalOpen(false);
-    setEditingBudgetCategory(null);
-    setBudgetAmount('');
-  };
-
   // 예산 저장
-  const handleSaveBudget = async () => {
+  const handleSaveBudget = async (amount: number) => {
     if (!userId || !editingBudgetCategory) return;
 
-    const amount = parseInt(budgetAmount || '0', 10);
+    const response = await fetch('/api/budgets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        categoryId: editingBudgetCategory.id,
+        amount,
+        year: budgetDate.getFullYear(),
+        month: budgetDate.getMonth() + 1,
+      }),
+    });
 
-    setIsSavingBudget(true);
-    try {
-      const response = await fetch('/api/budgets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          categoryId: editingBudgetCategory.id,
-          amount,
-          year: budgetDate.getFullYear(),
-          month: budgetDate.getMonth() + 1,
-        }),
+    const data = await response.json();
+    if (data.success) {
+      setBudgets(prev => {
+        const existing = prev.findIndex(b => b.categoryId === editingBudgetCategory.id);
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = data.data;
+          return updated;
+        }
+        return [...prev, data.data];
       });
-
-      const data = await response.json();
-      if (data.success) {
-        setBudgets(prev => {
-          const existing = prev.findIndex(b => b.categoryId === editingBudgetCategory.id);
-          if (existing >= 0) {
-            const updated = [...prev];
-            updated[existing] = data.data;
-            return updated;
-          }
-          return [...prev, data.data];
-        });
-        closeBudgetModal();
-      }
-    } catch (error) {
-      console.error('Failed to save budget:', error);
-    } finally {
-      setIsSavingBudget(false);
     }
   };
-
-  // 예산 날짜 변경
-  const isBudgetPreviousMonthDisabled = () => {
-    if (!oldestTransactionDate) return false;
-    const oldestMonth = oldestTransactionDate.month - 1; // API returns 1-based month
-    // 현재 월이 가장 오래된 거래 월과 같으면 이전으로 이동 불가
-    return budgetDate.getFullYear() === oldestTransactionDate.year && budgetDate.getMonth() === oldestMonth;
-  };
-
-  const isBudgetNextMonthDisabled = () => {
-    const nextMonth = new Date(budgetDate);
-    nextMonth.setMonth(budgetDate.getMonth() + 1);
-    const now = new Date();
-    return nextMonth.getFullYear() > now.getFullYear() ||
-      (nextMonth.getFullYear() === now.getFullYear() && nextMonth.getMonth() > now.getMonth());
-  };
-
-  const handleBudgetPreviousMonth = () => {
-    if (!isBudgetPreviousMonthDisabled()) {
-      setBudgetDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-    }
-  };
-
-  const handleBudgetNextMonth = () => {
-    if (!isBudgetNextMonthDisabled()) {
-      setBudgetDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-    }
-  };
-
-  const handleBudgetDatePickerToggle = () => {
-    if (!isBudgetDatePickerOpen) {
-      setBudgetPickerYear(budgetDate.getFullYear());
-    }
-    setIsBudgetDatePickerOpen(!isBudgetDatePickerOpen);
-  };
-
-  const handleBudgetMonthSelect = (year: number, month: number) => {
-    setBudgetDate(new Date(year, month, 1));
-    setIsBudgetDatePickerOpen(false);
-  };
-
-  const isBudgetPastMonth = (year: number, month: number) => {
-    if (!oldestTransactionDate) return false;
-    const oldestMonth = oldestTransactionDate.month - 1;
-    return year < oldestTransactionDate.year ||
-      (year === oldestTransactionDate.year && month < oldestMonth);
-  };
-
-  const isBudgetPastYear = (year: number) => {
-    if (!oldestTransactionDate) return false;
-    return year < oldestTransactionDate.year;
-  };
-
-  const formatYearMonth = (date: Date) => {
-    return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
-  };
-
-  const getBudgetForCategory = (categoryId: string) => {
-    return budgets.find(b => b.categoryId === categoryId);
-  };
-
-  // 아이콘 목록
-  const iconList = ['⭐', '📦', '🍽️', '🚗', '🏠', '💼', '🎮', '🎬', '🛒', '💰', '💳', '🏥', '📚', '✈️', '🎁', '☕', '🍔', '🧑', '❤️', '🛍️', '💸', '🎵', '🏋️', '🐾'];
-
-  // 색상 목록
-  const colorList = [
-    { name: '빨강', value: '#EF4444' },
-    { name: '주황', value: '#F97316' },
-    { name: '노랑', value: '#FBBF24' },
-    { name: '초록', value: '#10B981' },
-    { name: '파랑', value: '#3B82F6' },
-    { name: '보라', value: '#A855F7' },
-    { name: '분홍', value: '#EC4899' },
-    { name: '회색', value: '#6B7280' },
-  ];
 
   // 로딩 중일 때는 빈 화면 표시
   if (isLoading) {
     return null;
   }
 
-  const incomeCategories = categories.filter(cat => cat.type === 'INCOME');
-  const expenseCategories = categories.filter(cat => cat.type === 'EXPENSE');
+  const getBudgetForCategory = (categoryId: string) => {
+    return budgets.find(b => b.categoryId === categoryId);
+  };
 
   return (
     <>
@@ -697,1069 +401,168 @@ export default function SettingsPage() {
             <nav className="flex gap-2 bg-bg-card border border-[var(--border)] rounded-[12px] p-1">
               <button
                 onClick={() => setActiveTab('account')}
-                className={`flex-1 flex items-center justify-center rounded-[10px] transition-all cursor-pointer ${
+                className={`flex-1 rounded-[8px] font-medium text-sm transition-all cursor-pointer ${
                   activeTab === 'account'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
-                    : 'text-text-secondary'
+                    : 'text-text-secondary hover:text-text-primary'
                 }`}
-                style={{ padding: '12px' }}
+                style={{ padding: '10px' }}
               >
-                <span className="text-xl">👤</span>
+                계정
               </button>
               <button
                 onClick={() => setActiveTab('category')}
-                className={`flex-1 flex items-center justify-center rounded-[10px] transition-all cursor-pointer ${
+                className={`flex-1 rounded-[8px] font-medium text-sm transition-all cursor-pointer ${
                   activeTab === 'category'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
-                    : 'text-text-secondary'
+                    : 'text-text-secondary hover:text-text-primary'
                 }`}
-                style={{ padding: '12px' }}
+                style={{ padding: '10px' }}
               >
-                <span className="text-xl">📂</span>
+                카테고리
               </button>
               <button
                 onClick={() => setActiveTab('budget')}
-                className={`flex-1 flex items-center justify-center rounded-[10px] transition-all cursor-pointer ${
+                className={`flex-1 rounded-[8px] font-medium text-sm transition-all cursor-pointer ${
                   activeTab === 'budget'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
-                    : 'text-text-secondary'
+                    : 'text-text-secondary hover:text-text-primary'
                 }`}
-                style={{ padding: '12px' }}
+                style={{ padding: '10px' }}
               >
-                <span className="text-xl">💰</span>
+                예산
               </button>
             </nav>
           </div>
 
           {/* Desktop Sidebar */}
-          <aside className="hidden md:block animate-[fadeInUp_0.6s_ease-out]" style={{ width: '240px', flexShrink: 0 }}>
-            <nav className="flex flex-col gap-2">
+          <aside className="hidden md:block md:w-64 flex-shrink-0 animate-[fadeInUp_0.6s_ease-out]">
+            <nav className="bg-bg-card border border-[var(--border)] rounded-[16px]" style={{ padding: '12px' }}>
               <button
                 onClick={() => setActiveTab('account')}
-                className={`flex items-center gap-3 rounded-[12px] text-left transition-all cursor-pointer ${
+                className={`w-full text-left rounded-[10px] font-medium transition-all cursor-pointer flex items-center gap-3 ${
                   activeTab === 'account'
-                    ? 'bg-bg-card border border-[var(--border)] text-text-primary'
-                    : 'text-text-secondary hover:bg-bg-card-hover'
+                    ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
                 }`}
-                style={{ padding: '14px 16px' }}
+                style={{ padding: '14px 16px', marginBottom: '8px' }}
               >
-                <span className="text-xl">👤</span>
-                <span className="font-medium" style={{ fontSize: '16px' }}>계정</span>
+                <span className="text-lg">👤</span>
+                계정
               </button>
               <button
                 onClick={() => setActiveTab('category')}
-                className={`flex items-center gap-3 rounded-[12px] text-left transition-all cursor-pointer ${
+                className={`w-full text-left rounded-[10px] font-medium transition-all cursor-pointer flex items-center gap-3 ${
                   activeTab === 'category'
-                    ? 'bg-bg-card border border-[var(--border)] text-text-primary'
-                    : 'text-text-secondary hover:bg-bg-card-hover'
+                    ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
                 }`}
-                style={{ padding: '14px 16px' }}
+                style={{ padding: '14px 16px', marginBottom: '8px' }}
               >
-                <span className="text-xl">📂</span>
-                <span className="font-medium" style={{ fontSize: '16px' }}>카테고리</span>
+                <span className="text-lg">📂</span>
+                카테고리
               </button>
               <button
                 onClick={() => setActiveTab('budget')}
-                className={`flex items-center gap-3 rounded-[12px] text-left transition-all cursor-pointer ${
+                className={`w-full text-left rounded-[10px] font-medium transition-all cursor-pointer flex items-center gap-3 ${
                   activeTab === 'budget'
-                    ? 'bg-bg-card border border-[var(--border)] text-text-primary'
-                    : 'text-text-secondary hover:bg-bg-card-hover'
+                    ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
                 }`}
                 style={{ padding: '14px 16px' }}
               >
-                <span className="text-xl">💰</span>
-                <span className="font-medium" style={{ fontSize: '16px' }}>예산</span>
+                <span className="text-lg">💰</span>
+                예산
               </button>
             </nav>
           </aside>
 
-          {/* Content Area */}
+          {/* Content */}
           <main className="flex-1 animate-[fadeInUp_0.7s_ease-out]">
-            {activeTab === 'account' && (
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '6px' }}>
-                  계정
-                </h1>
-                <p className="text-sm sm:text-base text-text-secondary" style={{ marginBottom: '16px' }}>
-                  계정 정보를 확인하고 관리합니다.
-                </p>
-
-                <div className="flex flex-col" style={{ gap: '16px' }}>
-                  {/* 프로필 정보 */}
-                  <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-                    <h2 className="text-base sm:text-lg font-semibold" style={{ marginBottom: '16px' }}>프로필 정보</h2>
-                    <div className="flex flex-col" style={{ gap: '20px' }}>
-                      <div>
-                        <div className="text-sm text-text-muted" style={{ marginBottom: '6px' }}>이름</div>
-                        <div className="text-base text-text-primary font-medium">{userName || '이름 없음'}</div>
-                      </div>
-                      <div className="border-t border-[var(--border)]" />
-                      <div>
-                        <div className="text-sm text-text-muted" style={{ marginBottom: '6px' }}>이메일</div>
-                        <div className="text-base text-text-primary font-medium">{userEmail}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 비밀번호 변경 */}
-                  <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-                    <h2 className="text-base sm:text-lg font-semibold" style={{ marginBottom: '16px' }}>비밀번호 변경</h2>
-                    <form onSubmit={handleChangePassword}>
-                      <div className="flex flex-col" style={{ gap: '16px' }}>
-                        <div>
-                          <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
-                            현재 비밀번호
-                          </label>
-                          <input
-                            type="password"
-                            value={currentPassword}
-                            onChange={(e) => {
-                              setCurrentPassword(e.target.value);
-                              setPasswordError('');
-                              setPasswordSuccess('');
-                            }}
-                            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors"
-                            style={{ padding: '10px 12px' }}
-                            placeholder="현재 비밀번호 입력"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
-                            새 비밀번호
-                          </label>
-                          <input
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => {
-                              setNewPassword(e.target.value);
-                              setPasswordError('');
-                              setPasswordSuccess('');
-                            }}
-                            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors"
-                            style={{ padding: '10px 12px' }}
-                            placeholder="새 비밀번호 입력 (6자 이상)"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
-                            새 비밀번호 확인
-                          </label>
-                          <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => {
-                              setConfirmPassword(e.target.value);
-                              setPasswordError('');
-                              setPasswordSuccess('');
-                            }}
-                            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors"
-                            style={{ padding: '10px 12px' }}
-                            placeholder="새 비밀번호 다시 입력"
-                          />
-                        </div>
-                        {passwordError && (
-                          <p className="text-accent-coral text-sm">{passwordError}</p>
-                        )}
-                        {passwordSuccess && (
-                          <p className="text-accent-mint text-sm">{passwordSuccess}</p>
-                        )}
-                        <div style={{ marginTop: '4px' }}>
-                          <button
-                            type="submit"
-                            disabled={isChangingPassword}
-                            className="w-full sm:w-auto bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[10px] font-medium text-sm sm:text-base hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ padding: '12px 24px' }}
-                          >
-                            {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-
-                  {/* 계정 삭제 */}
-                  <div className="bg-bg-card border border-accent-coral/30 rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-                    <h2 className="text-base sm:text-lg font-semibold text-accent-coral" style={{ marginBottom: '6px' }}>계정 삭제</h2>
-                    <p className="text-xs sm:text-sm text-text-secondary" style={{ marginBottom: '16px' }}>
-                      계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
-                    </p>
-                    <button
-                      onClick={() => setIsDeleteAccountModalOpen(true)}
-                      className="w-full sm:w-auto bg-accent-coral text-white rounded-[10px] font-medium text-sm sm:text-base hover:shadow-lg transition-all cursor-pointer"
-                      style={{ padding: '12px 24px' }}
-                    >
-                      계정 삭제
-                    </button>
-                  </div>
-                </div>
-              </div>
+            {activeTab === 'account' && userId && (
+              <AccountTab
+                userName={userName}
+                userEmail={userEmail}
+                userId={userId}
+                onDeleteAccountOpen={() => setIsDeleteAccountModalOpen(true)}
+              />
             )}
 
             {activeTab === 'category' && (
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '6px' }}>
-                  카테고리
-                </h1>
-                <p className="text-sm sm:text-base text-text-secondary" style={{ marginBottom: '16px' }}>
-                  수입과 지출 카테고리를 관리합니다.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '16px' }}>
-                  {/* 수입 카테고리 */}
-                  <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-                    <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
-                      <h2 className="text-sm sm:text-lg font-semibold flex items-center gap-1 sm:gap-2">
-                        <span className="text-sm sm:text-base">💼</span> 수입
-                        <span className="text-xs sm:text-sm text-text-muted font-normal">({incomeCategories.length}/20)</span>
-                      </h2>
-                      <button
-                        onClick={() => {
-                          setCategoryType('INCOME');
-                          setCategoryIcon('💰');
-                          setCategoryColor('#10B981');
-                          setIsAddCategoryModalOpen(true);
-                        }}
-                        className="bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[8px] sm:rounded-[10px] font-medium text-xs sm:text-sm hover:shadow-lg transition-all cursor-pointer"
-                        style={{ padding: '8px 16px' }}
-                      >
-                        + 추가
-                      </button>
-                    </div>
-
-                    {isLoadingCategories ? (
-                      <div className="text-center text-text-muted py-4 text-sm">로딩 중...</div>
-                    ) : incomeCategories.length > 0 ? (
-                      <div className="flex flex-col" style={{ gap: '6px' }}>
-                        {incomeCategories.map((category) => (
-                          <div
-                            key={category.id}
-                            className="flex items-center bg-bg-secondary rounded-[8px] sm:rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
-                            style={{ padding: '10px' }}
-                            onClick={() => {
-                              setEditingCategory(category);
-                              setCategoryName(category.name);
-                              setCategoryType(category.type);
-                              setCategoryIcon(category.icon);
-                              setCategoryColor(category.color);
-                              setCategoryDefaultBudget(category.defaultBudget ? category.defaultBudget.toString() : '');
-                              setIsEditCategoryModalOpen(true);
-                            }}
-                          >
-                            <div
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
-                              style={{ marginRight: '10px', backgroundColor: `${category.color}20` }}
-                            >
-                              {category.icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs sm:text-sm font-medium truncate">{category.name}</div>
-                            </div>
-                            <div className="text-[10px] sm:text-xs text-text-muted">수정 →</div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center text-text-muted py-4 text-xs sm:text-sm">수입 카테고리가 없습니다</div>
-                    )}
-                  </div>
-
-                  {/* 지출 카테고리 */}
-                  <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-                    <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
-                      <h2 className="text-sm sm:text-lg font-semibold flex items-center gap-1 sm:gap-2">
-                        <span className="text-sm sm:text-base">💳</span> 지출
-                        <span className="text-xs sm:text-sm text-text-muted font-normal">({expenseCategories.length}/20)</span>
-                      </h2>
-                      <button
-                        onClick={() => {
-                          setCategoryType('EXPENSE');
-                          setCategoryIcon('🛒');
-                          setCategoryColor('#EF4444');
-                          setIsAddCategoryModalOpen(true);
-                        }}
-                        className="bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary rounded-[8px] sm:rounded-[10px] font-medium text-xs sm:text-sm hover:shadow-lg transition-all cursor-pointer"
-                        style={{ padding: '8px 16px' }}
-                      >
-                        + 추가
-                      </button>
-                    </div>
-
-                    {isLoadingCategories ? (
-                      <div className="text-center text-text-muted py-4 text-sm">로딩 중...</div>
-                    ) : expenseCategories.length > 0 ? (
-                      <div className="flex flex-col" style={{ gap: '6px' }}>
-                        {expenseCategories.map((category) => (
-                          <div
-                            key={category.id}
-                            className="flex items-center bg-bg-secondary rounded-[8px] sm:rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
-                            style={{ padding: '10px' }}
-                            onClick={() => {
-                              setEditingCategory(category);
-                              setCategoryName(category.name);
-                              setCategoryType(category.type);
-                              setCategoryIcon(category.icon);
-                              setCategoryColor(category.color);
-                              setCategoryDefaultBudget(category.defaultBudget ? category.defaultBudget.toString() : '');
-                              setIsEditCategoryModalOpen(true);
-                            }}
-                          >
-                            <div
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
-                              style={{ marginRight: '10px', backgroundColor: `${category.color}20` }}
-                            >
-                              {category.icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs sm:text-sm font-medium truncate">{category.name}</div>
-                            </div>
-                            <div className="text-[10px] sm:text-xs text-text-muted">수정 →</div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center text-text-muted py-4 text-xs sm:text-sm">지출 카테고리가 없습니다</div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <CategoryTab
+                categories={categories}
+                isLoading={isLoadingCategories}
+                onAddCategory={handleOpenAddCategoryModal}
+                onEditCategory={handleOpenEditCategoryModal}
+              />
             )}
 
             {activeTab === 'budget' && (
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '6px' }}>
-                  예산
-                </h1>
-                <p className="text-sm sm:text-base text-text-secondary" style={{ marginBottom: '16px' }}>
-                  카테고리별 월 예산을 설정합니다. 예산을 설정하면 대시보드에서 사용량을 확인할 수 있습니다.
-                </p>
-
-                {/* 월 선택 */}
-                <div ref={budgetDatePickerRef} className="flex items-center justify-center bg-bg-card border border-[var(--border)] rounded-[12px] relative select-none" style={{ padding: '12px', marginBottom: '16px', gap: '12px' }}>
-                  <button
-                    onClick={handleBudgetPreviousMonth}
-                    disabled={isBudgetPreviousMonthDisabled()}
-                    className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    ◀
-                  </button>
-                  <span
-                    onClick={handleBudgetDatePickerToggle}
-                    className="text-base font-semibold min-w-[120px] text-center cursor-pointer"
-                  >
-                    {formatYearMonth(budgetDate)}
-                  </span>
-                  <button
-                    onClick={handleBudgetNextMonth}
-                    disabled={isBudgetNextMonthDisabled()}
-                    className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    ▶
-                  </button>
-
-                  {/* 달력 Picker */}
-                  {isBudgetDatePickerOpen && (
-                    <div
-                      className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none"
-                      style={{ width: '320px', padding: '20px', marginTop: '3px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)' }}
-                    >
-                      <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                        <button
-                          onClick={() => setBudgetPickerYear(prev => prev - 1)}
-                          disabled={isBudgetPastYear(budgetPickerYear - 1)}
-                          className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          ◀
-                        </button>
-                        <div className="text-text-primary font-semibold" style={{ fontSize: '16px' }}>
-                          {budgetPickerYear}년
-                        </div>
-                        <button
-                          onClick={() => setBudgetPickerYear(prev => prev + 1)}
-                          disabled={budgetPickerYear >= new Date().getFullYear()}
-                          className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          ▶
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-4" style={{ gap: '8px' }}>
-                        {Array.from({ length: 12 }, (_, i) => i).map(month => {
-                          const isSelected = budgetDate.getFullYear() === budgetPickerYear && budgetDate.getMonth() === month;
-                          const now = new Date();
-                          const isFuture = budgetPickerYear > now.getFullYear() ||
-                            (budgetPickerYear === now.getFullYear() && month > now.getMonth());
-                          const isPast = isBudgetPastMonth(budgetPickerYear, month);
-                          const isDisabled = isFuture || isPast;
-                          return (
-                            <button
-                              key={month}
-                              onClick={() => handleBudgetMonthSelect(budgetPickerYear, month)}
-                              disabled={isDisabled}
-                              className={`rounded-[8px] font-medium transition-all ${
-                                isDisabled
-                                  ? 'bg-bg-secondary text-text-muted opacity-30 cursor-not-allowed'
-                                  : isSelected
-                                  ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary cursor-pointer'
-                                  : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover cursor-pointer'
-                              }`}
-                              style={{ padding: '10px 0', fontSize: '14px' }}
-                            >
-                              {month + 1}월
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-                  <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
-                    <span className="text-base sm:text-lg">💳</span> 지출 카테고리별 예산
-                  </h2>
-
-                  {isLoadingBudgets || isLoadingCategories ? (
-                    <div className="text-center text-text-muted py-8 text-sm">로딩 중...</div>
-                  ) : expenseCategories.length === 0 ? (
-                    <div className="text-center text-text-muted py-8 text-sm">지출 카테고리가 없습니다</div>
-                  ) : (
-                    <div className="flex flex-col" style={{ gap: '12px' }}>
-                      {expenseCategories.map(category => {
-                        const budget = getBudgetForCategory(category.id);
-                        const hasMonthlyBudget = budget && budget.amount > 0;
-                        const hasDefaultBudget = category.defaultBudget && category.defaultBudget > 0;
-
-                        return (
-                          <div
-                            key={category.id}
-                            className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover"
-                            style={{ padding: '16px' }}
-                            onClick={() => openBudgetModal(category)}
-                          >
-                            {/* 상단: 아이콘, 카테고리명, 기본예산, 설정 버튼 */}
-                            <div className="flex items-center">
-                              <div
-                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-[10px] sm:rounded-[12px] flex items-center justify-center text-lg sm:text-xl"
-                                style={{ marginRight: '12px', backgroundColor: `${category.color}20` }}
-                              >
-                                {category.icon}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm sm:text-base font-medium truncate">{category.name}</div>
-                                {hasDefaultBudget && (
-                                  <div className="text-[11px] sm:text-xs text-text-muted" style={{ marginTop: '2px' }}>
-                                    기본 <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(category.defaultBudget)}
-                                  </div>
-                                )}
-                              </div>
-                              <span className="text-[11px] sm:text-xs text-text-muted">설정 →</span>
-                            </div>
-
-                            {/* 하단: 예산 금액 */}
-                            <div className="border-t border-[var(--border)]" style={{ marginTop: '12px', paddingTop: '12px' }}>
-                              <div className="text-right">
-                                {hasMonthlyBudget ? (
-                                  <span className="text-lg sm:text-xl font-bold text-accent-mint">
-                                    <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(budget.amount)}
-                                  </span>
-                                ) : (
-                                  <span className="text-sm sm:text-base text-text-muted">미설정</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <BudgetTab
+                categories={categories}
+                budgets={budgets}
+                isLoadingCategories={isLoadingCategories}
+                isLoadingBudgets={isLoadingBudgets}
+                budgetDate={budgetDate}
+                oldestTransactionDate={oldestTransactionDate}
+                onBudgetDateChange={setBudgetDate}
+                onOpenBudgetModal={openBudgetModal}
+              />
             )}
           </main>
         </div>
       </div>
 
-      {/* Add Category Modal */}
-      {isAddCategoryModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200] animate-[fadeIn_0.2s_ease-out]"
-          onClick={() => {
-            setIsAddCategoryModalOpen(false);
-            setCategoryName('');
-            setCategoryType('EXPENSE');
-            setCategoryIcon('📦');
-            setCategoryColor('#EF4444');
-            setNameError('');
-          }}
-        >
-          <div
-            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md max-h-[90vh] flex flex-col animate-[fadeInUp_0.3s_ease-out]"
-            style={{ margin: '20px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-2xl font-bold text-text-primary flex-shrink-0" style={{ padding: '32px 32px 0 32px', marginBottom: '24px' }}>
-              카테고리 추가
-            </h2>
-
-            <form onSubmit={handleAddCategory} className="flex-1 overflow-y-auto min-h-0 flex flex-col" style={{ padding: '0 32px 32px 32px' }}>
-              {/* Type Display */}
-              <div className="flex rounded-[14px] bg-bg-secondary p-1.5" style={{ marginBottom: '20px' }}>
-                <div
-                  className={`flex-1 rounded-[10px] font-medium text-center ${
-                    categoryType === 'EXPENSE'
-                      ? 'bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary shadow-lg'
-                      : 'text-text-secondary opacity-50'
-                  }`}
-                  style={{ padding: '10px' }}
-                >
-                  지출
-                </div>
-                <div
-                  className={`flex-1 rounded-[10px] font-medium text-center ${
-                    categoryType === 'INCOME'
-                      ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary shadow-lg'
-                      : 'text-text-secondary opacity-50'
-                  }`}
-                  style={{ padding: '10px' }}
-                >
-                  수입
-                </div>
-              </div>
-
-              {/* Name Input */}
-              <div style={{ marginBottom: '20px' }}>
-                <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
-                  카테고리 이름
-                </label>
-                <input
-                  type="text"
-                  value={categoryName}
-                  onChange={(e) => {
-                    setCategoryName(e.target.value);
-                    setNameError('');
-                  }}
-                  className={`w-full bg-bg-secondary border ${nameError ? 'border-accent-coral' : 'border-[var(--border)]'} rounded-[12px] text-text-primary focus:outline-none focus:border-accent-blue transition-colors`}
-                  style={{ padding: '14px 16px' }}
-                  placeholder="예: 식비, 교통비 등"
-                />
-                {nameError && (
-                  <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
-                    {nameError}
-                  </p>
-                )}
-              </div>
-
-              {/* Icon Selection */}
-              <div style={{ marginBottom: '20px' }}>
-                <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
-                  아이콘
-                </label>
-                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-                  {iconList.map((icon) => (
-                    <button
-                      key={icon}
-                      type="button"
-                      onClick={() => setCategoryIcon(icon)}
-                      className={`w-full aspect-square rounded-[10px] flex items-center justify-center text-xl transition-all cursor-pointer ${
-                        categoryIcon === icon
-                          ? 'bg-accent-blue text-white shadow-lg scale-110'
-                          : 'bg-bg-secondary hover:bg-bg-card-hover'
-                      }`}
-                      style={{ paddingBottom: '2px' }}
-                    >
-                      {icon}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Color Selection */}
-              <div style={{ marginBottom: categoryType === 'EXPENSE' ? '20px' : '24px' }}>
-                <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
-                  색상
-                </label>
-                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-                  {colorList.map((color) => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      onClick={() => setCategoryColor(color.value)}
-                      className={`w-full aspect-square rounded-[10px] transition-all cursor-pointer ${
-                        categoryColor === color.value
-                          ? 'ring-2 ring-white ring-offset-2 ring-offset-bg-card scale-110'
-                          : 'hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: color.value }}
-                      title={color.name}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Default Budget (Expense only) */}
-              {categoryType === 'EXPENSE' && (
-                <div style={{ marginBottom: '24px' }}>
-                  <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
-                    기본 예산 (선택)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={categoryDefaultBudget ? formatNumber(parseInt(categoryDefaultBudget, 10)) : ''}
-                      onChange={(e) => {
-                        const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                        const maxBudget = 100000000000000; // 100조
-                        if (numericValue === '' || parseInt(numericValue, 10) <= maxBudget) {
-                          setCategoryDefaultBudget(numericValue);
-                        }
-                      }}
-                      placeholder="0"
-                      className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-base font-mono text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
-                      style={{ padding: '14px 16px', paddingLeft: '32px' }}
-                    />
-                  </div>
-                  <p className="text-xs text-text-muted" style={{ marginTop: '6px' }}>
-                    월별 예산을 설정하지 않으면 기본 예산이 적용됩니다.
-                  </p>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 flex-shrink-0" style={{ marginTop: 'auto', paddingTop: '4px' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddCategoryModalOpen(false);
-                    setCategoryName('');
-                    setCategoryType('EXPENSE');
-                    setCategoryIcon('📦');
-                    setCategoryColor('#EF4444');
-                    setCategoryDefaultBudget('');
-                    setNameError('');
-                  }}
-                  className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-                  style={{ padding: '14px' }}
-                  disabled={isSubmitting}
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !categoryName}
-                  className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                    categoryType === 'EXPENSE'
-                      ? 'bg-gradient-to-br from-accent-coral to-accent-yellow'
-                      : 'bg-gradient-to-br from-accent-mint to-accent-blue'
-                  } text-bg-primary`}
-                  style={{ padding: '14px' }}
-                >
-                  {isSubmitting ? '추가 중...' : '추가'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Category Modal */}
-      {isEditCategoryModalOpen && editingCategory && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200] animate-[fadeIn_0.2s_ease-out]"
-          onClick={() => {
-            setIsEditCategoryModalOpen(false);
-            setEditingCategory(null);
-            setCategoryName('');
-            setCategoryType('EXPENSE');
-            setCategoryIcon('📦');
-            setCategoryColor('#EF4444');
-            setNameError('');
-          }}
-        >
-          <div
-            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md max-h-[90vh] flex flex-col animate-[fadeInUp_0.3s_ease-out]"
-            style={{ margin: '20px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-2xl font-bold text-text-primary flex-shrink-0" style={{ padding: '32px 32px 0 32px', marginBottom: '24px' }}>
-              카테고리 수정
-            </h2>
-
-            <form onSubmit={handleEditCategory} className="flex-1 overflow-y-auto min-h-0 flex flex-col" style={{ padding: '0 32px 32px 32px' }}>
-              {/* Type Display (Read-only) */}
-              <div className="flex rounded-[14px] bg-bg-secondary p-1.5" style={{ marginBottom: '20px' }}>
-                <div
-                  className={`flex-1 rounded-[10px] font-medium text-center ${
-                    categoryType === 'EXPENSE'
-                      ? 'bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary shadow-lg'
-                      : 'text-text-secondary opacity-50'
-                  }`}
-                  style={{ padding: '10px' }}
-                >
-                  지출
-                </div>
-                <div
-                  className={`flex-1 rounded-[10px] font-medium text-center ${
-                    categoryType === 'INCOME'
-                      ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary shadow-lg'
-                      : 'text-text-secondary opacity-50'
-                  }`}
-                  style={{ padding: '10px' }}
-                >
-                  수입
-                </div>
-              </div>
-
-              {/* Name Input */}
-              <div style={{ marginBottom: '20px' }}>
-                <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
-                  카테고리 이름
-                </label>
-                <input
-                  type="text"
-                  value={categoryName}
-                  onChange={(e) => {
-                    setCategoryName(e.target.value);
-                    setNameError('');
-                  }}
-                  className={`w-full bg-bg-secondary border ${nameError ? 'border-accent-coral' : 'border-[var(--border)]'} rounded-[12px] text-text-primary focus:outline-none focus:border-accent-blue transition-colors`}
-                  style={{ padding: '14px 16px' }}
-                  placeholder="예: 식비, 교통비 등"
-                />
-                {nameError && (
-                  <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
-                    {nameError}
-                  </p>
-                )}
-              </div>
-
-              {/* Icon Selection */}
-              <div style={{ marginBottom: '20px' }}>
-                <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
-                  아이콘
-                </label>
-                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-                  {iconList.map((icon) => (
-                    <button
-                      key={icon}
-                      type="button"
-                      onClick={() => setCategoryIcon(icon)}
-                      className={`w-full aspect-square rounded-[10px] flex items-center justify-center text-xl transition-all cursor-pointer ${
-                        categoryIcon === icon
-                          ? 'bg-accent-blue text-white shadow-lg scale-110'
-                          : 'bg-bg-secondary hover:bg-bg-card-hover'
-                      }`}
-                      style={{ paddingBottom: '2px' }}
-                    >
-                      {icon}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Color Selection */}
-              <div style={{ marginBottom: categoryType === 'EXPENSE' ? '20px' : '24px' }}>
-                <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
-                  색상
-                </label>
-                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-                  {colorList.map((color) => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      onClick={() => setCategoryColor(color.value)}
-                      className={`w-full aspect-square rounded-[10px] transition-all cursor-pointer ${
-                        categoryColor === color.value
-                          ? 'ring-2 ring-white ring-offset-2 ring-offset-bg-card scale-110'
-                          : 'hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: color.value }}
-                      title={color.name}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Default Budget (Expense only) */}
-              {categoryType === 'EXPENSE' && (
-                <div style={{ marginBottom: '24px' }}>
-                  <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
-                    기본 예산 (선택)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={categoryDefaultBudget ? formatNumber(parseInt(categoryDefaultBudget, 10)) : ''}
-                      onChange={(e) => {
-                        const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                        const maxBudget = 100000000000000; // 100조
-                        if (numericValue === '' || parseInt(numericValue, 10) <= maxBudget) {
-                          setCategoryDefaultBudget(numericValue);
-                        }
-                      }}
-                      placeholder="0"
-                      className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-base font-mono text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
-                      style={{ padding: '14px 16px', paddingLeft: '32px' }}
-                    />
-                  </div>
-                  <p className="text-xs text-text-muted" style={{ marginTop: '6px' }}>
-                    월별 예산을 설정하지 않으면 기본 예산이 적용됩니다.
-                  </p>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 flex-shrink-0" style={{ marginTop: 'auto', paddingTop: '4px' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditCategoryModalOpen(false);
-                    setEditingCategory(null);
-                    setCategoryName('');
-                    setCategoryType('EXPENSE');
-                    setCategoryIcon('📦');
-                    setCategoryColor('#EF4444');
-                    setCategoryDefaultBudget('');
-                    setNameError('');
-                  }}
-                  className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-                  style={{ padding: '14px' }}
-                  disabled={isSubmitting}
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsDeleteCategoryConfirmOpen(true)}
-                  className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ padding: '14px' }}
-                  disabled={isSubmitting}
-                >
-                  삭제
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !categoryName}
-                  className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                    categoryType === 'EXPENSE'
-                      ? 'bg-gradient-to-br from-accent-coral to-accent-yellow'
-                      : 'bg-gradient-to-br from-accent-mint to-accent-blue'
-                  } text-bg-primary`}
-                  style={{ padding: '14px' }}
-                >
-                  {isSubmitting ? '수정 중...' : '수정'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Category Form Modal */}
+      <CategoryFormModal
+        isOpen={isCategoryModalOpen}
+        mode={categoryModalMode}
+        initialCategory={editingCategory}
+        initialType={categoryModalType}
+        onClose={() => {
+          setIsCategoryModalOpen(false);
+          setEditingCategory(null);
+        }}
+        onSubmit={handleCategorySubmit}
+        onDelete={() => setIsDeleteCategoryConfirmOpen(true)}
+      />
 
       {/* Delete Category Confirmation Modal */}
-      {isDeleteCategoryConfirmOpen && editingCategory && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[300] animate-[fadeIn_0.2s_ease-out]"
-          onClick={() => setIsDeleteCategoryConfirmOpen(false)}
-        >
-          <div
-            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out]"
-            style={{ padding: '32px', margin: '20px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-2xl font-bold text-text-primary" style={{ marginBottom: '12px' }}>
-              카테고리 삭제
-            </h2>
-            <p className="text-text-secondary" style={{ marginBottom: '24px' }}>
-              &apos;{editingCategory.name}&apos; 카테고리를 삭제하시겠습니까?<br />
-              이 작업은 되돌릴 수 없습니다.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsDeleteCategoryConfirmOpen(false)}
-                className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-                style={{ padding: '14px' }}
-                disabled={isSubmitting}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDeleteCategory}
-                disabled={isSubmitting}
-                className="flex-1 bg-accent-coral text-white rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ padding: '14px' }}
-              >
-                {isSubmitting ? '삭제 중...' : '삭제'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={isDeleteCategoryConfirmOpen && !!editingCategory}
+        title="카테고리 삭제"
+        message={
+          <>
+            &apos;{editingCategory?.name}&apos; 카테고리를 삭제하시겠습니까?<br />
+            이 작업은 되돌릴 수 없습니다.
+          </>
+        }
+        confirmText="삭제"
+        isLoading={isSubmitting}
+        onConfirm={handleDeleteCategory}
+        onCancel={() => setIsDeleteCategoryConfirmOpen(false)}
+      />
 
       {/* Budget Edit Modal */}
-      {isBudgetModalOpen && editingBudgetCategory && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200] animate-[fadeIn_0.2s_ease-out]"
-          onClick={closeBudgetModal}
-        >
-          <div
-            className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out]"
-            style={{ padding: '32px', margin: '20px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '24px' }}>
-              예산 설정
-            </h2>
+      <BudgetEditModal
+        isOpen={isBudgetModalOpen}
+        category={editingBudgetCategory}
+        budgetDate={budgetDate}
+        initialAmount={editingBudgetCategory ? getBudgetForCategory(editingBudgetCategory.id)?.amount : undefined}
+        onClose={() => {
+          setIsBudgetModalOpen(false);
+          setEditingBudgetCategory(null);
+        }}
+        onSave={handleSaveBudget}
+      />
 
-            {/* 카테고리 정보 */}
-            <div className="flex items-center bg-bg-secondary rounded-[12px]" style={{ padding: '12px', marginBottom: '20px' }}>
-              <div
-                className="w-10 h-10 rounded-[8px] flex items-center justify-center text-lg"
-                style={{ marginRight: '12px', backgroundColor: `${editingBudgetCategory.color}20` }}
-              >
-                {editingBudgetCategory.icon}
-              </div>
-              <div>
-                <div className="text-base font-medium">{editingBudgetCategory.name}</div>
-                <div className="text-xs text-text-muted">{formatYearMonth(budgetDate)}</div>
-              </div>
-            </div>
-
-            {/* 예산 입력 */}
-            <div style={{ marginBottom: '16px' }}>
-              <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
-                월 예산
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={budgetAmount ? formatNumber(parseInt(budgetAmount, 10)) : ''}
-                  onChange={(e) => {
-                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                    const maxBudget = 100000000000000; // 100조
-                    if (numericValue === '' || parseInt(numericValue, 10) <= maxBudget) {
-                      setBudgetAmount(numericValue);
-                    }
-                  }}
-                  placeholder="0"
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-lg font-mono text-text-primary focus:outline-none focus:border-accent-mint transition-colors"
-                  style={{ padding: '14px 16px', paddingLeft: '32px' }}
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            {/* 기본값 적용 버튼 */}
-            {editingBudgetCategory.defaultBudget && editingBudgetCategory.defaultBudget > 0 && (
-              <button
-                type="button"
-                onClick={() => setBudgetAmount(editingBudgetCategory.defaultBudget.toString())}
-                className="w-full text-sm text-accent-blue hover:text-accent-mint transition-colors cursor-pointer"
-                style={{ marginBottom: '24px', textAlign: 'left' }}
-              >
-                기본값 적용 (<span style={{ marginRight: '1px' }}>₩</span>{formatNumber(editingBudgetCategory.defaultBudget)})
-              </button>
-            )}
-
-            {!editingBudgetCategory.defaultBudget && <div style={{ marginBottom: '8px' }} />}
-
-            {/* 버튼 */}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={closeBudgetModal}
-                className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-                style={{ padding: '14px' }}
-                disabled={isSavingBudget}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveBudget}
-                disabled={isSavingBudget}
-                className="flex-1 bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ padding: '14px' }}
-              >
-                {isSavingBudget ? '저장 중...' : '저장'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Account Confirmation Modal */}
-      {isDeleteAccountModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[300] animate-[fadeIn_0.2s_ease-out]"
-          onClick={() => {
-            setIsDeleteAccountModalOpen(false);
-            setDeletePassword('');
-            setDeleteError('');
-          }}
-        >
-          <div
-            className="bg-bg-card border border-accent-coral/50 rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out]"
-            style={{ padding: '32px', margin: '20px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-2xl font-bold text-accent-coral" style={{ marginBottom: '12px' }}>
-              계정 삭제
-            </h2>
-            <p className="text-text-secondary" style={{ marginBottom: '24px' }}>
-              정말로 계정을 삭제하시겠습니까?<br />
-              모든 데이터가 영구적으로 삭제되며, 이 작업은 되돌릴 수 없습니다.
-            </p>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
-                비밀번호 확인
-              </label>
-              <input
-                type="password"
-                value={deletePassword}
-                onChange={(e) => {
-                  setDeletePassword(e.target.value);
-                  setDeleteError('');
-                }}
-                className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary focus:outline-none focus:border-accent-coral transition-colors"
-                style={{ padding: '12px 14px' }}
-                placeholder="비밀번호를 입력하세요"
-              />
-              {deleteError && (
-                <p className="text-accent-coral text-sm" style={{ marginTop: '8px' }}>{deleteError}</p>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setIsDeleteAccountModalOpen(false);
-                  setDeletePassword('');
-                  setDeleteError('');
-                }}
-                className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-                style={{ padding: '14px' }}
-                disabled={isDeletingAccount}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={isDeletingAccount || !deletePassword}
-                className="flex-1 bg-accent-coral text-white rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ padding: '14px' }}
-              >
-                {isDeletingAccount ? '삭제 중...' : '계정 삭제'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Delete Account Modal */}
+      {userId && (
+        <DeleteAccountModal
+          isOpen={isDeleteAccountModalOpen}
+          userId={userId}
+          onClose={() => setIsDeleteAccountModalOpen(false)}
+        />
       )}
     </>
   );

@@ -1,15 +1,112 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { useRouter } from 'next/navigation';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ToastProvider } from '@/contexts/ToastContext';
 import HomePage from '../page';
 
-// Mock useRouter
+// Mock useRouter and usePathname
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+  usePathname: jest.fn(() => '/'),
 }));
 
-// Mock fetch
-const mockFetch = global.fetch as jest.Mock;
+// Helper to wrap components with ThemeProvider and ToastProvider
+const renderWithTheme = (ui: React.ReactElement) => {
+  return render(
+    <ThemeProvider>
+      <ToastProvider>{ui}</ToastProvider>
+    </ThemeProvider>
+  );
+};
+
+// Default mock responses
+const mockCategories = {
+  success: true,
+  data: [
+    { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
+    { id: 'cat-2', name: '급여', type: 'INCOME', color: '#10B981', icon: '💰' },
+  ],
+};
+
+const mockOldestDate = {
+  success: true,
+  data: { year: 2024, month: 1 },
+};
+
+const mockRecentTransactions = {
+  success: true,
+  data: [],
+  count: 0,
+};
+
+const mockTodaySummary = {
+  success: true,
+  data: {
+    date: '2024-01-15',
+    year: 2024,
+    month: 1,
+    day: 15,
+    dayOfWeek: 1,
+    expense: { total: 0, count: 0 },
+    income: { total: 0, count: 0 },
+  },
+};
+
+const mockSummary = {
+  success: true,
+  data: {
+    summary: { totalIncome: 100000, totalExpense: 50000, netAmount: 50000, balance: 50000 },
+    categories: [],
+    budget: { amount: 200000, used: 50000, remaining: 150000, usagePercent: 25 },
+    transactionCount: { income: 1, expense: 2 },
+  },
+};
+
+// Setup fetch mock
+const setupFetchMock = () => {
+  (global.fetch as jest.Mock) = jest.fn().mockImplementation((url: string) => {
+    if (url.includes('/api/categories?')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockCategories),
+      });
+    }
+    if (url.includes('/api/transactions/oldest-date')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockOldestDate),
+      });
+    }
+    if (url.includes('/api/transactions/recent')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockRecentTransactions),
+      });
+    }
+    if (url.includes('/api/transactions/today')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockTodaySummary),
+      });
+    }
+    if (url.includes('/api/transactions/summary')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockSummary),
+      });
+    }
+    if (url.includes('/api/categories/seed')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+    }
+    return Promise.resolve({
+      ok: false,
+      json: () => Promise.resolve({ error: 'Not found' }),
+    });
+  });
+};
 
 describe('HomePage', () => {
   let mockPush: jest.Mock;
@@ -24,8 +121,11 @@ describe('HomePage', () => {
     Storage.prototype.getItem = jest.fn((key) => {
       if (key === 'userId') return 'user-1';
       if (key === 'userName') return '테스트';
+      if (key === 'userEmail') return 'test@example.com';
       return null;
     });
+
+    setupFetchMock();
   });
 
   afterEach(() => {
@@ -33,48 +133,7 @@ describe('HomePage', () => {
   });
 
   it('메인 페이지가 렌더링되어야 함', async () => {
-    // Mock API responses
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: [
-            { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
-          ],
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            summary: { totalIncome: 100000, totalExpense: 50000, balance: 50000 },
-            categories: [],
-            budget: { amount: 200000, remaining: 150000 },
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            summary: { totalIncome: 80000, totalExpense: 40000, balance: 40000 },
-            categories: [],
-            budget: { amount: 0, remaining: 0 },
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: [],
-        }),
-      });
-
-    render(<HomePage />);
+    renderWithTheme(<HomePage />);
 
     await waitFor(() => {
       expect(screen.getByText('MONEGER')).toBeInTheDocument();
@@ -84,226 +143,25 @@ describe('HomePage', () => {
   it('로그인하지 않은 경우 로그인 페이지로 이동해야 함', () => {
     Storage.prototype.getItem = jest.fn(() => null);
 
-    render(<HomePage />);
+    renderWithTheme(<HomePage />);
 
     expect(mockPush).toHaveBeenCalledWith('/login');
   });
 
-  it('연도와 월을 변경할 수 있어야 함', async () => {
-    const user = userEvent.setup();
-
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: [
-            { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
-          ],
-        }),
-      })
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            summary: { totalIncome: 100000, totalExpense: 50000, balance: 50000 },
-            categories: [],
-            budget: { amount: 200000, remaining: 150000 },
-          },
-        }),
-      });
-
-    render(<HomePage />);
-
-    // Wait for initial render
-    await waitFor(() => {
-      expect(screen.getByText('MONEGER')).toBeInTheDocument();
-    });
-
-    // This test validates the component structure exists
-    expect(screen.getByText('MONEGER')).toBeInTheDocument();
-  });
-
-  it('거래 추가 폼이 렌더링되어야 함', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: [
-            { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
-          ],
-        }),
-      })
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            summary: { totalIncome: 100000, totalExpense: 50000, balance: 50000 },
-            categories: [],
-            budget: { amount: 200000, remaining: 150000 },
-          },
-        }),
-      });
-
-    render(<HomePage />);
+  it('사용자 이름 이니셜이 표시되어야 함', async () => {
+    renderWithTheme(<HomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('MONEGER')).toBeInTheDocument();
+      // 사용자 이름의 첫 글자가 표시되어야 함
+      const initials = screen.getAllByText('테');
+      expect(initials.length).toBeGreaterThan(0);
     });
-
-    // Check if transaction form elements exist - just verify page rendered
-    expect(screen.getByText('MONEGER')).toBeInTheDocument();
-  });
-
-  it('통계 정보가 표시되어야 함', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: [
-            { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
-          ],
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            summary: { totalIncome: 100000, totalExpense: 50000, balance: 50000 },
-            categories: [],
-            budget: { amount: 200000, remaining: 150000 },
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            summary: { totalIncome: 80000, totalExpense: 40000, balance: 40000 },
-            categories: [],
-            budget: { amount: 0, remaining: 0 },
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: [],
-        }),
-      });
-
-    render(<HomePage />);
-
-    await waitFor(() => {
-      // Just check if page is rendered
-      expect(screen.getByText('MONEGER')).toBeInTheDocument();
-    });
-  });
-
-  it('카테고리를 로드해야 함', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: [
-            { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
-            { id: 'cat-2', name: '급여', type: 'INCOME', color: '#10B981', icon: '💰' },
-          ],
-        }),
-      })
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            summary: { totalIncome: 100000, totalExpense: 50000, balance: 50000 },
-            categories: [],
-            budget: { amount: 200000, remaining: 150000 },
-          },
-        }),
-      });
-
-    render(<HomePage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('MONEGER')).toBeInTheDocument();
-    });
-
-    // 카테고리 API가 호출되었는지 확인
-    expect(mockFetch).toHaveBeenCalled();
   });
 
   it('API 에러 시에도 페이지가 렌더링되어야 함', async () => {
-    mockFetch.mockRejectedValue(new Error('Network error'));
+    (global.fetch as jest.Mock) = jest.fn().mockRejectedValue(new Error('Network error'));
 
-    render(<HomePage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('MONEGER')).toBeInTheDocument();
-    });
-  });
-
-  it('거래 목록 API 응답을 처리해야 함', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: [
-            { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
-          ],
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            summary: { totalIncome: 100000, totalExpense: 50000, balance: 50000 },
-            categories: [
-              { id: 'cat-1', name: '식비', icon: '🍽️', color: '#EF4444', total: 30000, count: 2 },
-            ],
-            budget: { amount: 200000, remaining: 150000 },
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            summary: { totalIncome: 80000, totalExpense: 40000, balance: 40000 },
-            categories: [],
-            budget: { amount: 0, remaining: 0 },
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: [
-            {
-              id: 'trans-1',
-              type: 'EXPENSE',
-              amount: 15000,
-              description: '점심',
-              date: new Date().toISOString(),
-              category: { id: 'cat-1', name: '식비', icon: '🍽️', color: '#EF4444' },
-            },
-          ],
-        }),
-      });
-
-    render(<HomePage />);
+    renderWithTheme(<HomePage />);
 
     await waitFor(() => {
       expect(screen.getByText('MONEGER')).toBeInTheDocument();

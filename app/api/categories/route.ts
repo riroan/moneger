@@ -7,6 +7,7 @@ import {
   validateUserId,
   validateTransactionType,
 } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 import {
   getCategories,
   findDuplicateCategory,
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     return listResponse(categories, categories.length);
   } catch (error) {
-    console.error('Failed to fetch categories:', error);
+    logger.error('Failed to fetch categories', error);
     return errorResponse('Failed to fetch categories', 500);
   }
 }
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     return successResponseWithMessage(category, 'Category created successfully', 201);
   } catch (error) {
-    console.error('Failed to create category:', error);
+    logger.error('Failed to create category', error);
     return errorResponse('Failed to create category', 500);
   }
 }

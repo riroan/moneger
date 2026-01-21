@@ -1,14 +1,15 @@
 'use client';
 
 import { forwardRef } from 'react';
-import TransactionItem, { Transaction } from './TransactionItem';
+import TransactionItem from './TransactionItem';
+import type { TransactionWithCategory } from '@/types';
 
 interface TransactionListProps {
-  transactions: Transaction[];
+  transactions: TransactionWithCategory[];
   isLoading: boolean;
   hasMore?: boolean;
   emptyMessage?: string;
-  onTransactionClick: (transaction: Transaction) => void;
+  onTransactionClick: (transaction: TransactionWithCategory) => void;
 }
 
 const TransactionList = forwardRef<HTMLDivElement, TransactionListProps>(

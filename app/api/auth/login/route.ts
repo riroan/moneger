@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { logger } from '@/lib/logger';
 
 // POST /api/auth/login - 로그인
 export async function POST(request: NextRequest) {
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
       message: '로그인 성공',
     });
   } catch (error) {
-    console.error('Login failed:', error);
+    logger.error('Login failed', error);
     return NextResponse.json(
       { error: '로그인 처리 중 오류가 발생했습니다' },
       { status: 500 }

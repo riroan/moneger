@@ -8,6 +8,7 @@ import {
   validateTransactionType,
   validateAmount,
 } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 import {
   createTransaction,
   getTransactions,
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     return paginatedResponse(result.data, result.count, result.nextCursor, result.hasMore);
   } catch (error) {
-    console.error('Failed to fetch transactions:', error);
+    logger.error('Failed to fetch transactions', error);
     return errorResponse('Failed to fetch transactions', 500);
   }
 }
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     return successResponseWithMessage(transaction, 'Transaction created successfully', 201);
   } catch (error) {
-    console.error('Failed to create transaction:', error);
+    logger.error('Failed to create transaction', error);
     return errorResponse('Failed to create transaction', 500);
   }
 }

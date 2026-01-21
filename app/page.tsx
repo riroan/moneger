@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useToast } from '@/contexts/ToastContext';
 import Header from '@/components/layout/Header';
 import SummaryCards from '@/components/dashboard/SummaryCards';
 import CategoryChart from '@/components/dashboard/CategoryChart';
@@ -11,6 +12,7 @@ import TodaySummaryCard from '@/components/dashboard/TodaySummaryCard';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import TransactionList from '@/components/transactions/TransactionList';
 import FilterPanel, { DateRange, AmountRange } from '@/components/transactions/FilterPanel';
+import type { Category, TransactionWithCategory, TransactionSummary, TodaySummary, CategoryChartData } from '@/types';
 
 // 모달 컴포넌트 동적 임포트 (코드 스플리팅)
 const TransactionModal = dynamic(() => import('@/components/modals/TransactionModal'), { ssr: false });
@@ -19,6 +21,7 @@ const DeleteConfirmModal = dynamic(() => import('@/components/modals/DeleteConfi
 
 export default function Home() {
   const { userId, userName, userEmail, isLoading: isAuthLoading, logout } = useAuth();
+  const { showToast } = useToast();
 
   const [currentDate, setCurrentDate] = useState(() => {
     const now = new Date();
@@ -30,7 +33,7 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<any>(null);
+  const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 필터 상태
@@ -43,14 +46,14 @@ export default function Home() {
   const [amountRange, setAmountRange] = useState<AmountRange | null>(null);
 
   // 데이터 상태
-  const [categories, setCategories] = useState<any[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<TransactionWithCategory[]>([]);
+  const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [lastMonthBalance, setLastMonthBalance] = useState(0);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [oldestTransactionDate, setOldestTransactionDate] = useState<{ year: number; month: number } | null>(null);
-  const [todaySummary, setTodaySummary] = useState<any>(null);
+  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
   const [isLoadingTodaySummary, setIsLoadingTodaySummary] = useState(false);
 
   const transactionsEndRef = useRef<HTMLDivElement>(null);
@@ -207,7 +210,7 @@ export default function Home() {
       setIsModalOpen(false);
       await refreshData();
     } catch (error) {
-      alert(error instanceof Error ? error.message : '거래 추가에 실패했습니다');
+      showToast(error instanceof Error ? error.message : '거래 추가에 실패했습니다', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -227,7 +230,7 @@ export default function Home() {
       setEditingTransaction(null);
       await refreshData();
     } catch (error) {
-      alert(error instanceof Error ? error.message : '거래 수정에 실패했습니다');
+      showToast(error instanceof Error ? error.message : '거래 수정에 실패했습니다', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -248,7 +251,7 @@ export default function Home() {
       setEditingTransaction(null);
       await refreshData();
     } catch (error) {
-      alert(error instanceof Error ? error.message : '거래 삭제에 실패했습니다');
+      showToast(error instanceof Error ? error.message : '거래 삭제에 실패했습니다', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -316,8 +319,8 @@ export default function Home() {
   const totalIncome = summary?.summary?.totalIncome || 0;
   const totalExpense = summary?.summary?.totalExpense || 0;
   const balance = summary?.summary?.netAmount || 0;
-  const categoryList = useMemo(() =>
-    (summary?.categories || []).map((cat: any, index: number) => ({
+  const categoryList: CategoryChartData[] = useMemo(() =>
+    (summary?.categories || []).map((cat, index) => ({
       ...cat,
       colorIndex: index % 6,
       amount: cat.total,

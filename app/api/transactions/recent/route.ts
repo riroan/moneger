@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { TransactionType } from '@prisma/client';
+import { TransactionType, Prisma } from '@prisma/client';
+import { logger } from '@/lib/logger';
 
 // GET /api/transactions/recent - 최근 거래 목록 조회
 export async function GET(request: NextRequest) {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     const limit = limitParam ? Math.min(parseInt(limitParam), 100) : 10;
 
     // 필터 조건 구성
-    const where: any = {
+    const where: Prisma.TransactionWhereInput = {
       userId,
       deletedAt: null,
     };
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       limit,
     });
   } catch (error) {
-    console.error('Failed to fetch recent transactions:', error);
+    logger.error('Failed to fetch recent transactions', error);
     return NextResponse.json(
       { error: 'Failed to fetch recent transactions' },
       { status: 500 }

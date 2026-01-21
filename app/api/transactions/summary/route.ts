@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, validateUserId } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 import { getTransactionSummary } from '@/lib/services/summary.service';
 
 // GET /api/transactions/summary - 거래 요약 통계 조회
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(summary);
   } catch (error) {
-    console.error('Failed to fetch transaction summary:', error);
+    logger.error('Failed to fetch transaction summary', error);
     return errorResponse('Failed to fetch transaction summary', 500);
   }
 }

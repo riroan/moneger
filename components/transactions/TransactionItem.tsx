@@ -1,25 +1,10 @@
 'use client';
 
 import { formatNumber, formatDate, formatCurrencyDisplay } from '@/utils/formatters';
-
-interface Transaction {
-  id: string;
-  type: 'INCOME' | 'EXPENSE';
-  amount: number;
-  description: string | null;
-  date: string;
-  categoryId: string | null;
-  category?: {
-    id: string;
-    name: string;
-    type: string;
-    color: string | null;
-    icon: string | null;
-  } | null;
-}
+import type { TransactionWithCategory } from '@/types';
 
 interface TransactionItemProps {
-  transaction: Transaction;
+  transaction: TransactionWithCategory;
   onClick?: () => void;
 }
 
@@ -80,4 +65,3 @@ export default function TransactionItem({ transaction: tx, onClick }: Transactio
 }
 
 export { CurrencyDisplay };
-export type { Transaction };

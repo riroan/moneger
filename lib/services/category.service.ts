@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { TransactionType } from '@prisma/client';
+import { TransactionType, Prisma } from '@prisma/client';
 
 interface CreateCategoryInput {
   userId: string;
@@ -22,7 +22,7 @@ interface UpdateCategoryInput {
  * 카테고리 목록 조회
  */
 export async function getCategories(userId: string, type?: TransactionType) {
-  const where: any = { userId, deletedAt: null };
+  const where: Prisma.CategoryWhereInput = { userId, deletedAt: null };
   if (type) where.type = type;
 
   return prisma.category.findMany({
@@ -49,7 +49,7 @@ export async function findDuplicateCategory(
   type: TransactionType,
   excludeId?: string
 ) {
-  const where: any = { userId, name, type, deletedAt: null };
+  const where: Prisma.CategoryWhereInput = { userId, name, type, deletedAt: null };
   if (excludeId) where.id = { not: excludeId };
 
   return prisma.category.findFirst({ where });
@@ -75,7 +75,7 @@ export async function createCategory(input: CreateCategoryInput) {
  * 카테고리 수정
  */
 export async function updateCategory(id: string, input: UpdateCategoryInput) {
-  const updateData: any = {};
+  const updateData: Prisma.CategoryUpdateInput = {};
 
   if (input.name !== undefined) updateData.name = input.name;
   if (input.type !== undefined) updateData.type = input.type;
