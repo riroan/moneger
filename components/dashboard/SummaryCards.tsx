@@ -26,6 +26,8 @@ export default function SummaryCards({
   onExpenseClick,
   onBalanceClick,
 }: SummaryCardsProps) {
+  const balanceDiff = balance - lastMonthBalance;
+
   const cards = [
     {
       type: 'income',
@@ -34,6 +36,10 @@ export default function SummaryCards({
       amount: `₩${formatNumber(totalIncome)}`,
       change: `${incomeCount}건의 수입`,
       positive: true,
+      iconBg: 'bg-[#10B981]',
+      barColor: 'bg-[#10B981]',
+      badgeBg: 'rgba(34, 197, 94, 0.2)',
+      badgeText: '#4ade80',
     },
     {
       type: 'expense',
@@ -42,14 +48,22 @@ export default function SummaryCards({
       amount: `₩${formatNumber(totalExpense)}`,
       change: `${expenseCount}건의 지출`,
       positive: false,
+      iconBg: 'bg-[#B91C1C]',
+      barColor: 'bg-[#EF4444]',
+      badgeBg: 'rgba(239, 68, 68, 0.2)',
+      badgeText: '#f87171',
     },
     {
       type: 'balance',
       icon: '✨',
       label: '남은 금액',
       amount: `₩${formatNumber(balance)}`,
-      change: `지난달 대비 ${balance - lastMonthBalance >= 0 ? '+' : ''}₩${formatNumber(Math.abs(balance - lastMonthBalance))}`,
-      positive: balance - lastMonthBalance >= 0,
+      change: `지난달 대비 ${balanceDiff >= 0 ? '+' : ''}₩${formatNumber(Math.abs(balanceDiff))}`,
+      positive: balanceDiff >= 0,
+      iconBg: 'bg-[#7C3AED]',
+      barColor: 'bg-[#8B5CF6]',
+      badgeBg: 'rgba(168, 85, 247, 0.2)',
+      badgeText: '#c084fc',
     },
   ];
 
@@ -59,63 +73,47 @@ export default function SummaryCards({
       style={{ gap: '12px', marginBottom: '24px' }}
     >
       {cards.map((card, i) => {
-        const isClickable = card.type === 'income' || card.type === 'expense' || card.type === 'balance';
         const handleClick = card.type === 'income' ? onIncomeClick : card.type === 'expense' ? onExpenseClick : card.type === 'balance' ? onBalanceClick : undefined;
 
         return (
-        <div
-          key={card.type}
-          onClick={handleClick}
-          className={`bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] relative overflow-hidden transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] animate-[fadeInUp_0.6s_ease-out_backwards] [animation-delay:${(i + 1) * 100}ms] before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:rounded-t-[20px] ${
-            card.type === 'income'
-              ? 'before:bg-gradient-to-r before:from-accent-mint before:to-accent-blue'
-              : card.type === 'expense'
-              ? 'before:bg-gradient-to-r before:from-accent-coral before:to-accent-yellow'
-              : 'before:bg-gradient-to-r before:from-accent-purple before:to-accent-mint'
-          } ${isClickable ? 'cursor-pointer' : ''}`}
-          style={{ padding: '16px' }}
-        >
-          <div className="flex items-center gap-4 sm:block">
-            <div
-              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[12px] sm:rounded-[14px] flex items-center justify-center text-lg sm:text-[22px] flex-shrink-0 ${
-                card.type === 'income'
-                  ? 'bg-[var(--glow-mint)] text-accent-mint'
-                  : card.type === 'expense'
-                  ? 'bg-[var(--glow-coral)] text-accent-coral'
-                  : 'bg-[var(--glow-purple)] text-accent-purple'
-              }`}
-              style={{ marginBottom: '0' }}
-            >
-              {card.icon}
-            </div>
-            <div className="flex-1 sm:mt-8">
-              <div className="text-xs sm:text-sm text-text-secondary font-medium mb-0.5 sm:mb-1">
-                {card.label}
-              </div>
-              <div
-                className={`font-bold tracking-tight text-lg sm:text-2xl ${
-                  card.type === 'income'
-                    ? 'text-accent-mint'
-                    : card.type === 'expense'
-                    ? 'text-accent-coral'
-                    : 'text-accent-purple'
-                }`}
-              >
-                <CurrencyDisplay amount={card.amount} />
-              </div>
-            </div>
-          </div>
           <div
-            className={`hidden sm:inline-flex items-center gap-1 text-[13px] rounded-lg font-medium ${
-              card.positive
-                ? 'bg-[var(--glow-mint)] text-accent-mint'
-                : 'bg-[var(--glow-coral)] text-accent-coral'
-            }`}
-            style={{ marginTop: '12px', padding: '8px 12px' }}
+            key={card.type}
+            onClick={handleClick}
+            className={`bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] relative overflow-hidden transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] animate-[fadeInUp_0.6s_ease-out_backwards] cursor-pointer`}
+            style={{ animationDelay: `${(i + 1) * 100}ms`, padding: '24px 16px 20px' }}
           >
-            {card.change}
+            <div className="flex items-center gap-4">
+              {/* 아이콘 */}
+              <div
+                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-[10px] sm:rounded-[12px] flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 ${card.iconBg}`}
+              >
+                {card.icon}
+              </div>
+
+              {/* 내용 */}
+              <div className="flex-1 text-right">
+                <p className="text-text-secondary text-sm mb-1">
+                  {card.label}
+                </p>
+                <p className="text-text-primary text-xl font-bold tracking-tight" style={{ marginBottom: '5px' }}>
+                  <CurrencyDisplay amount={card.amount} />
+                </p>
+                <div
+                  className="inline-flex items-center justify-center rounded-full text-xs font-medium"
+                  style={{
+                    backgroundColor: card.badgeBg,
+                    color: card.badgeText,
+                    padding: '6px 12px',
+                  }}
+                >
+                  {card.change}
+                </div>
+              </div>
+            </div>
+
+            {/* 하단 색상 바 */}
+            <div className={`absolute bottom-0 left-0 right-0 h-1 ${card.barColor}`} />
           </div>
-        </div>
         );
       })}
     </div>
