@@ -252,23 +252,26 @@ export default function FilterPanel({
 
   return (
     <div className="lg:block">
-      {/* 모바일 필터 토글 */}
-      <button
-        onClick={() => setIsFilterOpen(!isFilterOpen)}
-        className="lg:hidden w-full bg-bg-card border border-[var(--border)] rounded-[12px] flex items-center justify-between cursor-pointer"
-        style={{ padding: '12px 16px', marginBottom: '12px' }}
-      >
-        <span className="text-sm font-medium flex items-center gap-2">
-          <MdSearch className="text-lg" /> 필터 {hasActiveFilters && <span className="text-accent-mint">(적용됨)</span>}
-        </span>
-        <span className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`}>▼</span>
-      </button>
+      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]" style={{ padding: '16px' }}>
+        {/* 모바일 필터 토글 */}
+        <button
+          onClick={() => setIsFilterOpen(!isFilterOpen)}
+          className="lg:hidden w-full flex items-center justify-between cursor-pointer"
+          style={{ marginBottom: isFilterOpen ? '16px' : '0' }}
+        >
+          <span className="text-base font-semibold flex items-center gap-2">
+            <MdSearch className="text-lg" /> 필터 {hasActiveFilters && <span className="text-accent-mint text-sm font-normal">(적용됨)</span>}
+          </span>
+          <span className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`}>▼</span>
+        </button>
 
-      {/* 필터 내용 */}
-      <div className={`${isFilterOpen ? 'block' : 'hidden'} lg:block bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]`} style={{ padding: '16px' }}>
-        <h3 className="text-base font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
+        {/* 데스크탑 필터 헤더 */}
+        <h3 className="hidden lg:flex text-base font-semibold items-center gap-2" style={{ marginBottom: '16px' }}>
           <MdSearch className="text-lg" /> 필터
         </h3>
+
+        {/* 필터 내용 */}
+        <div className={`${isFilterOpen ? 'block' : 'hidden'} lg:block`}>
 
         {/* 검색 */}
         <div style={{ marginBottom: '16px' }}>
@@ -585,6 +588,7 @@ export default function FilterPanel({
         >
           필터 초기화
         </button>
+        </div>
       </div>
     </div>
   );

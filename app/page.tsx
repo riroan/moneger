@@ -491,7 +491,7 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right" style={{ padding: '12px' }}>
-                  <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>잔액</p>
+                  <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>합계</p>
                   <p className="text-sm sm:text-base font-bold text-accent-purple">
                     {allTransactionsSummary.balance >= 0 ? '+' : '-'}₩{Math.abs(allTransactionsSummary.balance).toLocaleString()}
                   </p>
@@ -508,6 +508,7 @@ export default function Home() {
                 hasMore={hasMoreTransactions}
                 emptyMessage={searchKeyword || filterType !== 'ALL' || filterCategories.length > 0 || amountRange !== null ? '검색 결과가 없습니다' : '거래 내역이 없습니다'}
                 onTransactionClick={(tx) => { setEditingTransaction(tx); setIsEditModalOpen(true); }}
+                showDateHeaders
               />
             </div>
           </div>
