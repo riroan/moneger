@@ -165,6 +165,12 @@ export default function SettingsPage() {
   const handleCategorySubmit = async (data: CategoryFormData) => {
     if (!userId) return;
 
+    const defaultBudgetAmount = data.type === 'EXPENSE' && data.defaultBudget
+      ? parseInt(data.defaultBudget, 10)
+      : null;
+
+    let categoryId: string | null = null;
+
     if (categoryModalMode === 'add') {
       // 카테고리 개수 제한 (최대 20개)
       const currentTypeCategories = categories.filter(c => c.type === data.type);
@@ -181,9 +187,7 @@ export default function SettingsPage() {
           type: data.type,
           icon: data.icon,
           color: data.color,
-          defaultBudget: data.type === 'EXPENSE' && data.defaultBudget
-            ? parseInt(data.defaultBudget, 10)
-            : null,
+          defaultBudget: defaultBudgetAmount,
         }),
       });
 
@@ -191,6 +195,7 @@ export default function SettingsPage() {
       if (!response.ok) {
         throw new Error(result.error || '카테고리 추가에 실패했습니다');
       }
+      categoryId = result.data?.id;
     } else if (editingCategory) {
       const response = await fetch(`/api/categories/${editingCategory.id}`, {
         method: 'PATCH',
@@ -200,9 +205,7 @@ export default function SettingsPage() {
           name: data.name,
           icon: data.icon,
           color: data.color,
-          defaultBudget: data.type === 'EXPENSE' && data.defaultBudget
-            ? parseInt(data.defaultBudget, 10)
-            : null,
+          defaultBudget: defaultBudgetAmount,
         }),
       });
 
@@ -210,6 +213,23 @@ export default function SettingsPage() {
       if (!response.ok) {
         throw new Error(result.error || '카테고리 수정에 실패했습니다');
       }
+      categoryId = editingCategory.id;
+    }
+
+    // 기본 예산이 설정되어 있으면 이번 달 예산도 자동 설정
+    if (categoryId && defaultBudgetAmount !== null) {
+      const now = new Date();
+      await fetch('/api/budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          categoryId,
+          amount: defaultBudgetAmount,
+          year: now.getFullYear(),
+          month: now.getMonth() + 1,
+        }),
+      });
     }
 
     // 카테고리 목록 새로고침
