@@ -26,7 +26,7 @@ export async function getTransactionSummary(userId: string, year: number, month:
   };
 
   // 병렬로 DB 집계 쿼리 실행
-  const [incomeAgg, expenseAgg, categoryStats, transactionCounts, savingsData] = await Promise.all([
+  const [incomeAgg, expenseAgg, categoryStats, transactionCounts, savingsData, monthlySavingsAgg] = await Promise.all([
     // 수입 합계
     prisma.transaction.aggregate({
       where: { ...whereClause, type: 'INCOME' },
@@ -67,10 +67,20 @@ export async function getTransactionSummary(userId: string, year: number, month:
         isPrimary: true,
       },
     }),
+    // 이번 달 저축 거래 합계
+    prisma.transaction.aggregate({
+      where: { ...whereClause, savingsGoalId: { not: null } },
+      _sum: { amount: true },
+      _count: true,
+    }),
   ]);
 
   const totalIncome = incomeAgg._sum.amount || 0;
   const totalExpense = expenseAgg._sum.amount || 0;
+
+  // 이번 달 저축 금액 및 건수
+  const monthlySavingsAmount = monthlySavingsAgg._sum.amount || 0;
+  const monthlySavingsCount = monthlySavingsAgg._count || 0;
 
   // 목표일이 지나지 않은 저축 목표만 필터링
   const now = new Date();
@@ -82,9 +92,7 @@ export async function getTransactionSummary(userId: string, year: number, month:
     return false;
   });
 
-  const totalSavings = activeSavingsData.reduce((sum, goal) => sum + goal.currentAmount, 0);
   const totalSavingsTarget = activeSavingsData.reduce((sum, goal) => sum + goal.targetAmount, 0);
-  const savingsCount = activeSavingsData.length;
   const primaryGoal = activeSavingsData.find((goal) => goal.isPrimary);
 
   // 카테고리 정보 조회 (필요한 것만, defaultBudget 포함)
@@ -165,9 +173,9 @@ export async function getTransactionSummary(userId: string, year: number, month:
     summary: {
       totalIncome,
       totalExpense,
-      totalSavings,
+      totalSavings: monthlySavingsAmount,
       netAmount: totalIncome - totalExpense,
-      balance: totalIncome - totalExpense - totalSavings,
+      balance: totalIncome - totalExpense - monthlySavingsAmount,
     },
     budget: {
       amount: monthlyBudget,
@@ -182,9 +190,9 @@ export async function getTransactionSummary(userId: string, year: number, month:
       total: incomeCount + expenseCount,
     },
     savings: {
-      totalAmount: totalSavings,
+      totalAmount: monthlySavingsAmount,
       targetAmount: totalSavingsTarget,
-      count: savingsCount,
+      count: monthlySavingsCount,
       primaryGoal: primaryGoal
         ? {
             id: primaryGoal.id,
