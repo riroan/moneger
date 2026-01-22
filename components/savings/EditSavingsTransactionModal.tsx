@@ -3,18 +3,11 @@
 import { useState, useEffect } from 'react';
 import { formatNumber, formatDate } from '@/utils/formatters';
 import { MdSavings } from 'react-icons/md';
-
-interface SavingsTransaction {
-  id: string;
-  amount: number;
-  description: string | null;
-  date: string;
-  savingsGoalId: string | null;
-}
+import type { TransactionWithCategory } from '@/types';
 
 interface EditSavingsTransactionModalProps {
   isOpen: boolean;
-  transaction: SavingsTransaction | null;
+  transaction: TransactionWithCategory | null;
   onClose: () => void;
   onDelete: () => void;
   isSubmitting?: boolean;
