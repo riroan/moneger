@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       { name: '주거비', icon: '🏠', color: '#6366F1' },
       { name: '통신비', icon: '📱', color: '#3B82F6' },
       { name: '대출이자', icon: '💳', color: '#DC2626' },
+      { name: '저축', icon: '🏦', color: '#FBBF24' },
       { name: '기타지출', icon: '💸', color: '#64748B' },
     ];
 

@@ -69,7 +69,7 @@ export default function BudgetEditModal({
             <div className="flex items-center bg-bg-secondary rounded-[12px]" style={{ padding: '12px', marginBottom: '20px' }}>
               <div
                 className="w-10 h-10 rounded-[8px] flex items-center justify-center text-lg"
-                style={{ marginRight: '12px', backgroundColor: `${category.color}20`, color: category.color }}
+                style={{ marginRight: '12px', backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
               >
                 <IconComponent />
               </div>

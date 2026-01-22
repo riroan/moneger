@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MdSearch } from 'react-icons/md';
+import { MdSearch, MdSavings } from 'react-icons/md';
 import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
+import { getIconComponent } from '@/components/settings/constants';
 
 interface Category {
   id: string;
@@ -24,8 +25,8 @@ interface AmountRange {
 }
 
 interface FilterPanelProps {
-  filterType: 'ALL' | 'INCOME' | 'EXPENSE';
-  setFilterType: (type: 'ALL' | 'INCOME' | 'EXPENSE') => void;
+  filterType: 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
+  setFilterType: (type: 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS') => void;
   filterCategories: string[];
   setFilterCategories: (categories: string[] | ((prev: string[]) => string[])) => void;
   searchKeyword: string;
@@ -413,18 +414,19 @@ export default function FilterPanel({
         {/* 거래 유형 */}
         <div style={{ marginBottom: '16px' }}>
           <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>거래 유형</label>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
-              { value: 'ALL', label: '전체' },
-              { value: 'INCOME', label: '수입' },
-              { value: 'EXPENSE', label: '지출' },
+              { value: 'ALL', label: '전체', activeClass: 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary' },
+              { value: 'INCOME', label: '수입', activeClass: 'bg-accent-mint text-bg-primary' },
+              { value: 'EXPENSE', label: '지출', activeClass: 'bg-accent-coral text-bg-primary' },
+              { value: 'SAVINGS', label: '저축', activeClass: 'bg-accent-blue text-bg-primary' },
             ].map((option) => (
               <button
                 key={option.value}
-                onClick={() => setFilterType(option.value as 'ALL' | 'INCOME' | 'EXPENSE')}
-                className={`flex-1 rounded-[8px] text-sm font-medium transition-all cursor-pointer ${
+                onClick={() => setFilterType(option.value as 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS')}
+                className={`rounded-[8px] text-sm font-medium transition-all cursor-pointer ${
                   filterType === option.value
-                    ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
+                    ? option.activeClass
                     : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
                 }`}
                 style={{ padding: '8px 12px' }}
@@ -461,7 +463,8 @@ export default function FilterPanel({
           </div>
         </div>
 
-        {/* 카테고리 */}
+        {/* 카테고리 - 저축 필터일 때는 숨김 */}
+        {filterType !== 'SAVINGS' && (
         <div style={{ marginBottom: '16px' }}>
           <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
             카테고리 {filterCategories.length > 0 && <span className="text-accent-mint">({filterCategories.length})</span>}
@@ -490,6 +493,7 @@ export default function FilterPanel({
                   <div className="flex flex-col gap-1" style={{ padding: '0 8px 8px 8px' }}>
                     {categories.filter(c => c.type === 'INCOME').map((cat) => {
                       const isChecked = filterCategories.includes(cat.id);
+                      const IconComponent = getIconComponent(cat.icon);
                       return (
                         <label
                           key={cat.id}
@@ -508,7 +512,10 @@ export default function FilterPanel({
                             }}
                             className="w-4 h-4 rounded accent-accent-mint cursor-pointer"
                           />
-                          <span className="text-sm text-text-primary">{cat.icon} {cat.name}</span>
+                          <span className="text-sm text-text-primary flex items-center gap-1">
+                            <IconComponent className="text-accent-mint" />
+                            {cat.name}
+                          </span>
                         </label>
                       );
                     })}
@@ -545,6 +552,7 @@ export default function FilterPanel({
                   <div className="flex flex-col gap-1" style={{ padding: '0 8px 8px 8px' }}>
                     {categories.filter(c => c.type === 'EXPENSE').map((cat) => {
                       const isChecked = filterCategories.includes(cat.id);
+                      const IconComponent = getIconComponent(cat.icon);
                       return (
                         <label
                           key={cat.id}
@@ -563,7 +571,10 @@ export default function FilterPanel({
                             }}
                             className="w-4 h-4 rounded accent-accent-mint cursor-pointer"
                           />
-                          <span className="text-sm text-text-primary">{cat.icon} {cat.name}</span>
+                          <span className="text-sm text-text-primary flex items-center gap-1">
+                            <IconComponent className="text-accent-coral" />
+                            {cat.name}
+                          </span>
                         </label>
                       );
                     })}
@@ -578,6 +589,17 @@ export default function FilterPanel({
             )}
           </div>
         </div>
+        )}
+
+        {/* 저축 필터 안내 */}
+        {filterType === 'SAVINGS' && (
+          <div className="bg-accent-blue/10 rounded-[10px] text-center" style={{ padding: '16px', marginBottom: '16px' }}>
+            <MdSavings className="text-2xl text-accent-blue mx-auto" style={{ marginBottom: '8px' }} />
+            <p className="text-sm text-text-secondary">
+              저축 목표에 입금한 내역만 표시됩니다
+            </p>
+          </div>
+        )}
 
         {/* 필터 초기화 */}
         <button

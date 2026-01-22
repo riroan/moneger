@@ -17,11 +17,11 @@ interface AmountRange {
 
 interface UseTransactionsProps {
   userId: string | null;
-  filterType: 'ALL' | 'INCOME' | 'EXPENSE';
+  filterType: 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
   filterCategories: string[];
   searchKeyword: string;
   sortOrder: 'recent' | 'oldest' | 'expensive' | 'cheapest';
-  activeTab: 'dashboard' | 'transactions';
+  activeTab: 'dashboard' | 'transactions' | 'savings';
   dateRange: DateRange | null;
   amountRange: AmountRange | null;
 }
@@ -56,7 +56,9 @@ export function useTransactions({
         params.append('cursor', cursor);
       }
 
-      if (filterType !== 'ALL') {
+      if (filterType === 'SAVINGS') {
+        params.append('savingsOnly', 'true');
+      } else if (filterType !== 'ALL') {
         params.append('type', filterType);
       }
 
@@ -107,7 +109,6 @@ export function useTransactions({
   }, [userId, filterType, filterCategories, searchKeyword, sortOrder, dateRange, amountRange]);
 
   const resetAndFetch = useCallback(() => {
-    setAllTransactions([]);
     setNextCursor(null);
     setHasMore(true);
     fetchTransactions(null, true);

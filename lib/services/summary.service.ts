@@ -26,7 +26,7 @@ export async function getTransactionSummary(userId: string, year: number, month:
   };
 
   // 병렬로 DB 집계 쿼리 실행
-  const [incomeAgg, expenseAgg, categoryStats, transactionCounts] = await Promise.all([
+  const [incomeAgg, expenseAgg, categoryStats, transactionCounts, savingsData] = await Promise.all([
     // 수입 합계
     prisma.transaction.aggregate({
       where: { ...whereClause, type: 'INCOME' },
@@ -50,10 +50,42 @@ export async function getTransactionSummary(userId: string, year: number, month:
       where: whereClause,
       _count: true,
     }),
+    // 저축 목표 데이터
+    prisma.savingsGoal.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        icon: true,
+        currentAmount: true,
+        targetAmount: true,
+        targetYear: true,
+        targetMonth: true,
+        isPrimary: true,
+      },
+    }),
   ]);
 
   const totalIncome = incomeAgg._sum.amount || 0;
   const totalExpense = expenseAgg._sum.amount || 0;
+
+  // 목표일이 지나지 않은 저축 목표만 필터링
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const activeSavingsData = savingsData.filter((goal) => {
+    if (goal.targetYear > currentYear) return true;
+    if (goal.targetYear === currentYear && goal.targetMonth >= currentMonth) return true;
+    return false;
+  });
+
+  const totalSavings = activeSavingsData.reduce((sum, goal) => sum + goal.currentAmount, 0);
+  const totalSavingsTarget = activeSavingsData.reduce((sum, goal) => sum + goal.targetAmount, 0);
+  const savingsCount = activeSavingsData.length;
+  const primaryGoal = activeSavingsData.find((goal) => goal.isPrimary);
 
   // 카테고리 정보 조회 (필요한 것만, defaultBudget 포함)
   const categoryIds = categoryStats.map((s) => s.categoryId!);
@@ -133,8 +165,9 @@ export async function getTransactionSummary(userId: string, year: number, month:
     summary: {
       totalIncome,
       totalExpense,
+      totalSavings,
       netAmount: totalIncome - totalExpense,
-      balance: totalIncome - totalExpense,
+      balance: totalIncome - totalExpense - totalSavings,
     },
     budget: {
       amount: monthlyBudget,
@@ -147,6 +180,24 @@ export async function getTransactionSummary(userId: string, year: number, month:
       income: incomeCount,
       expense: expenseCount,
       total: incomeCount + expenseCount,
+    },
+    savings: {
+      totalAmount: totalSavings,
+      targetAmount: totalSavingsTarget,
+      count: savingsCount,
+      primaryGoal: primaryGoal
+        ? {
+            id: primaryGoal.id,
+            name: primaryGoal.name,
+            icon: primaryGoal.icon,
+            currentAmount: primaryGoal.currentAmount,
+            targetAmount: primaryGoal.targetAmount,
+            targetDate: `${primaryGoal.targetYear}년 ${primaryGoal.targetMonth}월 목표`,
+            progressPercent: primaryGoal.targetAmount > 0
+              ? Math.round((primaryGoal.currentAmount / primaryGoal.targetAmount) * 100)
+              : 0,
+          }
+        : null,
     },
   };
 }

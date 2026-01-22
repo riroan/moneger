@@ -2,7 +2,7 @@
 
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
-import { FaMoneyBillWave, FaCreditCard, FaWallet } from 'react-icons/fa';
+import { FaMoneyBillWave, FaCreditCard, FaWallet, FaChartLine } from 'react-icons/fa';
 import { ReactNode } from 'react';
 
 interface SummaryCardsProps {
@@ -12,9 +12,12 @@ interface SummaryCardsProps {
   lastMonthBalance: number;
   incomeCount: number;
   expenseCount: number;
+  totalSavings: number;
+  savingsCount: number;
   onIncomeClick?: () => void;
   onExpenseClick?: () => void;
   onBalanceClick?: () => void;
+  onSavingsClick?: () => void;
 }
 
 export default function SummaryCards({
@@ -24,9 +27,12 @@ export default function SummaryCards({
   lastMonthBalance,
   incomeCount,
   expenseCount,
+  totalSavings,
+  savingsCount,
   onIncomeClick,
   onExpenseClick,
   onBalanceClick,
+  onSavingsClick,
 }: SummaryCardsProps) {
   const balanceDiff = balance - lastMonthBalance;
 
@@ -67,6 +73,18 @@ export default function SummaryCards({
       badgeText: '#f87171',
     },
     {
+      type: 'savings',
+      icon: <FaChartLine className="text-white text-xl sm:text-2xl" />,
+      label: '저축',
+      amount: `₩${formatNumber(totalSavings)}`,
+      change: `${savingsCount}건의 저축`,
+      positive: true,
+      iconBg: 'bg-[#0891B2]',
+      barColor: 'bg-[#06B6D4]',
+      badgeBg: 'rgba(6, 182, 212, 0.2)',
+      badgeText: '#22d3ee',
+    },
+    {
       type: 'balance',
       icon: <FaWallet className="text-white text-xl sm:text-2xl" />,
       label: '잔액',
@@ -82,11 +100,11 @@ export default function SummaryCards({
 
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-3"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
       style={{ gap: '12px', marginBottom: '24px' }}
     >
       {cards.map((card, i) => {
-        const handleClick = card.type === 'income' ? onIncomeClick : card.type === 'expense' ? onExpenseClick : card.type === 'balance' ? onBalanceClick : undefined;
+        const handleClick = card.type === 'income' ? onIncomeClick : card.type === 'expense' ? onExpenseClick : card.type === 'balance' ? onBalanceClick : card.type === 'savings' ? onSavingsClick : undefined;
 
         return (
           <div

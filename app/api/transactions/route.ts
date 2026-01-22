@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       endMonth: searchParams.get('endMonth') ? parseInt(searchParams.get('endMonth')!) : undefined,
       minAmount: searchParams.get('minAmount') ? parseInt(searchParams.get('minAmount')!) : undefined,
       maxAmount: searchParams.get('maxAmount') ? parseInt(searchParams.get('maxAmount')!) : undefined,
+      savingsOnly: searchParams.get('savingsOnly') === 'true',
     });
 
     return paginatedResponse(result.data, result.count, result.nextCursor, result.hasMore);

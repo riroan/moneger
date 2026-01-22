@@ -211,7 +211,7 @@ export default function BudgetTab({
                   <div className="flex items-center">
                     <div
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-[10px] sm:rounded-[12px] flex items-center justify-center text-lg sm:text-xl"
-                      style={{ marginRight: '12px', backgroundColor: `${category.color}20`, color: category.color }}
+                      style={{ marginRight: '12px', backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
                     >
                       <IconComponent />
                     </div>

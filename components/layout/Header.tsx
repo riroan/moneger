@@ -16,6 +16,7 @@ interface HeaderProps {
   onMonthSelect: (year: number, month: number) => void;
   onLogout: () => void;
   oldestDate?: { year: number; month: number } | null;
+  showDatePicker?: boolean;
 }
 
 export default function Header({
@@ -27,6 +28,7 @@ export default function Header({
   onMonthSelect,
   onLogout,
   oldestDate,
+  showDatePicker = true,
 }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -123,29 +125,30 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
-        <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none" style={{ padding: '8px 12px', gap: '8px' }}>
-          <button
-            onClick={onPreviousMonth}
-            disabled={isPreviousMonthDisabled()}
-            className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            ◀
-          </button>
-          <span
-            onClick={handleDatePickerToggle}
-            className="text-sm sm:text-base font-semibold min-w-[80px] sm:min-w-[120px] text-center cursor-pointer"
-          >
-            {formatYearMonth(currentDate)}
-          </span>
-          <button
-            onClick={onNextMonth}
-            disabled={isNextMonthDisabled()}
-            className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            ▶
-          </button>
+        {showDatePicker && (
+          <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none" style={{ padding: '8px 12px', gap: '8px' }}>
+            <button
+              onClick={onPreviousMonth}
+              disabled={isPreviousMonthDisabled()}
+              className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ◀
+            </button>
+            <span
+              onClick={handleDatePickerToggle}
+              className="text-sm sm:text-base font-semibold min-w-[80px] sm:min-w-[120px] text-center cursor-pointer"
+            >
+              {formatYearMonth(currentDate)}
+            </span>
+            <button
+              onClick={onNextMonth}
+              disabled={isNextMonthDisabled()}
+              className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ▶
+            </button>
 
-          {isDatePickerOpen && (
+            {isDatePickerOpen && (
             <div
               className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none"
               style={{ width: '320px', padding: '20px', marginTop: '3px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)' }}
@@ -202,7 +205,8 @@ export default function Header({
               </div>
             </div>
           )}
-        </div>
+          </div>
+        )}
 
         <div ref={profileMenuRef} className="relative">
           <button

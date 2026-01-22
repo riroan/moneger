@@ -56,7 +56,7 @@ export default function CategoryTab({ categories, isLoading, onAddCategory, onEd
                   >
                     <div
                       className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
-                      style={{ marginRight: '10px', backgroundColor: `${category.color}20`, color: category.color }}
+                      style={{ marginRight: '10px', backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
                     >
                       <IconComponent />
                     </div>
@@ -104,7 +104,7 @@ export default function CategoryTab({ categories, isLoading, onAddCategory, onEd
                   >
                     <div
                       className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
-                      style={{ marginRight: '10px', backgroundColor: `${category.color}20`, color: category.color }}
+                      style={{ marginRight: '10px', backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
                     >
                       <IconComponent />
                     </div>

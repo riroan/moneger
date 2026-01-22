@@ -2,6 +2,7 @@
 
 import { formatNumber, formatDate, formatCurrencyDisplay } from '@/utils/formatters';
 import { getIconComponent } from '@/components/settings/constants';
+import { MdSavings } from 'react-icons/md';
 import type { TransactionWithCategory } from '@/types';
 
 interface TransactionItemProps {
@@ -25,7 +26,8 @@ const CurrencyDisplay = ({ amount }: { amount: string }) => {
 };
 
 export default function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
-  const IconComponent = getIconComponent(tx.category?.icon);
+  const isSavings = !!tx.savingsGoalId;
+  const IconComponent = isSavings ? MdSavings : getIconComponent(tx.category?.icon);
 
   return (
     <div
@@ -37,7 +39,7 @@ export default function TransactionItem({ transaction: tx, onClick }: Transactio
         {/* 아이콘 */}
         <div
           className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0"
-          style={{ marginRight: '12px', color: tx.category?.color || 'var(--text-primary)' }}
+          style={{ marginRight: '12px', color: isSavings ? 'var(--accent-blue)' : (tx.category?.color || 'var(--text-primary)') }}
         >
           <IconComponent />
         </div>
@@ -49,7 +51,7 @@ export default function TransactionItem({ transaction: tx, onClick }: Transactio
               {tx.description || tx.category?.name || '거래'}
             </div>
             <div className={`text-sm sm:text-base font-semibold whitespace-nowrap ${
-              tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
+              tx.savingsGoalId ? 'text-accent-blue' : tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
             }`}>
               <CurrencyDisplay amount={`${tx.type === 'EXPENSE' ? '-' : '+'}₩${formatNumber(tx.amount)}`} />
             </div>
@@ -57,7 +59,7 @@ export default function TransactionItem({ transaction: tx, onClick }: Transactio
           {/* 하단: 시간 + 카테고리 */}
           <div className="flex items-center justify-between text-xs sm:text-[13px] text-text-muted">
             <span>{formatDate(tx.date)}</span>
-            <span>{tx.category?.name || '미분류'}</span>
+            <span>{isSavings ? '저축' : (tx.category?.name || '미분류')}</span>
           </div>
         </div>
       </div>

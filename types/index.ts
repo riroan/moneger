@@ -45,6 +45,7 @@ export interface TransactionWithCategory {
   date: string;
   categoryId: string | null;
   category: CategoryWithSelect | null;
+  savingsGoalId?: string | null;
 }
 
 // Budget Types
@@ -78,13 +79,28 @@ export interface TransactionSummary {
   summary: {
     totalIncome: number;
     totalExpense: number;
+    totalSavings: number;
     netAmount: number;
-    balance?: number;
+    balance: number;
   };
   categories: CategorySummary[];
   transactionCount: {
     income: number;
     expense: number;
+  };
+  savings: {
+    totalAmount: number;
+    targetAmount: number;
+    count: number;
+    primaryGoal?: {
+      id: string;
+      name: string;
+      icon: string;
+      currentAmount: number;
+      targetAmount: number;
+      targetDate: string;
+      progressPercent: number;
+    } | null;
   };
 }
 

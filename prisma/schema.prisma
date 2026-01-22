@@ -25,6 +25,7 @@ model User {
   categories     Category[]
   budgets        Budget[]
   dailyBalances  DailyBalance[]
+  savingsGoals   SavingsGoal[]
 }
 
 model Category {
@@ -48,23 +49,26 @@ model Category {
 }
 
 model Transaction {
-  id          String          @id @default(cuid())
-  amount      Float
-  type        TransactionType
-  description String?
-  date        DateTime        @default(now())
-  categoryId  String?
-  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  deletedAt   DateTime?
+  id            String          @id @default(cuid())
+  amount        Float
+  type          TransactionType
+  description   String?
+  date          DateTime        @default(now())
+  categoryId    String?
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  savingsGoalId String?
+  savingsGoal   SavingsGoal?    @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
 
   @@index([userId, date])
   @@index([categoryId])
   @@index([userId, type])
   @@index([userId, deletedAt, date])
+  @@index([savingsGoalId])
 }
 
 model Budget {
@@ -97,6 +101,26 @@ model DailyBalance {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+model SavingsGoal {
+  id            String    @id @default(cuid())
+  name          String
+  icon          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  targetYear    Int
+  targetMonth   Int
+  isPrimary     Boolean   @default(false)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  transactions Transaction[]
+
+  @@index([userId, deletedAt])
 }
 
 enum TransactionType {

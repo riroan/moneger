@@ -9,16 +9,19 @@ import Header from '@/components/layout/Header';
 import SummaryCards from '@/components/dashboard/SummaryCards';
 import CategoryChart from '@/components/dashboard/CategoryChart';
 import TodaySummaryCard from '@/components/dashboard/TodaySummaryCard';
+import SavingsCard from '@/components/dashboard/SavingsCard';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import TransactionList from '@/components/transactions/TransactionList';
 import FilterPanel, { DateRange, AmountRange } from '@/components/transactions/FilterPanel';
 import type { Category, TransactionWithCategory, TransactionSummary, TodaySummary, CategoryChartData } from '@/types';
-import { MdDashboard, MdReceipt, MdPieChart, MdHistory } from 'react-icons/md';
+import { MdPieChart, MdHistory, MdReceipt } from 'react-icons/md';
+import SavingsTab from '@/components/savings/SavingsTab';
 
 // 모달 컴포넌트 동적 임포트 (코드 스플리팅)
 const TransactionModal = dynamic(() => import('@/components/modals/TransactionModal'), { ssr: false });
 const EditTransactionModal = dynamic(() => import('@/components/modals/EditTransactionModal'), { ssr: false });
 const DeleteConfirmModal = dynamic(() => import('@/components/modals/DeleteConfirmModal'), { ssr: false });
+const EditSavingsTransactionModal = dynamic(() => import('@/components/savings/EditSavingsTransactionModal'), { ssr: false });
 
 export default function Home() {
   const { userId, userName, userEmail, isLoading: isAuthLoading, logout } = useAuth();
@@ -28,17 +31,27 @@ export default function Home() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'savings'>('dashboard');
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 화면 크기 감지
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isSavingsTransactionModalOpen, setIsSavingsTransactionModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 필터 상태
-  const [filterType, setFilterType] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
+  const [filterType, setFilterType] = useState<'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS'>('ALL');
   const [filterCategories, setFilterCategories] = useState<string[]>([]);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'expensive' | 'cheapest'>('recent');
@@ -79,9 +92,9 @@ export default function Home() {
 
   // 모달 열림 시 스크롤 비활성화
   useEffect(() => {
-    document.body.style.overflow = (isModalOpen || isEditModalOpen || isDeleteConfirmOpen) ? 'hidden' : 'unset';
+    document.body.style.overflow = (isModalOpen || isEditModalOpen || isDeleteConfirmOpen || isSavingsTransactionModalOpen) ? 'hidden' : 'unset';
     return () => { document.body.style.overflow = 'unset'; };
-  }, [isModalOpen, isEditModalOpen, isDeleteConfirmOpen]);
+  }, [isModalOpen, isEditModalOpen, isDeleteConfirmOpen, isSavingsTransactionModalOpen]);
 
   // 초기 데이터 병렬 로딩 (카테고리 + 가장 오래된 거래 날짜 + 최근 거래 + 오늘 요약)
   useEffect(() => {
@@ -258,6 +271,37 @@ export default function Home() {
     }
   };
 
+  const handleDeleteSavingsTransaction = async () => {
+    if (!userId || !editingTransaction) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/transactions/${editingTransaction.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      if (!response.ok) throw new Error((await response.json()).error);
+      setIsSavingsTransactionModalOpen(false);
+      setEditingTransaction(null);
+      await refreshData();
+      showToast('저축 내역이 삭제되었습니다', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '저축 내역 삭제에 실패했습니다', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 거래 클릭 핸들러
+  const handleTransactionClick = (tx: TransactionWithCategory) => {
+    setEditingTransaction(tx);
+    if (tx.savingsGoalId) {
+      setIsSavingsTransactionModalOpen(true);
+    } else {
+      setIsEditModalOpen(true);
+    }
+  };
+
   // 날짜 핸들러
   const handlePreviousMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   const handleNextMonth = () => {
@@ -319,7 +363,6 @@ export default function Home() {
   // 데이터 가공 (useMemo로 메모이제이션)
   const totalIncome = summary?.summary?.totalIncome || 0;
   const totalExpense = summary?.summary?.totalExpense || 0;
-  const balance = summary?.summary?.netAmount || 0;
   const categoryList: CategoryChartData[] = useMemo(() =>
     (summary?.categories || []).map((cat, index) => ({
       ...cat,
@@ -329,18 +372,27 @@ export default function Home() {
     [summary?.categories]
   );
 
-  // 전체 내역 탭용 요약 계산
+  // 전체 내역 탭용 요약 계산 (저축 거래 분리)
   const allTransactionsSummary = useMemo(() => {
     const income = allTransactions
       .filter(tx => tx.type === 'INCOME')
       .reduce((sum, tx) => sum + tx.amount, 0);
-    const expense = allTransactions
-      .filter(tx => tx.type === 'EXPENSE')
+
+    // 저축 거래 (savingsGoalId가 있거나 카테고리가 '저축'인 경우)
+    const savings = allTransactions
+      .filter(tx => tx.type === 'EXPENSE' && (tx.savingsGoalId || tx.category?.name === '저축'))
       .reduce((sum, tx) => sum + tx.amount, 0);
+
+    // 일반 지출 (저축 제외)
+    const expense = allTransactions
+      .filter(tx => tx.type === 'EXPENSE' && !tx.savingsGoalId && tx.category?.name !== '저축')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
     return {
       totalIncome: income,
       totalExpense: expense,
-      balance: income - expense,
+      totalSavings: savings,
+      balance: income - expense - savings,
     };
   }, [allTransactions]);
 
@@ -362,41 +414,24 @@ export default function Home() {
           onMonthSelect={handleMonthSelect}
           onLogout={logout}
           oldestDate={oldestTransactionDate}
+          showDatePicker={false}
         />
-
-        {/* Tab Bar */}
-        <div className="animate-[fadeInUp_0.5s_ease-out]" style={{ marginBottom: '24px' }}>
-          <nav className="flex gap-2 bg-bg-card border border-[var(--border)] rounded-[12px] p-1 w-full sm:w-fit">
-            {(['dashboard', 'transactions'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-[10px] transition-all cursor-pointer ${
-                  activeTab === tab
-                    ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
-                    : 'text-text-secondary hover:text-text-primary'
-                }`}
-                style={{ padding: '12px 20px' }}
-              >
-                {tab === 'dashboard' ? <MdDashboard className="text-lg" /> : <MdReceipt className="text-lg" />}
-                <span className="font-medium text-sm">{tab === 'dashboard' ? '대시보드' : '전체 내역'}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
 
         {activeTab === 'dashboard' && (
           <>
             <SummaryCards
               totalIncome={totalIncome}
               totalExpense={totalExpense}
-              balance={balance}
+              balance={summary?.summary?.balance || 0}
               lastMonthBalance={lastMonthBalance}
               incomeCount={summary?.transactionCount?.income || 0}
               expenseCount={summary?.transactionCount?.expense || 0}
+              totalSavings={summary?.savings?.totalAmount || 0}
+              savingsCount={summary?.savings?.count || 0}
               onIncomeClick={handleIncomeClick}
               onExpenseClick={handleExpenseClick}
               onBalanceClick={handleBalanceClick}
+              onSavingsClick={() => setActiveTab('savings')}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]" style={{ gap: '16px' }}>
@@ -416,6 +451,14 @@ export default function Home() {
                 {/* 오늘의 지출 요약 */}
                 <TodaySummaryCard data={todaySummary} isLoading={isLoadingTodaySummary} />
 
+                {/* 저축 카드 */}
+                <SavingsCard
+                  savingsGoal={summary?.savings?.targetAmount || 0}
+                  currentSavings={summary?.savings?.totalAmount || 0}
+                  primaryGoal={summary?.savings?.primaryGoal}
+                  onViewAll={() => setActiveTab('savings')}
+                />
+
                 <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]" style={{ padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                     <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
@@ -432,11 +475,11 @@ export default function Home() {
                     {isLoadingTransactions ? (
                       <div className="text-center text-text-muted py-6">로딩 중...</div>
                     ) : recentTransactions.length > 0 ? (
-                      recentTransactions.map((tx) => (
+                      recentTransactions.slice(0, isMobile ? 5 : 10).map((tx) => (
                         <TransactionItem
                           key={tx.id}
                           transaction={tx}
-                          onClick={() => { setEditingTransaction(tx); setIsEditModalOpen(true); }}
+                          onClick={() => handleTransactionClick(tx)}
                         />
                       ))
                     ) : (
@@ -448,6 +491,8 @@ export default function Home() {
             </div>
           </>
         )}
+
+        {activeTab === 'savings' && userId && <SavingsTab userId={userId} onDataChange={refreshData} />}
 
         {activeTab === 'transactions' && (
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] animate-[fadeIn_0.5s_ease-out]" style={{ gap: '16px' }}>
@@ -477,7 +522,7 @@ export default function Home() {
               </h2>
 
               {/* 요약 카드 */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right" style={{ padding: '12px' }}>
                   <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>수입</p>
                   <p className="text-sm sm:text-base font-bold text-accent-mint">
@@ -488,6 +533,12 @@ export default function Home() {
                   <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>지출</p>
                   <p className="text-sm sm:text-base font-bold text-accent-coral">
                     -₩{allTransactionsSummary.totalExpense.toLocaleString()}
+                  </p>
+                </div>
+                <div className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right" style={{ padding: '12px' }}>
+                  <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>저축</p>
+                  <p className="text-sm sm:text-base font-bold text-accent-blue">
+                    ₩{allTransactionsSummary.totalSavings.toLocaleString()}
                   </p>
                 </div>
                 <div className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right" style={{ padding: '12px' }}>
@@ -507,20 +558,21 @@ export default function Home() {
                 isLoading={isLoadingAllTransactions}
                 hasMore={hasMoreTransactions}
                 emptyMessage={searchKeyword || filterType !== 'ALL' || filterCategories.length > 0 || amountRange !== null ? '검색 결과가 없습니다' : '거래 내역이 없습니다'}
-                onTransactionClick={(tx) => { setEditingTransaction(tx); setIsEditModalOpen(true); }}
-                showDateHeaders
+                onTransactionClick={handleTransactionClick}
               />
             </div>
           </div>
         )}
       </div>
 
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-14 h-14 sm:w-20 sm:h-20 rounded-[14px] sm:rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue border-none text-bg-primary text-[28px] sm:text-[36px] font-light leading-none cursor-pointer shadow-[0_8px_32px_var(--glow-mint)] transition-all hover:scale-110 hover:rotate-90 hover:shadow-[0_12px_48px_var(--glow-mint)] z-[100] flex items-center justify-center"
-      >
-        +
-      </button>
+      {activeTab !== 'savings' && (
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-14 h-14 sm:w-20 sm:h-20 rounded-[14px] sm:rounded-[18px] bg-gradient-to-br from-accent-mint to-accent-blue border-none text-bg-primary text-[28px] sm:text-[36px] font-light leading-none cursor-pointer shadow-[0_8px_32px_var(--glow-mint)] transition-all hover:scale-110 hover:rotate-90 hover:shadow-[0_12px_48px_var(--glow-mint)] z-[100] flex items-center justify-center"
+        >
+          +
+        </button>
+      )}
 
       <TransactionModal
         isOpen={isModalOpen}
@@ -544,6 +596,14 @@ export default function Home() {
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirm={handleDeleteTransaction}
+        isSubmitting={isSubmitting}
+      />
+
+      <EditSavingsTransactionModal
+        isOpen={isSavingsTransactionModalOpen}
+        transaction={editingTransaction}
+        onClose={() => { setIsSavingsTransactionModalOpen(false); setEditingTransaction(null); }}
+        onDelete={handleDeleteSavingsTransaction}
         isSubmitting={isSubmitting}
       />
     </>

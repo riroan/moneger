@@ -66,7 +66,11 @@ export async function PATCH(
         categoryId,
         date: date ? new Date(date) : undefined,
       },
-      existingTransaction.date
+      {
+        date: existingTransaction.date,
+        amount: existingTransaction.amount,
+        savingsGoalId: existingTransaction.savingsGoalId,
+      }
     );
 
     return successResponseWithMessage(transaction, 'Transaction updated successfully');
@@ -97,7 +101,11 @@ export async function DELETE(
     }
 
     // 거래 삭제
-    await deleteTransaction(id, userId, existingTransaction.date);
+    await deleteTransaction(id, userId, {
+      date: existingTransaction.date,
+      amount: existingTransaction.amount,
+      savingsGoalId: existingTransaction.savingsGoalId,
+    });
 
     return successResponseWithMessage(null, 'Transaction deleted successfully');
   } catch (error) {
