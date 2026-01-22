@@ -16,16 +16,17 @@ interface TransactionListProps {
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
 const formatDateHeader = (dateString: string) => {
-  const date = new Date(dateString);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
+  // dateString은 "YYYY-MM-DD" 형식
+  const [year, month, day] = dateString.split('-').map(Number);
+  // 로컬 시간대로 Date 생성 (시간대 문제 방지)
+  const date = new Date(year, month - 1, day);
   const dayOfWeek = DAY_NAMES[date.getDay()];
   return `${month}월 ${day}일 (${dayOfWeek})`;
 };
 
 const TransactionList = forwardRef<HTMLDivElement, TransactionListProps>(
   ({ transactions, isLoading, hasMore = false, emptyMessage = '거래 내역이 없습니다', onTransactionClick, showDateHeaders = false }, ref) => {
-    // 날짜별로 거래 그룹화
+    // 날짜별로 거래 그룹화 (로컬 시간대 기준)
     const groupedTransactions = useMemo(() => {
       if (!showDateHeaders) return null;
 
@@ -33,7 +34,13 @@ const TransactionList = forwardRef<HTMLDivElement, TransactionListProps>(
       let currentDate = '';
 
       transactions.forEach((tx) => {
-        const txDate = tx.date.split('T')[0];
+        // ISO 문자열을 Date 객체로 변환 후 로컬 시간대 기준으로 날짜 추출
+        const date = new Date(tx.date);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const txDate = `${year}-${month}-${day}`;
+
         if (txDate !== currentDate) {
           currentDate = txDate;
           groups.push({ date: txDate, transactions: [tx] });
