@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { formatNumber } from '@/utils/formatters';
-import { ICON_LIST, COLOR_LIST } from './constants';
+import { ICON_LIST, ICON_MAP, COLOR_LIST } from './constants';
 import type { Category } from '@/types';
 
 interface CategoryFormModalProps {
@@ -34,7 +34,7 @@ export default function CategoryFormModal({
 }: CategoryFormModalProps) {
   const [categoryName, setCategoryName] = useState('');
   const [categoryType, setCategoryType] = useState<'INCOME' | 'EXPENSE'>(initialType);
-  const [categoryIcon, setCategoryIcon] = useState('📦');
+  const [categoryIcon, setCategoryIcon] = useState('box');
   const [categoryColor, setCategoryColor] = useState('#EF4444');
   const [categoryDefaultBudget, setCategoryDefaultBudget] = useState('');
   const [nameError, setNameError] = useState('');
@@ -45,13 +45,13 @@ export default function CategoryFormModal({
       if (mode === 'edit' && initialCategory) {
         setCategoryName(initialCategory.name);
         setCategoryType(initialCategory.type);
-        setCategoryIcon(initialCategory.icon || '💰');
+        setCategoryIcon(initialCategory.icon || 'money');
         setCategoryColor(initialCategory.color || '#6366F1');
         setCategoryDefaultBudget(initialCategory.defaultBudget ? initialCategory.defaultBudget.toString() : '');
       } else {
         setCategoryName('');
         setCategoryType(initialType);
-        setCategoryIcon(initialType === 'INCOME' ? '💰' : '🛒');
+        setCategoryIcon(initialType === 'INCOME' ? 'money' : 'cart');
         setCategoryColor(initialType === 'INCOME' ? '#10B981' : '#EF4444');
         setCategoryDefaultBudget('');
       }
@@ -89,7 +89,7 @@ export default function CategoryFormModal({
   const handleClose = () => {
     setCategoryName('');
     setCategoryType('EXPENSE');
-    setCategoryIcon('📦');
+    setCategoryIcon('box');
     setCategoryColor('#EF4444');
     setCategoryDefaultBudget('');
     setNameError('');
@@ -166,21 +166,23 @@ export default function CategoryFormModal({
               아이콘
             </label>
             <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-              {ICON_LIST.map((icon) => (
-                <button
-                  key={icon}
-                  type="button"
-                  onClick={() => setCategoryIcon(icon)}
-                  className={`w-full aspect-square rounded-[10px] flex items-center justify-center text-xl transition-all cursor-pointer ${
-                    categoryIcon === icon
-                      ? 'bg-accent-blue text-white shadow-lg scale-110'
-                      : 'bg-bg-secondary hover:bg-bg-card-hover'
-                  }`}
-                  style={{ paddingBottom: '2px' }}
-                >
-                  {icon}
-                </button>
-              ))}
+              {ICON_LIST.map((iconId) => {
+                const IconComponent = ICON_MAP[iconId];
+                return (
+                  <button
+                    key={iconId}
+                    type="button"
+                    onClick={() => setCategoryIcon(iconId)}
+                    className={`w-full aspect-square rounded-[10px] flex items-center justify-center text-xl transition-all cursor-pointer ${
+                      categoryIcon === iconId
+                        ? 'bg-accent-blue text-white shadow-lg scale-110'
+                        : 'bg-bg-secondary hover:bg-bg-card-hover text-text-primary'
+                    }`}
+                  >
+                    <IconComponent />
+                  </button>
+                );
+              })}
             </div>
           </div>
 

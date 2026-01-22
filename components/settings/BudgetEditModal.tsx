@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { formatNumber } from '@/utils/formatters';
+import { getIconComponent } from './constants';
 import type { Category } from '@/types';
 
 interface BudgetEditModalProps {
@@ -62,18 +63,23 @@ export default function BudgetEditModal({
         </h2>
 
         {/* 카테고리 정보 */}
-        <div className="flex items-center bg-bg-secondary rounded-[12px]" style={{ padding: '12px', marginBottom: '20px' }}>
-          <div
-            className="w-10 h-10 rounded-[8px] flex items-center justify-center text-lg"
-            style={{ marginRight: '12px', backgroundColor: `${category.color}20` }}
-          >
-            {category.icon}
-          </div>
-          <div>
-            <div className="text-base font-medium">{category.name}</div>
-            <div className="text-xs text-text-muted">{formatYearMonth(budgetDate)}</div>
-          </div>
-        </div>
+        {(() => {
+          const IconComponent = getIconComponent(category.icon);
+          return (
+            <div className="flex items-center bg-bg-secondary rounded-[12px]" style={{ padding: '12px', marginBottom: '20px' }}>
+              <div
+                className="w-10 h-10 rounded-[8px] flex items-center justify-center text-lg"
+                style={{ marginRight: '12px', backgroundColor: `${category.color}20`, color: category.color }}
+              >
+                <IconComponent />
+              </div>
+              <div>
+                <div className="text-base font-medium">{category.name}</div>
+                <div className="text-xs text-text-muted">{formatYearMonth(budgetDate)}</div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 예산 입력 */}
         <div style={{ marginBottom: '16px' }}>

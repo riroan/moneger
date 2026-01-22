@@ -1,6 +1,7 @@
 'use client';
 
 import { formatNumber, formatDate, formatCurrencyDisplay } from '@/utils/formatters';
+import { getIconComponent } from '@/components/settings/constants';
 import type { TransactionWithCategory } from '@/types';
 
 interface TransactionItemProps {
@@ -24,7 +25,7 @@ const CurrencyDisplay = ({ amount }: { amount: string }) => {
 };
 
 export default function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
-  const icon = tx.category?.icon || '💰';
+  const IconComponent = getIconComponent(tx.category?.icon);
 
   return (
     <div
@@ -36,9 +37,9 @@ export default function TransactionItem({ transaction: tx, onClick }: Transactio
         {/* 아이콘 */}
         <div
           className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0"
-          style={{ marginRight: '12px' }}
+          style={{ marginRight: '12px', color: tx.category?.color || 'var(--text-primary)' }}
         >
-          {icon}
+          <IconComponent />
         </div>
         {/* 내용 영역 */}
         <div className="flex-1 min-w-0">

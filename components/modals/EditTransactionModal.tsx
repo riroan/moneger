@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { getIconComponent } from '@/components/settings/constants';
 
 interface Category {
   id: string;
@@ -259,14 +260,16 @@ export default function EditTransactionModal({
                 }`}
                 style={{ padding: '14px 16px' }}
               >
-                {selectedCategory && !isCategoryOpen && (
-                  <span className="text-text-primary" style={{ marginRight: '5px' }}>
-                    {(() => {
-                      const cat = currentCategories.find(c => c.id === selectedCategory);
-                      return cat ? `${cat.icon}` : '';
-                    })()}
-                  </span>
-                )}
+                {selectedCategory && !isCategoryOpen && (() => {
+                  const cat = currentCategories.find(c => c.id === selectedCategory);
+                  if (!cat) return null;
+                  const IconComponent = getIconComponent(cat.icon);
+                  return (
+                    <span className="text-text-primary" style={{ marginRight: '8px' }}>
+                      <IconComponent />
+                    </span>
+                  );
+                })()}
                 <input
                   type="text"
                   placeholder={selectedCategory ? '' : '카테고리 검색 또는 선택'}
@@ -308,25 +311,28 @@ export default function EditTransactionModal({
                   style={{ boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)', maxHeight: '240px' }}
                 >
                   {filteredCategories.length > 0 ? (
-                    filteredCategories.map((category) => (
-                      <button
-                        key={category.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategory(category.id);
-                          setCategoryError('');
-                          setIsCategoryOpen(false);
-                          setCategorySearch('');
-                        }}
-                        className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer flex items-center gap-3 ${
-                          selectedCategory === category.id ? 'bg-bg-card-hover text-accent-mint' : 'text-text-primary'
-                        }`}
-                        style={{ padding: '12px 16px', fontSize: '15px' }}
-                      >
-                        <span>{category.icon}</span>
-                        <span>{category.name}</span>
-                      </button>
-                    ))
+                    filteredCategories.map((category) => {
+                      const IconComponent = getIconComponent(category.icon);
+                      return (
+                        <button
+                          key={category.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory(category.id);
+                            setCategoryError('');
+                            setIsCategoryOpen(false);
+                            setCategorySearch('');
+                          }}
+                          className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer flex items-center gap-3 ${
+                            selectedCategory === category.id ? 'bg-bg-card-hover text-accent-mint' : 'text-text-primary'
+                          }`}
+                          style={{ padding: '12px 16px', fontSize: '15px' }}
+                        >
+                          <IconComponent />
+                          <span>{category.name}</span>
+                        </button>
+                      );
+                    })
                   ) : (
                     <div className="text-text-muted text-center" style={{ padding: '12px 16px', fontSize: '14px' }}>
                       일치하는 카테고리가 없습니다

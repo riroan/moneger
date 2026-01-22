@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
+import { getIconComponent } from '@/components/settings/constants';
 
 interface CategoryData {
   id: string;
@@ -131,6 +132,7 @@ export default function CategoryChart({
         {categories.map((category, index) => {
           const usagePercent = category.budgetUsagePercent ?? 0;
           const isHovered = hoveredIndex === index;
+          const IconComponent = getIconComponent(category.icon);
 
           return (
             <div
@@ -152,9 +154,9 @@ export default function CategoryChart({
               <div className="flex items-center">
                 <div
                   className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-xl ${BG_COLORS[category.colorIndex % BG_COLORS.length]} transition-transform ${isHovered ? 'scale-110' : ''}`}
-                  style={{ marginRight: '12px' }}
+                  style={{ marginRight: '12px', color: COLORS[category.colorIndex % COLORS.length] }}
                 >
-                  {category.icon}
+                  <IconComponent />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm sm:text-[15px] font-medium truncate" style={{ marginBottom: '2px' }}>

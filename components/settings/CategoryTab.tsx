@@ -2,6 +2,7 @@
 
 import type { Category } from '@/types';
 import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
+import { getIconComponent } from './constants';
 
 interface CategoryTabProps {
   categories: Category[];
@@ -44,25 +45,28 @@ export default function CategoryTab({ categories, isLoading, onAddCategory, onEd
             <div className="text-center text-text-muted py-4 text-sm">로딩 중...</div>
           ) : incomeCategories.length > 0 ? (
             <div className="flex flex-col" style={{ gap: '6px' }}>
-              {incomeCategories.map((category) => (
-                <div
-                  key={category.id}
-                  className="flex items-center bg-bg-secondary rounded-[8px] sm:rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
-                  style={{ padding: '10px' }}
-                  onClick={() => onEditCategory(category)}
-                >
+              {incomeCategories.map((category) => {
+                const IconComponent = getIconComponent(category.icon);
+                return (
                   <div
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
-                    style={{ marginRight: '10px', backgroundColor: `${category.color}20` }}
+                    key={category.id}
+                    className="flex items-center bg-bg-secondary rounded-[8px] sm:rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
+                    style={{ padding: '10px' }}
+                    onClick={() => onEditCategory(category)}
                   >
-                    {category.icon}
+                    <div
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
+                      style={{ marginRight: '10px', backgroundColor: `${category.color}20`, color: category.color }}
+                    >
+                      <IconComponent />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs sm:text-sm font-medium truncate">{category.name}</div>
+                    </div>
+                    <div className="text-[10px] sm:text-xs text-text-muted">수정 →</div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs sm:text-sm font-medium truncate">{category.name}</div>
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-text-muted">수정 →</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center text-text-muted py-4 text-xs sm:text-sm">수입 카테고리가 없습니다</div>
@@ -89,25 +93,28 @@ export default function CategoryTab({ categories, isLoading, onAddCategory, onEd
             <div className="text-center text-text-muted py-4 text-sm">로딩 중...</div>
           ) : expenseCategories.length > 0 ? (
             <div className="flex flex-col" style={{ gap: '6px' }}>
-              {expenseCategories.map((category) => (
-                <div
-                  key={category.id}
-                  className="flex items-center bg-bg-secondary rounded-[8px] sm:rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
-                  style={{ padding: '10px' }}
-                  onClick={() => onEditCategory(category)}
-                >
+              {expenseCategories.map((category) => {
+                const IconComponent = getIconComponent(category.icon);
+                return (
                   <div
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
-                    style={{ marginRight: '10px', backgroundColor: `${category.color}20` }}
+                    key={category.id}
+                    className="flex items-center bg-bg-secondary rounded-[8px] sm:rounded-[10px] cursor-pointer transition-all hover:bg-bg-card-hover"
+                    style={{ padding: '10px' }}
+                    onClick={() => onEditCategory(category)}
                   >
-                    {category.icon}
+                    <div
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-[6px] sm:rounded-[8px] flex items-center justify-center text-sm sm:text-base"
+                      style={{ marginRight: '10px', backgroundColor: `${category.color}20`, color: category.color }}
+                    >
+                      <IconComponent />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs sm:text-sm font-medium truncate">{category.name}</div>
+                    </div>
+                    <div className="text-[10px] sm:text-xs text-text-muted">수정 →</div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs sm:text-sm font-medium truncate">{category.name}</div>
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-text-muted">수정 →</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center text-text-muted py-4 text-xs sm:text-sm">지출 카테고리가 없습니다</div>

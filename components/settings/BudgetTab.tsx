@@ -5,6 +5,7 @@ import { formatNumber } from '@/utils/formatters';
 import { useOutsideClick } from '@/hooks';
 import type { Category, Budget } from '@/types';
 import { FaCreditCard } from 'react-icons/fa';
+import { getIconComponent } from './constants';
 
 interface BudgetTabProps {
   categories: Category[];
@@ -197,6 +198,7 @@ export default function BudgetTab({
               const budget = getBudgetForCategory(category.id);
               const hasMonthlyBudget = budget && budget.amount > 0;
               const hasDefaultBudget = category.defaultBudget && category.defaultBudget > 0;
+              const IconComponent = getIconComponent(category.icon);
 
               return (
                 <div
@@ -209,9 +211,9 @@ export default function BudgetTab({
                   <div className="flex items-center">
                     <div
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-[10px] sm:rounded-[12px] flex items-center justify-center text-lg sm:text-xl"
-                      style={{ marginRight: '12px', backgroundColor: `${category.color}20` }}
+                      style={{ marginRight: '12px', backgroundColor: `${category.color}20`, color: category.color }}
                     >
-                      {category.icon}
+                      <IconComponent />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm sm:text-base font-medium truncate">{category.name}</div>
