@@ -20,7 +20,7 @@ jobs:
           script: |
             cd /home/ubuntu/moneger
             git fetch origin main
-            git reset --hard origin/main
+            git rebase origin/main
             yarn install --frozen-lockfile
             yarn prisma migrate deploy
             docker-compose stop app
