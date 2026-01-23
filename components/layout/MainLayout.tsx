@@ -70,11 +70,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   // Initialize auth on mount
   useEffect(() => {
-    const hasAuth = initAuth();
-    if (!hasAuth) {
-      router.push('/login');
-    }
-  }, [initAuth, router]);
+    initAuth();
+  }, [initAuth]);
 
   // Check mobile on mount and resize
   useEffect(() => {

@@ -25,7 +25,7 @@ export function useAuth() {
     const storedUserEmail = localStorage.getItem('userEmail');
 
     if (!storedUserId) {
-      router.push('/login');
+      router.push('/');
       return;
     }
 
@@ -41,7 +41,7 @@ export function useAuth() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
-    router.push('/login');
+    router.push('/');
   };
 
   return { ...authState, logout };
