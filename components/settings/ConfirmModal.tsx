@@ -35,9 +35,16 @@ export default function ConfirmModal({
         style={{ padding: '32px', margin: '20px' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold text-text-primary" style={{ marginBottom: '12px' }}>
-          {title}
-        </h2>
+        <div className="flex justify-between items-center" style={{ marginBottom: '12px' }}>
+          <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-text-secondary hover:text-text-primary transition-colors text-2xl w-8 h-8 flex items-center justify-center cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
         <div className="text-text-secondary" style={{ marginBottom: '24px' }}>
           {message}
         </div>

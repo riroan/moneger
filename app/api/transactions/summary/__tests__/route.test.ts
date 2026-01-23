@@ -16,6 +16,9 @@ jest.mock('@/lib/prisma', () => ({
     category: {
       findMany: jest.fn(),
     },
+    savingsGoal: {
+      findMany: jest.fn(),
+    },
   },
 }));
 
@@ -25,10 +28,11 @@ describe('GET /api/transactions/summary', () => {
   });
 
   it('월별 거래 요약을 성공적으로 반환해야 함', async () => {
-    // aggregate mocks for income and expense
+    // aggregate mocks for income, expense, and monthly savings
     (prisma.transaction.aggregate as jest.Mock)
       .mockResolvedValueOnce({ _sum: { amount: 100000 } }) // income
-      .mockResolvedValueOnce({ _sum: { amount: 50000 } }); // expense
+      .mockResolvedValueOnce({ _sum: { amount: 50000 } }) // expense
+      .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: 0 }); // monthly savings
 
     // groupBy mocks for category stats and transaction counts
     (prisma.transaction.groupBy as jest.Mock)
@@ -39,6 +43,9 @@ describe('GET /api/transactions/summary', () => {
         { type: 'INCOME', _count: 1 },
         { type: 'EXPENSE', _count: 2 },
       ]);
+
+    // savingsGoal mock
+    (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
 
     (prisma.category.findMany as jest.Mock).mockResolvedValue([
       { id: 'cat-2', name: '식비', color: '#EF4444', icon: '🍽️', defaultBudget: null },
@@ -76,7 +83,8 @@ describe('GET /api/transactions/summary', () => {
   it('카테고리별 통계를 금액순으로 정렬해야 함', async () => {
     (prisma.transaction.aggregate as jest.Mock)
       .mockResolvedValueOnce({ _sum: { amount: 0 } }) // income
-      .mockResolvedValueOnce({ _sum: { amount: 60000 } }); // expense
+      .mockResolvedValueOnce({ _sum: { amount: 60000 } }) // expense
+      .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: 0 }); // monthly savings
 
     (prisma.transaction.groupBy as jest.Mock)
       .mockResolvedValueOnce([
@@ -87,6 +95,9 @@ describe('GET /api/transactions/summary', () => {
       .mockResolvedValueOnce([
         { type: 'EXPENSE', _count: 3 },
       ]);
+
+    // savingsGoal mock
+    (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
 
     (prisma.category.findMany as jest.Mock).mockResolvedValue([
       { id: 'cat-1', name: '교통비', color: '#F59E0B', icon: '🚗', defaultBudget: null },

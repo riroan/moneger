@@ -58,9 +58,16 @@ export default function BudgetEditModal({
         style={{ padding: '32px', margin: '20px' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '24px' }}>
-          예산 설정
-        </h2>
+        <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
+          <h2 className="text-xl sm:text-2xl font-bold text-text-primary">예산 설정</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-text-secondary hover:text-text-primary transition-colors text-2xl w-8 h-8 flex items-center justify-center cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
 
         {/* 카테고리 정보 */}
         {(() => {
@@ -100,7 +107,7 @@ export default function BudgetEditModal({
                 }
               }}
               placeholder="0"
-              className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-lg font-mono text-text-primary focus:outline-none focus:border-accent-mint transition-colors"
+              className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors"
               style={{ padding: '14px 16px', paddingLeft: '32px' }}
               autoFocus
             />

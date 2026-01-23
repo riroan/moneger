@@ -49,6 +49,7 @@ const mockTodaySummary = {
     dayOfWeek: 1,
     expense: { total: 0, count: 0 },
     income: { total: 0, count: 0 },
+    savings: { total: 0, count: 0 },
   },
 };
 
@@ -59,6 +60,7 @@ const mockSummary = {
     categories: [],
     budget: { amount: 200000, used: 50000, remaining: 150000, usagePercent: 25 },
     transactionCount: { income: 1, expense: 2 },
+    savings: { totalAmount: 0, count: 0, targetAmount: 0, primaryGoal: null },
   },
 };
 

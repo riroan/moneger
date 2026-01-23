@@ -108,9 +108,18 @@ export default function CategoryFormModal({
         style={{ margin: '20px' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold text-text-primary flex-shrink-0" style={{ padding: '32px 32px 0 32px', marginBottom: '24px' }}>
-          {mode === 'add' ? '카테고리 추가' : '카테고리 수정'}
-        </h2>
+        <div className="flex justify-between items-center flex-shrink-0" style={{ padding: '32px 32px 0 32px', marginBottom: '24px' }}>
+          <h2 className="text-2xl font-bold text-text-primary">
+            {mode === 'add' ? '카테고리 추가' : '카테고리 수정'}
+          </h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="text-text-secondary hover:text-text-primary transition-colors text-2xl w-8 h-8 flex items-center justify-center cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto min-h-0 flex flex-col" style={{ padding: '0 32px 32px 32px' }}>
           {/* Type Display */}
@@ -191,7 +200,7 @@ export default function CategoryFormModal({
             <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
               색상
             </label>
-            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+            <div className="grid grid-cols-6 gap-2">
               {COLOR_LIST.map((color) => (
                 <button
                   key={color.value}
@@ -229,7 +238,7 @@ export default function CategoryFormModal({
                     }
                   }}
                   placeholder="0"
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-base font-mono text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-base text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
                   style={{ padding: '14px 16px', paddingLeft: '32px' }}
                 />
               </div>

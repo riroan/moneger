@@ -73,9 +73,16 @@ export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAc
         style={{ padding: '32px', margin: '20px' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold text-accent-coral" style={{ marginBottom: '12px' }}>
-          계정 삭제
-        </h2>
+        <div className="flex justify-between items-center" style={{ marginBottom: '12px' }}>
+          <h2 className="text-2xl font-bold text-accent-coral">계정 삭제</h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="text-text-secondary hover:text-text-primary transition-colors text-2xl w-8 h-8 flex items-center justify-center cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
         <p className="text-text-secondary" style={{ marginBottom: '24px' }}>
           정말로 계정을 삭제하시겠습니까?<br />
           모든 데이터가 영구적으로 삭제되며, 이 작업은 되돌릴 수 없습니다.

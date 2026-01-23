@@ -17,17 +17,20 @@ export async function GET(request: NextRequest) {
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
-    // 오늘의 지출 집계
-    const [expenseAgg, incomeAgg, expenseCount, incomeCount] = await Promise.all([
+    // 오늘의 지출/수입/저축 집계
+    const [expenseAgg, incomeAgg, savingsAgg, expenseCount, incomeCount, savingsCount] = await Promise.all([
+      // 지출 (저축 제외)
       prisma.transaction.aggregate({
         where: {
           userId: userId!,
           type: 'EXPENSE',
+          savingsGoalId: null,
           deletedAt: null,
           date: { gte: startOfDay, lte: endOfDay },
         },
         _sum: { amount: true },
       }),
+      // 수입
       prisma.transaction.aggregate({
         where: {
           userId: userId!,
@@ -37,18 +40,40 @@ export async function GET(request: NextRequest) {
         },
         _sum: { amount: true },
       }),
+      // 저축
+      prisma.transaction.aggregate({
+        where: {
+          userId: userId!,
+          savingsGoalId: { not: null },
+          deletedAt: null,
+          date: { gte: startOfDay, lte: endOfDay },
+        },
+        _sum: { amount: true },
+      }),
+      // 지출 건수 (저축 제외)
       prisma.transaction.count({
         where: {
           userId: userId!,
           type: 'EXPENSE',
+          savingsGoalId: null,
           deletedAt: null,
           date: { gte: startOfDay, lte: endOfDay },
         },
       }),
+      // 수입 건수
       prisma.transaction.count({
         where: {
           userId: userId!,
           type: 'INCOME',
+          deletedAt: null,
+          date: { gte: startOfDay, lte: endOfDay },
+        },
+      }),
+      // 저축 건수
+      prisma.transaction.count({
+        where: {
+          userId: userId!,
+          savingsGoalId: { not: null },
           deletedAt: null,
           date: { gte: startOfDay, lte: endOfDay },
         },
@@ -57,6 +82,7 @@ export async function GET(request: NextRequest) {
 
     const totalExpense = expenseAgg._sum.amount || 0;
     const totalIncome = incomeAgg._sum.amount || 0;
+    const totalSavings = savingsAgg._sum.amount || 0;
 
     return successResponse({
       date: today.toISOString(),
@@ -71,6 +97,10 @@ export async function GET(request: NextRequest) {
       income: {
         total: totalIncome,
         count: incomeCount,
+      },
+      savings: {
+        total: totalSavings,
+        count: savingsCount,
       },
     });
   } catch (error) {

@@ -17,14 +17,16 @@ describe('GET /api/transactions/today', () => {
     jest.clearAllMocks();
   });
 
-  it('오늘의 지출/수입 요약을 성공적으로 반환해야 함', async () => {
+  it('오늘의 지출/수입/저축 요약을 성공적으로 반환해야 함', async () => {
     (prisma.transaction.aggregate as jest.Mock)
       .mockResolvedValueOnce({ _sum: { amount: 30000 } }) // expense
-      .mockResolvedValueOnce({ _sum: { amount: 100000 } }); // income
+      .mockResolvedValueOnce({ _sum: { amount: 100000 } }) // income
+      .mockResolvedValueOnce({ _sum: { amount: 50000 } }); // savings
 
     (prisma.transaction.count as jest.Mock)
       .mockResolvedValueOnce(2) // expense count
-      .mockResolvedValueOnce(1); // income count
+      .mockResolvedValueOnce(1) // income count
+      .mockResolvedValueOnce(1); // savings count
 
     const url = new URL('http://localhost:3000/api/transactions/today');
     url.searchParams.set('userId', 'user-1');
@@ -39,6 +41,8 @@ describe('GET /api/transactions/today', () => {
     expect(data.data.expense.count).toBe(2);
     expect(data.data.income.total).toBe(100000);
     expect(data.data.income.count).toBe(1);
+    expect(data.data.savings.total).toBe(50000);
+    expect(data.data.savings.count).toBe(1);
     expect(data.data.year).toBeDefined();
     expect(data.data.month).toBeDefined();
     expect(data.data.day).toBeDefined();
@@ -47,12 +51,14 @@ describe('GET /api/transactions/today', () => {
 
   it('거래가 없으면 0을 반환해야 함', async () => {
     (prisma.transaction.aggregate as jest.Mock)
-      .mockResolvedValueOnce({ _sum: { amount: null } })
-      .mockResolvedValueOnce({ _sum: { amount: null } });
+      .mockResolvedValueOnce({ _sum: { amount: null } }) // expense
+      .mockResolvedValueOnce({ _sum: { amount: null } }) // income
+      .mockResolvedValueOnce({ _sum: { amount: null } }); // savings
 
     (prisma.transaction.count as jest.Mock)
-      .mockResolvedValueOnce(0)
-      .mockResolvedValueOnce(0);
+      .mockResolvedValueOnce(0) // expense count
+      .mockResolvedValueOnce(0) // income count
+      .mockResolvedValueOnce(0); // savings count
 
     const url = new URL('http://localhost:3000/api/transactions/today');
     url.searchParams.set('userId', 'user-1');
@@ -67,6 +73,8 @@ describe('GET /api/transactions/today', () => {
     expect(data.data.expense.count).toBe(0);
     expect(data.data.income.total).toBe(0);
     expect(data.data.income.count).toBe(0);
+    expect(data.data.savings.total).toBe(0);
+    expect(data.data.savings.count).toBe(0);
   });
 
   it('userId가 없으면 400 에러를 반환해야 함', async () => {

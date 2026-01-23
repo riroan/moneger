@@ -2,7 +2,7 @@
 
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
-import { MdToday } from 'react-icons/md';
+import { MdToday, MdSavings } from 'react-icons/md';
 import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 
 interface TodaySummary {
@@ -16,6 +16,10 @@ interface TodaySummary {
     count: number;
   };
   income: {
+    total: number;
+    count: number;
+  };
+  savings: {
     total: number;
     count: number;
   };
@@ -43,9 +47,10 @@ export default function TodaySummaryCard({ data, isLoading }: TodaySummaryCardPr
     return null;
   }
 
-  const { month, day, dayOfWeek, expense, income } = data;
+  const { month, day, dayOfWeek, expense, income, savings } = data;
   const hasExpense = expense.count > 0;
   const hasIncome = income.count > 0;
+  const hasSavings = savings.count > 0;
 
   return (
     <div
@@ -60,7 +65,7 @@ export default function TodaySummaryCard({ data, isLoading }: TodaySummaryCardPr
         </span>
       </div>
 
-      {/* 수입/지출 정보 */}
+      {/* 수입/지출/저축 정보 */}
       <div className="flex flex-col" style={{ gap: '8px' }}>
         {/* 수입 */}
         <div className="flex items-center justify-between">
@@ -105,10 +110,32 @@ export default function TodaySummaryCard({ data, isLoading }: TodaySummaryCardPr
             )}
           </div>
         </div>
+
+        {/* 저축 */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MdSavings className="text-base sm:text-lg text-accent-blue" />
+            <span className="text-xs sm:text-sm text-text-secondary">저축</span>
+          </div>
+          <div className="text-right">
+            {hasSavings ? (
+              <>
+                <span className="text-base sm:text-lg font-bold text-accent-blue">
+                  <CurrencyDisplay amount={`₩${formatNumber(savings.total)}`} />
+                </span>
+                <span className="text-[10px] sm:text-xs text-text-muted" style={{ marginLeft: '6px' }}>
+                  ({savings.count}건)
+                </span>
+              </>
+            ) : (
+              <span className="text-sm sm:text-base text-text-muted">-</span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 거래 없음 메시지 */}
-      {!hasExpense && !hasIncome && (
+      {!hasExpense && !hasIncome && !hasSavings && (
         <div className="text-center text-text-muted text-xs sm:text-sm" style={{ marginTop: '8px' }}>
           오늘 거래 내역이 없습니다
         </div>

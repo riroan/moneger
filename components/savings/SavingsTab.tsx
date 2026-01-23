@@ -19,6 +19,8 @@ interface SavingsGoal {
   targetAmount: number;
   progressPercent: number;
   monthlyRequired: number;
+  monthlyTarget: number;
+  thisMonthSavings: number;
   isPrimary: boolean;
 }
 
@@ -67,7 +69,11 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
 
   const totalSavings = savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
   const totalTarget = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
-  const monthlyRequired = savingsGoals.reduce((sum, goal) => sum + goal.monthlyRequired, 0);
+  // 각 목표별 남은 금액의 합 (초과 달성 시 0)
+  const totalMonthlyRemaining = savingsGoals.reduce(
+    (sum, goal) => sum + Math.max(0, goal.monthlyTarget - goal.thisMonthSavings),
+    0
+  );
 
   const handleAddGoal = async (goalData: {
     name: string;
@@ -212,15 +218,22 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
           </p>
         </div>
 
-        {/* 이번 달 필요 저축액 */}
+        {/* 이번 달 저축 현황 */}
         <div
           className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]"
           style={{ padding: '20px' }}
         >
-          <p className="text-xs sm:text-sm text-text-secondary" style={{ marginBottom: '6px' }}>이번 달 저축 필요</p>
-          <p className="text-2xl sm:text-3xl font-bold text-accent-mint">
-            <span style={{ marginRight: '2px' }}>₩</span>{formatNumber(monthlyRequired)}
-          </p>
+          <p className="text-xs sm:text-sm text-text-secondary" style={{ marginBottom: '6px' }}>이번 달 저축</p>
+          {totalMonthlyRemaining === 0 ? (
+            <p className="text-2xl sm:text-3xl font-bold text-accent-mint">
+              목표 달성!
+            </p>
+          ) : (
+            <p className="text-2xl sm:text-3xl font-bold text-text-primary">
+              ₩{formatNumber(totalMonthlyRemaining)}
+              <span className="text-base sm:text-lg text-text-muted font-normal"> 더 필요</span>
+            </p>
+          )}
           <p className="text-xs text-text-muted" style={{ marginTop: '4px' }}>
             {savingsGoals.length}개 목표 기준
           </p>
@@ -346,7 +359,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                       />
                     </div>
 
-                    {/* 하단: 저축하기 버튼 + 월 필요 금액 */}
+                    {/* 하단: 저축하기 버튼 + 이번 달 저축 상태 */}
                     <div className="flex items-center justify-between">
                       <button
                         onClick={(e) => handleDepositClick(e, goal)}
@@ -355,9 +368,16 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                       >
                         <FaPlus className="text-[10px]" /> 저축하기
                       </button>
-                      <p className="text-xs sm:text-sm text-text-muted">
-                        월 <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(goal.monthlyRequired)} 필요
-                      </p>
+                      {goal.thisMonthSavings >= goal.monthlyTarget ? (
+                        <p className="text-xs sm:text-sm font-medium text-accent-mint">
+                          이번 달 완료!
+                        </p>
+                      ) : (
+                        <p className="text-xs sm:text-sm text-text-primary">
+                          ₩{formatNumber(goal.monthlyTarget - goal.thisMonthSavings)}
+                          <span className="text-text-muted"> 더 필요</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                 );

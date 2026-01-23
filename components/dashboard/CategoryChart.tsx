@@ -10,9 +10,9 @@ interface CategoryData {
   id: string;
   name: string;
   icon: string | null;
+  color: string | null;
   amount: number;
   count: number;
-  colorIndex: number;
   budget?: number;
   budgetUsagePercent?: number;
 }
@@ -24,15 +24,7 @@ interface CategoryChartProps {
   onCategoryClick: (categoryId: string) => void;
 }
 
-const COLORS = ['#10B981', '#EF4444', '#3B82F6', '#FBBF24', '#A855F7', '#F472B6'];
-const BG_COLORS = [
-  'bg-[var(--glow-mint)]',
-  'bg-[var(--glow-coral)]',
-  'bg-[var(--glow-blue)]',
-  'bg-[rgba(251,191,36,0.15)]',
-  'bg-[var(--glow-purple)]',
-  'bg-[rgba(244,114,182,0.15)]',
-];
+const DEFAULT_COLOR = '#6B7280';
 
 export default function CategoryChart({
   categories,
@@ -61,7 +53,7 @@ export default function CategoryChart({
   const chartData = categories.map((category, index) => ({
     name: category.name,
     value: category.amount,
-    colorIndex: category.colorIndex,
+    color: category.color || DEFAULT_COLOR,
     index,
   }));
 
@@ -91,7 +83,7 @@ export default function CategoryChart({
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={COLORS[entry.colorIndex % COLORS.length]}
+                  fill={entry.color}
                   opacity={hoveredIndex === null || hoveredIndex === index ? 0.9 : 0.4}
                   style={{
                     cursor: 'pointer',
@@ -133,6 +125,7 @@ export default function CategoryChart({
           const usagePercent = category.budgetUsagePercent ?? 0;
           const isHovered = hoveredIndex === index;
           const IconComponent = getIconComponent(category.icon);
+          const categoryColor = category.color || DEFAULT_COLOR;
 
           return (
             <div
@@ -143,8 +136,7 @@ export default function CategoryChart({
               style={{
                 padding: '12px',
                 ...(isHovered && {
-                  ringColor: COLORS[category.colorIndex % COLORS.length],
-                  boxShadow: `0 0 0 2px var(--bg-card), 0 0 0 4px ${COLORS[category.colorIndex % COLORS.length]}40`
+                  boxShadow: `0 0 0 2px var(--bg-card), 0 0 0 4px ${categoryColor}40`
                 })
               }}
               onClick={() => onCategoryClick(category.id)}
@@ -153,8 +145,8 @@ export default function CategoryChart({
             >
               <div className="flex items-center">
                 <div
-                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-xl ${BG_COLORS[category.colorIndex % BG_COLORS.length]} transition-transform ${isHovered ? 'scale-110' : ''}`}
-                  style={{ marginRight: '12px', color: COLORS[category.colorIndex % COLORS.length] }}
+                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-xl transition-transform ${isHovered ? 'scale-110' : ''}`}
+                  style={{ marginRight: '12px', backgroundColor: `${categoryColor}20`, color: categoryColor }}
                 >
                   <IconComponent />
                 </div>

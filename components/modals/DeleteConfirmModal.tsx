@@ -25,6 +25,15 @@ export default function DeleteConfirmModal({
         style={{ padding: '32px', margin: '20px' }}
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="flex justify-end" style={{ marginBottom: '8px' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-text-secondary hover:text-text-primary transition-colors text-2xl w-8 h-8 flex items-center justify-center cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
         <div className="flex flex-col items-center" style={{ marginBottom: '24px' }}>
           <div className="w-16 h-16 rounded-full bg-[var(--glow-coral)] flex items-center justify-center text-3xl" style={{ marginBottom: '16px' }}>
             ⚠️

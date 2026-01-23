@@ -118,6 +118,10 @@ export interface TodaySummary {
     total: number;
     count: number;
   };
+  savings: {
+    total: number;
+    count: number;
+  };
 }
 
 // Daily Balance Types
@@ -146,8 +150,8 @@ export interface DateRange {
 }
 
 export interface AmountRange {
-  min?: number;
-  max?: number;
+  minAmount: number | null;
+  maxAmount: number | null;
 }
 
 // Category Chart Data
@@ -155,9 +159,9 @@ export interface CategoryChartData {
   id: string;
   name: string;
   icon: string | null;
+  color: string | null;
   amount: number;
   count: number;
-  colorIndex: number;
   budget?: number;
   budgetUsagePercent?: number;
 }

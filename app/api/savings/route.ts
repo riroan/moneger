@@ -33,15 +33,54 @@ export async function GET(request: NextRequest) {
       return false;
     });
 
+    // 이번 달 시작/끝 날짜
+    const thisMonthStart = new Date(currentYear, currentMonth - 1, 1);
+    const thisMonthEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+
+    // 각 목표별 이번 달 저축 금액 조회
+    const goalIds = activeGoals.map((goal) => goal.id);
+    const thisMonthTransactions = await prisma.transaction.groupBy({
+      by: ['savingsGoalId'],
+      where: {
+        savingsGoalId: { in: goalIds },
+        date: {
+          gte: thisMonthStart,
+          lte: thisMonthEnd,
+        },
+        deletedAt: null,
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    // 목표 ID → 이번 달 저축액 매핑
+    const thisMonthSavingsMap = new Map<string, number>();
+    thisMonthTransactions.forEach((t) => {
+      if (t.savingsGoalId) {
+        thisMonthSavingsMap.set(t.savingsGoalId, t._sum.amount || 0);
+      }
+    });
+
     // 진행률 및 월별 필요 금액 계산
     const goalsWithProgress = activeGoals.map((goal) => {
+      // 총 개월 수 계산 (목표 생성일 ~ 목표일)
+      const createdAt = new Date(goal.createdAt);
       const targetDate = new Date(goal.targetYear, goal.targetMonth - 1, 1);
-      const monthsRemaining = Math.max(
+      const totalMonths = Math.max(
         1,
-        (targetDate.getFullYear() - now.getFullYear()) * 12 + (targetDate.getMonth() - now.getMonth())
+        (targetDate.getFullYear() - createdAt.getFullYear()) * 12 + (targetDate.getMonth() - createdAt.getMonth())
       );
-      const amountRemaining = Math.max(0, goal.targetAmount - goal.currentAmount);
-      const monthlyRequired = Math.ceil(amountRemaining / monthsRemaining);
+
+      // 월별 목표 저축액
+      const monthlyTarget = Math.ceil(goal.targetAmount / totalMonths);
+
+      // 이번 달 저축액
+      const thisMonthSavings = thisMonthSavingsMap.get(goal.id) || 0;
+
+      // 이번 달 남은 필요 금액 (음수 방지)
+      const monthlyRequired = Math.max(0, monthlyTarget - thisMonthSavings);
+
       const progressPercent = goal.targetAmount > 0
         ? Math.round((goal.currentAmount / goal.targetAmount) * 100)
         : 0;
@@ -55,6 +94,8 @@ export async function GET(request: NextRequest) {
         targetAmount: goal.targetAmount,
         progressPercent,
         monthlyRequired,
+        monthlyTarget,
+        thisMonthSavings,
         targetYear: goal.targetYear,
         targetMonth: goal.targetMonth,
         isPrimary: goal.isPrimary,

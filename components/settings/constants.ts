@@ -57,13 +57,17 @@ export const ICON_MAP: Record<string, IconType> = {
 // 아이콘 ID 목록 (DB에 저장되는 값)
 export const ICON_LIST = Object.keys(ICON_MAP);
 
-// 색상 목록
+// 색상 목록 (6열 2행)
 export const COLOR_LIST = [
   { name: '빨강', value: '#EF4444' },
   { name: '주황', value: '#F97316' },
   { name: '노랑', value: '#FBBF24' },
+  { name: '라임', value: '#84CC16' },
   { name: '초록', value: '#10B981' },
+  { name: '청록', value: '#14B8A6' },
+  { name: '하늘', value: '#06B6D4' },
   { name: '파랑', value: '#3B82F6' },
+  { name: '남색', value: '#6366F1' },
   { name: '보라', value: '#A855F7' },
   { name: '분홍', value: '#EC4899' },
   { name: '회색', value: '#6B7280' },

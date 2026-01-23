@@ -384,27 +384,33 @@ export default function FilterPanel({
               <div className="flex flex-col gap-3">
                 <div>
                   <label className="block text-xs text-text-muted" style={{ marginBottom: '6px' }}>최소 금액</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={minAmountInput}
-                    onChange={(e) => handleAmountInputChange('min', e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-text-primary text-sm font-mono focus:outline-none focus:border-accent-blue transition-colors"
-                    style={{ padding: '8px 10px' }}
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">₩</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={minAmountInput}
+                      onChange={(e) => handleAmountInputChange('min', e.target.value)}
+                      placeholder="0"
+                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors"
+                      style={{ padding: '8px 10px', paddingLeft: '24px' }}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs text-text-muted" style={{ marginBottom: '6px' }}>최대 금액</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={maxAmountInput}
-                    onChange={(e) => handleAmountInputChange('max', e.target.value)}
-                    placeholder="제한 없음"
-                    className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-text-primary text-sm font-mono focus:outline-none focus:border-accent-blue transition-colors"
-                    style={{ padding: '8px 10px' }}
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">₩</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={maxAmountInput}
+                      onChange={(e) => handleAmountInputChange('max', e.target.value)}
+                      placeholder="제한 없음"
+                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors"
+                      style={{ padding: '8px 10px', paddingLeft: '24px' }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

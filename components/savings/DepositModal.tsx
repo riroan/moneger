@@ -34,7 +34,7 @@ const GOAL_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>>
   savings: MdSavings,
 };
 
-const QUICK_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
+const QUICK_AMOUNTS = [10000, 50000, 100000, 500000];
 
 export default function DepositModal({ isOpen, goal, onClose, onDeposit }: DepositModalProps) {
   const [amount, setAmount] = useState('');
