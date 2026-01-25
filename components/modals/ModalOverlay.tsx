@@ -13,22 +13,15 @@ export default function ModalOverlay({
 }: ModalOverlayProps) {
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center"
-      style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)' }}
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-bg-card border border-[var(--border)] rounded-[24px] animate-[fadeIn_0.3s_ease-out]"
-        style={{
-          width: '90%',
-          maxWidth: '520px',
-          padding: '32px',
-          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.4)',
-        }}
+        className="bg-bg-card border border-[var(--border)] rounded-[24px] animate-[fadeIn_0.3s_ease-out] w-[90%] max-w-[520px] p-8 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
+        <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">{title}</h2>
           <button
             onClick={onClose}

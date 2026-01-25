@@ -40,23 +40,22 @@ export default function CategoryDropdown({
 
   return (
     <div ref={dropdownRef}>
-      <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
+      <label className="block text-sm text-text-secondary font-medium mb-2">
         카테고리
       </label>
       <div className="relative">
         <div
-          className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus-within:border-accent-mint transition-colors flex items-center ${
+          className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus-within:border-accent-mint transition-colors flex items-center py-3.5 px-4 ${
             error
               ? 'border-accent-coral focus-within:border-accent-coral'
               : 'border-[var(--border)]'
           }`}
-          style={{ padding: '14px 16px' }}
         >
           {selectedCategory && !isOpen && (() => {
             const IconComponent = getIconComponent(selectedCategory.icon);
             const categoryColor = selectedCategory.color || '#6B7280';
             return (
-              <span style={{ marginRight: '8px', color: categoryColor }}>
+              <span className="mr-2" style={{ color: categoryColor }}>
                 <IconComponent />
               </span>
             );
@@ -89,8 +88,7 @@ export default function CategoryDropdown({
 
         {isOpen && (
           <div
-            className="absolute top-full left-0 right-0 mt-2 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-10"
-            style={{ boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)', maxHeight: '240px' }}
+            className="absolute top-full left-0 right-0 mt-2 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-10 shadow-2xl max-h-60"
           >
             {filteredCategories.length > 0 ? (
               filteredCategories.map((category) => {
@@ -101,10 +99,9 @@ export default function CategoryDropdown({
                     key={category.id}
                     type="button"
                     onClick={() => handleSelect(category.id)}
-                    className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer flex items-center gap-3 ${
+                    className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer flex items-center gap-3 py-3 px-4 text-[15px] ${
                       selectedId === category.id ? 'bg-bg-card-hover' : 'text-text-primary'
                     }`}
-                    style={{ padding: '12px 16px', fontSize: '15px' }}
                   >
                     <span style={{ color: categoryColor }}><IconComponent /></span>
                     <span>{category.name}</span>
@@ -112,7 +109,7 @@ export default function CategoryDropdown({
                 );
               })
             ) : (
-              <div className="text-text-muted text-center" style={{ padding: '12px 16px', fontSize: '14px' }}>
+              <div className="text-text-muted text-center py-3 px-4 text-sm">
                 일치하는 카테고리가 없습니다
               </div>
             )}
@@ -120,7 +117,7 @@ export default function CategoryDropdown({
         )}
       </div>
       {error && (
-        <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
+        <p className="text-accent-coral text-xs mt-1.5">
           {error}
         </p>
       )}

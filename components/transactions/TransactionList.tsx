@@ -71,13 +71,13 @@ const TransactionList = forwardRef<HTMLDivElement, TransactionListProps>(
     // 날짜 헤더가 있는 경우
     if (showDateHeaders && groupedTransactions) {
       return (
-        <div className="flex flex-col" style={{ gap: '16px' }}>
+        <div className="flex flex-col gap-4">
           {groupedTransactions.map((group) => (
             <div key={group.date}>
-              <div className="text-xs text-text-muted" style={{ marginBottom: '8px', marginLeft: '4px' }}>
+              <div className="text-xs text-text-muted mb-2 ml-1">
                 {formatDateHeader(group.date)}
               </div>
-              <div className="flex flex-col" style={{ gap: '8px' }}>
+              <div className="flex flex-col gap-2">
                 {group.transactions.map((tx) => (
                   <TransactionItem
                     key={tx.id}
@@ -90,7 +90,7 @@ const TransactionList = forwardRef<HTMLDivElement, TransactionListProps>(
           ))}
 
           {/* 무한 스크롤 트리거 */}
-          {hasMore && <div ref={ref} style={{ height: '20px' }} />}
+          {hasMore && <div ref={ref} className="h-5" />}
 
           {/* 로딩 인디케이터 */}
           {isLoading && transactions.length > 0 && (
@@ -103,7 +103,7 @@ const TransactionList = forwardRef<HTMLDivElement, TransactionListProps>(
     }
 
     return (
-      <div className="flex flex-col" style={{ gap: '8px' }}>
+      <div className="flex flex-col gap-2">
         {transactions.map((tx) => (
           <TransactionItem
             key={tx.id}
@@ -113,7 +113,7 @@ const TransactionList = forwardRef<HTMLDivElement, TransactionListProps>(
         ))}
 
         {/* 무한 스크롤 트리거 */}
-        {hasMore && <div ref={ref} style={{ height: '20px' }} />}
+        {hasMore && <div ref={ref} className="h-5" />}
 
         {/* 로딩 인디케이터 */}
         {isLoading && transactions.length > 0 && (

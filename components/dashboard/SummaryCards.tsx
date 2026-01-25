@@ -97,8 +97,7 @@ function SummaryCards({
 
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
-      style={{ gap: '12px', marginBottom: '24px' }}
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6"
     >
       {cards.map((card, i) => {
         const handleClick = card.type === 'income' ? onIncomeClick : card.type === 'expense' ? onExpenseClick : card.type === 'balance' ? onBalanceClick : card.type === 'savings' ? onSavingsClick : undefined;
@@ -107,8 +106,8 @@ function SummaryCards({
           <div
             key={card.type}
             onClick={handleClick}
-            className={`bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] relative overflow-hidden transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] animate-[fadeInUp_0.6s_ease-out_backwards] cursor-pointer`}
-            style={{ animationDelay: `${(i + 1) * 100}ms`, padding: '24px 16px 20px' }}
+            className={`bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] relative overflow-hidden transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] animate-[fadeInUp_0.6s_ease-out_backwards] cursor-pointer pt-6 px-4 pb-5`}
+            style={{ animationDelay: `${(i + 1) * 100}ms` }}
           >
             <div className="flex items-center gap-4">
               {/* 아이콘 */}
@@ -123,15 +122,14 @@ function SummaryCards({
                 <p className="text-text-secondary text-sm mb-1">
                   {card.label}
                 </p>
-                <p className="text-text-primary text-xl font-bold tracking-tight" style={{ marginBottom: '5px' }}>
+                <p className="text-text-primary text-xl font-bold tracking-tight mb-1">
                   <CurrencyDisplay amount={card.amount} />
                 </p>
                 <div
-                  className="inline-flex items-center justify-center rounded-full text-xs font-medium"
+                  className="inline-flex items-center justify-center rounded-full text-xs font-medium py-1.5 px-3"
                   style={{
                     backgroundColor: card.badgeBg,
                     color: card.badgeText,
-                    padding: '6px 12px',
                   }}
                 >
                   {card.change}

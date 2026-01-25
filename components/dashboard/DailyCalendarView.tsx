@@ -175,14 +175,13 @@ export default function DailyCalendarView({
   return (
     <div>
       {/* 요일 헤더 */}
-      <div className="grid grid-cols-7" style={{ marginBottom: '8px' }}>
+      <div className="grid grid-cols-7 mb-2">
         {WEEKDAYS.map((day, index) => (
           <div
             key={day}
-            className={`text-center text-xs font-medium ${
+            className={`text-center text-xs font-medium p-1 ${
               index === 0 ? 'text-accent-coral' : index === 6 ? 'text-accent-blue' : 'text-text-muted'
             }`}
-            style={{ padding: '4px' }}
           >
             {day}
           </div>
@@ -190,9 +189,9 @@ export default function DailyCalendarView({
       </div>
 
       {/* 달력 그리드 */}
-      <div className="flex flex-col" style={{ gap: '4px' }}>
+      <div className="flex flex-col gap-1">
         {calendarData.map((week, weekIndex) => (
-          <div key={weekIndex} className="grid grid-cols-7" style={{ gap: '4px' }}>
+          <div key={weekIndex} className="grid grid-cols-7 gap-1">
             {week.map((dayData, dayIndex) => {
               if (!dayData) {
                 return <div key={dayIndex} className="sm:min-h-[95px] min-h-[44px]" />;
@@ -212,14 +211,13 @@ export default function DailyCalendarView({
                 <div
                   key={dayIndex}
                   onClick={() => setSelectedDay(day)}
-                  className={`rounded-lg sm:rounded-xl transition-colors cursor-pointer sm:min-h-[95px] min-h-[44px] ${
+                  className={`rounded-lg sm:rounded-xl transition-colors cursor-pointer sm:min-h-[95px] min-h-[44px] py-1.5 px-1 ${
                     isSelected
                       ? 'bg-accent-blue/20 ring-1 ring-accent-blue'
                       : isToday
                       ? 'bg-accent-mint/20 ring-1 ring-accent-mint'
                       : 'bg-bg-secondary hover:bg-bg-card-hover'
                   }`}
-                  style={{ padding: '6px 4px' }}
                 >
                   <div
                     className={`text-xs sm:text-sm font-medium text-center ${
@@ -233,13 +231,12 @@ export default function DailyCalendarView({
                         ? 'text-accent-blue'
                         : 'text-text-primary'
                     }`}
-                    style={{ marginBottom: '2px' }}
                   >
                     {day}
                   </div>
                   {/* 모바일: 점으로 표시 */}
                   {isMobile ? (
-                    <div className="flex justify-center items-center gap-1" style={{ marginTop: '4px' }}>
+                    <div className="flex justify-center items-center gap-1 mt-1">
                       {hasIncome && hasExpense && hasSavings ? (
                         /* 수입, 지출, 저축 모두 있을 때: 금색 점 */
                         <div
@@ -255,32 +252,32 @@ export default function DailyCalendarView({
                         /* 일부만 있을 때: 개별 점들 */
                         <>
                           {hasIncome && (
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#10B981' }} />
+                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
                           )}
                           {hasExpense && (
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#EF4444' }} />
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
                           )}
                           {hasSavings && (
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#06B6D4' }} />
+                            <div className="w-2 h-2 rounded-full bg-cyan-500" />
                           )}
                         </>
                       )}
                     </div>
                   ) : (
                     /* PC: 금액 표시 */
-                    <div className="flex flex-col items-center" style={{ gap: '1px' }}>
+                    <div className="flex flex-col items-center gap-px">
                       {hasIncome && (
-                        <div className="text-[11px] font-medium truncate w-full text-center" style={{ color: '#059669' }}>
+                        <div className="text-[11px] font-medium truncate w-full text-center text-emerald-600">
                           +{formatNumber(dayData.income)}
                         </div>
                       )}
                       {hasExpense && (
-                        <div className="text-[11px] font-medium truncate w-full text-center" style={{ color: '#DC2626' }}>
+                        <div className="text-[11px] font-medium truncate w-full text-center text-red-600">
                           -{formatNumber(dayData.expense)}
                         </div>
                       )}
                       {hasSavings && (
-                        <div className="text-[11px] font-medium truncate w-full text-center" style={{ color: '#0891B2' }}>
+                        <div className="text-[11px] font-medium truncate w-full text-center text-cyan-600">
                           ₩{formatNumber(dayData.savings)}
                         </div>
                       )}
@@ -295,26 +292,25 @@ export default function DailyCalendarView({
 
       {/* 선택된 날짜 상세 정보 */}
       <div
-        className="bg-bg-secondary rounded-[12px]"
-        style={{ padding: '14px', marginTop: '12px' }}
+        className="bg-bg-secondary rounded-[12px] p-3.5 mt-3"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3" style={{ marginBottom: '12px' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
           <span className="text-sm font-semibold text-text-primary whitespace-nowrap">
             {month}월 {selectedDay}일
           </span>
           {selectedDayData && (
             <div className="flex flex-wrap gap-2 sm:gap-3 text-xs">
-              <span style={{ color: '#059669' }}>+{formatNumber(selectedDayData.income)}</span>
-              <span style={{ color: '#DC2626' }}>-{formatNumber(selectedDayData.expense)}</span>
+              <span className="text-emerald-600">+{formatNumber(selectedDayData.income)}</span>
+              <span className="text-red-600">-{formatNumber(selectedDayData.expense)}</span>
               {(selectedDayData.savings || 0) > 0 && (
-                <span style={{ color: '#0891B2' }}>₩{formatNumber(selectedDayData.savings)}</span>
+                <span className="text-cyan-600">₩{formatNumber(selectedDayData.savings)}</span>
               )}
             </div>
           )}
         </div>
 
         {/* 거래 내역 */}
-        <div className="flex flex-col" style={{ gap: '8px' }}>
+        <div className="flex flex-col gap-2">
           {isLoadingTransactions ? (
             <div className="text-center text-text-muted py-4 text-sm">로딩 중...</div>
           ) : dayTransactions.length > 0 ? (

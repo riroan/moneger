@@ -197,11 +197,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-bg-primary flex items-center justify-center px-3 sm:px-4 py-4 sm:py-8 overflow-x-hidden">
       <div
-        className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[24px] w-full max-w-[calc(100vw-24px)] sm:max-w-md animate-[fadeIn_0.5s_ease-out]"
-        style={{ padding: '20px 16px' }}
+        className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[24px] w-full max-w-[calc(100vw-24px)] sm:max-w-md animate-[fadeIn_0.5s_ease-out] py-5 px-4"
       >
         {/* Logo */}
-        <div className="flex items-center justify-center" style={{ marginBottom: '20px' }}>
+        <div className="flex items-center justify-center mb-5">
           <Image
             src="/logo.svg"
             alt="MONEGER"
@@ -212,8 +211,8 @@ export default function LoginPage() {
         </div>
 
         {/* Title */}
-        <div className="text-center" style={{ marginBottom: '20px' }}>
-          <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent" style={{ marginBottom: '4px' }}>
+        <div className="text-center mb-5">
+          <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent mb-1">
             MONEGER
           </h1>
           <p className="text-text-secondary text-[11px] sm:text-sm">
@@ -222,10 +221,10 @@ export default function LoginPage() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col" style={{ gap: '12px' }}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* Email */}
           <div>
-            <label className="block text-[11px] sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px', paddingLeft: '2px' }}>
+            <label className="block text-[11px] sm:text-sm text-text-secondary font-medium mb-1 pl-0.5">
               이메일
             </label>
             <input
@@ -233,15 +232,14 @@ export default function LoginPage() {
               value={email}
               onChange={handleEmailChange}
               placeholder="example@email.com"
-              className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors ${
+              className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors py-2.5 px-3 ${
                 emailError
                   ? 'border-accent-coral focus:border-accent-coral'
                   : 'border-[var(--border)] focus:border-accent-mint'
               }`}
-              style={{ padding: '10px 12px' }}
             />
             {emailError && (
-              <p className="text-accent-coral text-xs" style={{ marginTop: '4px' }}>
+              <p className="text-accent-coral text-xs mt-1">
                 {emailError}
               </p>
             )}
@@ -250,7 +248,7 @@ export default function LoginPage() {
           {/* Name (회원가입 시에만) */}
           {isSignup && (
             <div>
-              <label className="block text-[11px] sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px', paddingLeft: '2px' }}>
+              <label className="block text-[11px] sm:text-sm text-text-secondary font-medium mb-1 pl-0.5">
                 이름
               </label>
               <input
@@ -258,15 +256,14 @@ export default function LoginPage() {
                 value={name}
                 onChange={handleNameChange}
                 placeholder="홍길동"
-                className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors ${
+                className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors py-2.5 px-3 ${
                   nameError
                     ? 'border-accent-coral focus:border-accent-coral'
                     : 'border-[var(--border)] focus:border-accent-mint'
                 }`}
-                style={{ padding: '10px 12px' }}
               />
               {nameError && (
-                <p className="text-accent-coral text-xs" style={{ marginTop: '4px' }}>
+                <p className="text-accent-coral text-xs mt-1">
                   {nameError}
                 </p>
               )}
@@ -275,7 +272,7 @@ export default function LoginPage() {
 
           {/* Password */}
           <div>
-            <label className="block text-[11px] sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px', paddingLeft: '2px' }}>
+            <label className="block text-[11px] sm:text-sm text-text-secondary font-medium mb-1 pl-0.5">
               비밀번호
             </label>
             <div className="relative">
@@ -284,12 +281,11 @@ export default function LoginPage() {
                 value={password}
                 onChange={handlePasswordChange}
                 placeholder="••••••••"
-                className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors ${
+                className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors py-2.5 pl-3 pr-10 ${
                   passwordError
                     ? 'border-accent-coral focus:border-accent-coral'
                     : 'border-[var(--border)] focus:border-accent-mint'
                 }`}
-                style={{ padding: '10px 12px', paddingRight: '40px' }}
               />
               <button
                 type="button"
@@ -314,11 +310,11 @@ export default function LoginPage() {
               </button>
             </div>
             {passwordError ? (
-              <p className="text-accent-coral text-xs" style={{ marginTop: '4px' }}>
+              <p className="text-accent-coral text-xs mt-1">
                 {passwordError}
               </p>
             ) : isSignup ? (
-              <p className="text-[10px] sm:text-xs text-text-muted" style={{ marginTop: '4px' }}>
+              <p className="text-[10px] sm:text-xs text-text-muted mt-1">
                 8자 이상, 숫자+영문+특수문자 조합
               </p>
             ) : null}
@@ -327,7 +323,7 @@ export default function LoginPage() {
           {/* Password Confirm (회원가입 시에만) */}
           {isSignup && (
             <div>
-              <label className="block text-[11px] sm:text-sm text-text-secondary font-medium" style={{ marginBottom: '4px', paddingLeft: '2px' }}>
+              <label className="block text-[11px] sm:text-sm text-text-secondary font-medium mb-1 pl-0.5">
                 비밀번호 확인
               </label>
               <div className="relative">
@@ -336,12 +332,11 @@ export default function LoginPage() {
                   value={passwordConfirm}
                   onChange={handlePasswordConfirmChange}
                   placeholder="••••••••"
-                  className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors ${
+                  className={`w-full bg-bg-secondary border rounded-[8px] sm:rounded-[12px] text-text-primary text-sm focus:outline-none transition-colors py-2.5 pl-3 pr-10 ${
                     passwordConfirmError
                       ? 'border-accent-coral focus:border-accent-coral'
                       : 'border-[var(--border)] focus:border-accent-mint'
                   }`}
-                  style={{ padding: '10px 12px', paddingRight: '40px' }}
                 />
                 <button
                   type="button"
@@ -366,7 +361,7 @@ export default function LoginPage() {
                 </button>
               </div>
               {passwordConfirmError && (
-                <p className="text-accent-coral text-xs" style={{ marginTop: '4px' }}>
+                <p className="text-accent-coral text-xs mt-1">
                   {passwordConfirmError}
                 </p>
               )}
@@ -375,14 +370,14 @@ export default function LoginPage() {
 
           {/* Success Message */}
           {successMessage && (
-            <div className="bg-[rgba(16,185,129,0.1)] border border-accent-mint rounded-[8px] sm:rounded-[12px] text-accent-mint text-xs sm:text-sm animate-[fadeIn_0.3s_ease-out]" style={{ padding: '10px 12px' }}>
+            <div className="bg-[rgba(16,185,129,0.1)] border border-accent-mint rounded-[8px] sm:rounded-[12px] text-accent-mint text-xs sm:text-sm animate-[fadeIn_0.3s_ease-out] py-2.5 px-3">
               {successMessage}
             </div>
           )}
 
           {/* Error Message */}
           {error && (
-            <div className="bg-[rgba(239,68,68,0.1)] border border-accent-coral rounded-[8px] sm:rounded-[12px] text-accent-coral text-xs sm:text-sm" style={{ padding: '10px 12px' }}>
+            <div className="bg-[rgba(239,68,68,0.1)] border border-accent-coral rounded-[8px] sm:rounded-[12px] text-accent-coral text-xs sm:text-sm py-2.5 px-3">
               {error}
             </div>
           )}
@@ -391,15 +386,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary font-semibold text-sm rounded-[8px] sm:rounded-[12px] transition-all hover:shadow-[0_8px_32px_var(--glow-mint)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            style={{ padding: '10px', marginTop: '4px' }}
+            className="w-full bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary font-semibold text-sm rounded-[8px] sm:rounded-[12px] transition-all hover:shadow-[0_8px_32px_var(--glow-mint)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer p-2.5 mt-1"
           >
             {isLoading ? '처리 중...' : isSignup ? '회원가입' : '로그인'}
           </button>
         </form>
 
         {/* Toggle */}
-        <div className="text-center" style={{ marginTop: '16px' }}>
+        <div className="text-center mt-4">
           <button
             type="button"
             onClick={() => {

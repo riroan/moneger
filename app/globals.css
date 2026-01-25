@@ -77,10 +77,10 @@
   --font-mono: var(--font-space-mono), monospace;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 }
 
 html, body {

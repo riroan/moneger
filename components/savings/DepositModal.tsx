@@ -85,11 +85,10 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
       onClick={onClose}
     >
       <div
-        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out] max-h-[90vh] overflow-y-auto"
-        style={{ padding: '32px', margin: '20px' }}
+        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out] max-h-[90vh] overflow-y-auto p-8 m-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between" style={{ marginBottom: '24px' }}>
+        <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-text-primary">
             저축하기
           </h2>
@@ -104,19 +103,17 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
 
         {/* 목표 정보 */}
         <div
-          className="bg-bg-secondary rounded-[14px] flex items-center gap-4"
-          style={{ padding: '16px', marginBottom: '20px' }}
+          className="bg-bg-secondary rounded-[14px] flex items-center gap-4 p-4 mb-5"
         >
           <div
-            className="w-12 h-12 rounded-[12px] flex items-center justify-center text-xl"
-            style={{ backgroundColor: 'rgba(251, 191, 36, 0.15)', color: '#FBBF24' }}
+            className="w-12 h-12 rounded-[12px] flex items-center justify-center text-xl bg-amber-400/15 text-amber-400"
           >
             <IconComponent />
           </div>
           <div className="flex-1">
             <p className="text-base font-semibold">{goal.name}</p>
             <p className="text-xs text-text-muted">
-              현재 <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(goal.currentAmount)} / 목표 <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(goal.targetAmount)}
+              현재 <span className="mr-px">₩</span>{formatNumber(goal.currentAmount)} / 목표 <span className="mr-px">₩</span>{formatNumber(goal.targetAmount)}
             </p>
           </div>
           <div className="text-right">
@@ -126,18 +123,17 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
 
         {/* 남은 금액 */}
         <div
-          className="bg-accent-mint/10 rounded-[12px] text-center"
-          style={{ padding: '12px', marginBottom: '20px' }}
+          className="bg-accent-mint/10 rounded-[12px] text-center p-3 mb-5"
         >
-          <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>목표까지 남은 금액</p>
+          <p className="text-xs text-text-muted mb-1">목표까지 남은 금액</p>
           <p className="text-lg font-bold text-accent-mint">
-            <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(Math.max(remainingAmount, 0))}
+            <span className="mr-px">₩</span>{formatNumber(Math.max(remainingAmount, 0))}
           </p>
         </div>
 
         {/* 저축 금액 입력 */}
-        <div style={{ marginBottom: '16px' }}>
-          <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             저축 금액
           </label>
           <div className="relative">
@@ -155,25 +151,23 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
                 }
               }}
               placeholder="0"
-              className={`w-full bg-bg-secondary border rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors ${
+              className={`w-full bg-bg-secondary border rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 pr-4 pl-8 ${
                 amountError ? 'border-accent-coral' : 'border-[var(--border)]'
               }`}
-              style={{ padding: '14px 16px', paddingLeft: '32px' }}
             />
           </div>
-          {amountError && <p className="text-xs text-accent-coral" style={{ marginTop: '6px' }}>{amountError}</p>}
+          {amountError && <p className="text-xs text-accent-coral mt-1.5">{amountError}</p>}
         </div>
 
         {/* 빠른 금액 버튼 */}
-        <div style={{ marginBottom: '20px' }}>
+        <div className="mb-5">
           <div className="flex flex-wrap gap-2">
             {QUICK_AMOUNTS.map((quickAmount) => (
               <button
                 key={quickAmount}
                 type="button"
                 onClick={() => handleQuickAmount(quickAmount)}
-                className="bg-bg-secondary text-text-secondary rounded-[8px] text-xs hover:bg-bg-card-hover transition-colors cursor-pointer"
-                style={{ padding: '8px 12px' }}
+                className="bg-bg-secondary text-text-secondary rounded-[8px] text-xs hover:bg-bg-card-hover transition-colors cursor-pointer py-2 px-3"
               >
                 +{formatNumber(quickAmount)}
               </button>
@@ -185,8 +179,7 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
                   setAmount(remainingAmount.toString());
                   setAmountError('');
                 }}
-                className="bg-accent-mint/20 text-accent-mint rounded-[8px] text-xs hover:bg-accent-mint/30 transition-colors cursor-pointer"
-                style={{ padding: '8px 12px' }}
+                className="bg-accent-mint/20 text-accent-mint rounded-[8px] text-xs hover:bg-accent-mint/30 transition-colors cursor-pointer py-2 px-3"
               >
                 전액 ({formatNumber(remainingAmount)})
               </button>
@@ -197,17 +190,16 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
         {/* 저축 후 예상 */}
         {parseInt(amount || '0', 10) > 0 && (
           <div
-            className="bg-bg-secondary rounded-[12px]"
-            style={{ padding: '12px', marginBottom: '20px' }}
+            className="bg-bg-secondary rounded-[12px] p-3 mb-5"
           >
-            <p className="text-xs text-text-muted" style={{ marginBottom: '8px' }}>저축 후 예상</p>
+            <p className="text-xs text-text-muted mb-2">저축 후 예상</p>
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">
-                <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(newAmount)}
+                <span className="mr-px">₩</span>{formatNumber(newAmount)}
               </p>
               <p className="text-sm font-semibold text-accent-mint">{Math.min(newProgress, 100)}%</p>
             </div>
-            <div className="w-full h-2 bg-bg-card rounded-full overflow-hidden" style={{ marginTop: '8px' }}>
+            <div className="w-full h-2 bg-bg-card rounded-full overflow-hidden mt-2">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-accent-mint to-accent-blue transition-all duration-300"
                 style={{ width: `${Math.min(newProgress, 100)}%` }}
@@ -221,8 +213,7 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
             disabled={isDepositing}
           >
             취소
@@ -231,8 +222,7 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
             type="button"
             onClick={handleDeposit}
             disabled={isDepositing || !amount || parseInt(amount, 10) <= 0}
-            className="flex-1 bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
           >
             {isDepositing ? '저축 중...' : '저축하기'}
           </button>

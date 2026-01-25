@@ -36,9 +36,9 @@ const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
   if (isLoading) {
     return (
-      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-pulse" style={{ padding: '16px' }}>
-        <div className="h-5 bg-bg-secondary rounded w-1/3" style={{ marginBottom: '12px' }} />
-        <div className="h-8 bg-bg-secondary rounded w-1/2" style={{ marginBottom: '8px' }} />
+      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-pulse p-4">
+        <div className="h-5 bg-bg-secondary rounded w-1/3 mb-3" />
+        <div className="h-8 bg-bg-secondary rounded w-1/2 mb-2" />
         <div className="h-4 bg-bg-secondary rounded w-1/4" />
       </div>
     );
@@ -55,11 +55,10 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
 
   return (
     <div
-      className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out]"
-      style={{ padding: '16px' }}
+      className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out] p-4"
     >
       {/* 날짜 헤더 */}
-      <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
+      <div className="flex items-center gap-2 mb-3">
         <MdToday className="text-lg sm:text-xl text-accent-yellow" />
         <span className="text-sm sm:text-base font-semibold text-text-primary">
           오늘 ({month}월 {day}일 {DAY_NAMES[dayOfWeek]})
@@ -67,7 +66,7 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
       </div>
 
       {/* 수입/지출/저축 정보 */}
-      <div className="flex flex-col" style={{ gap: '8px' }}>
+      <div className="flex flex-col gap-2">
         {/* 수입 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -80,7 +79,7 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
                 <span className="text-base sm:text-lg font-bold text-accent-mint">
                   <CurrencyDisplay amount={`₩${formatNumber(income.total)}`} />
                 </span>
-                <span className="text-[10px] sm:text-xs text-text-muted" style={{ marginLeft: '6px' }}>
+                <span className="text-[10px] sm:text-xs text-text-muted ml-1.5">
                   ({income.count}건)
                 </span>
               </>
@@ -102,7 +101,7 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
                 <span className="text-base sm:text-lg font-bold text-accent-coral">
                   <CurrencyDisplay amount={`₩${formatNumber(expense.total)}`} />
                 </span>
-                <span className="text-[10px] sm:text-xs text-text-muted" style={{ marginLeft: '6px' }}>
+                <span className="text-[10px] sm:text-xs text-text-muted ml-1.5">
                   ({expense.count}건)
                 </span>
               </>
@@ -124,7 +123,7 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
                 <span className="text-base sm:text-lg font-bold text-accent-blue">
                   <CurrencyDisplay amount={`₩${formatNumber(savings.total)}`} />
                 </span>
-                <span className="text-[10px] sm:text-xs text-text-muted" style={{ marginLeft: '6px' }}>
+                <span className="text-[10px] sm:text-xs text-text-muted ml-1.5">
                   ({savings.count}건)
                 </span>
               </>
@@ -137,7 +136,7 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
 
       {/* 거래 없음 메시지 */}
       {!hasExpense && !hasIncome && !hasSavings && (
-        <div className="text-center text-text-muted text-xs sm:text-sm" style={{ marginTop: '8px' }}>
+        <div className="text-center text-text-muted text-xs sm:text-sm mt-2">
           오늘 거래 내역이 없습니다
         </div>
       )}

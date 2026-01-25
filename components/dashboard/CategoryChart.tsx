@@ -75,8 +75,7 @@ function CategoryChart({
     <>
       {/* Donut Chart */}
       <div
-        className="flex justify-center items-center relative"
-        style={{ marginBottom: '24px', height: '200px' }}
+        className="flex justify-center items-center relative mb-6 h-[200px]"
       >
         <ResponsiveContainer width="100%" height="100%">
           <PieChart style={{ outline: 'none' }}>
@@ -116,7 +115,7 @@ function CategoryChart({
               <div className="font-bold text-text-primary text-sm sm:text-base">
                 {formatNumber(categories[hoveredIndex].amount)}
               </div>
-              <div className="text-[10px] sm:text-xs text-text-muted" style={{ marginTop: '2px' }}>
+              <div className="text-[10px] sm:text-xs text-text-muted mt-0.5">
                 {categories[hoveredIndex].name}
               </div>
             </>
@@ -125,7 +124,7 @@ function CategoryChart({
               <div className="font-bold text-text-primary text-sm sm:text-base">
                 {formatNumber(totalExpense)}
               </div>
-              <div className="text-[10px] sm:text-xs text-text-muted" style={{ marginTop: '2px' }}>
+              <div className="text-[10px] sm:text-xs text-text-muted mt-0.5">
                 총 지출
               </div>
             </>
@@ -134,7 +133,7 @@ function CategoryChart({
       </div>
 
       {/* Category List */}
-      <div className="flex flex-col" style={{ gap: '8px' }}>
+      <div className="flex flex-col gap-2">
         {categories.map((category, index) => {
           const usagePercent = category.budgetUsagePercent ?? 0;
           const isHovered = hoveredIndex === index;
@@ -144,28 +143,23 @@ function CategoryChart({
           return (
             <div
               key={category.id}
-              className={`bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all ${
+              className={`bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all p-3 ${
                 isHovered ? 'bg-bg-card-hover translate-x-1 ring-2 ring-offset-2 ring-offset-bg-card' : 'hover:bg-bg-card-hover hover:translate-x-1'
               }`}
-              style={{
-                padding: '12px',
-                ...(isHovered && {
-                  boxShadow: `0 0 0 2px var(--bg-card), 0 0 0 4px ${categoryColor}40`
-                })
-              }}
+              style={isHovered ? { boxShadow: `0 0 0 2px var(--bg-card), 0 0 0 4px ${categoryColor}40` } : undefined}
               onClick={() => onCategoryClick(category.id)}
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
             >
               <div className="flex items-center">
                 <div
-                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-xl transition-transform ${isHovered ? 'scale-110' : ''}`}
-                  style={{ marginRight: '12px', backgroundColor: `${categoryColor}20`, color: categoryColor }}
+                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-xl transition-transform mr-3 ${isHovered ? 'scale-110' : ''}`}
+                  style={{ backgroundColor: `${categoryColor}20`, color: categoryColor }}
                 >
                   <IconComponent />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm sm:text-[15px] font-medium truncate" style={{ marginBottom: '2px' }}>
+                  <div className="text-sm sm:text-[15px] font-medium truncate mb-0.5">
                     {category.name}
                   </div>
                   <div className="text-xs sm:text-[13px] text-text-muted">{category.count}건</div>
@@ -176,7 +170,7 @@ function CategoryChart({
                   </div>
                   {category.budget !== undefined && category.budget > 0 && (
                     <div className="text-[10px] sm:text-xs text-text-muted">
-                      / <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(category.budget)}{' '}
+                      / <span className="mr-px">₩</span>{formatNumber(category.budget)}{' '}
                       <span
                         className="font-medium"
                         style={{
@@ -196,7 +190,7 @@ function CategoryChart({
 
               {/* Budget Progress Bar */}
               {category.budget !== undefined && category.budget > 0 && (
-                <div style={{ marginTop: '8px' }}>
+                <div className="mt-2">
                   <div
                     className="w-full h-2 bg-bg-card rounded-full overflow-hidden"
                   >

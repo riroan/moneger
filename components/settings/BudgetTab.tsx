@@ -96,15 +96,15 @@ export default function BudgetTab({
 
   return (
     <div>
-      <h1 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '6px' }}>
+      <h1 className="text-xl sm:text-2xl font-bold text-text-primary mb-1.5">
         예산
       </h1>
-      <p className="text-sm sm:text-base text-text-secondary" style={{ marginBottom: '16px' }}>
+      <p className="text-sm sm:text-base text-text-secondary mb-4">
         카테고리별 월 예산을 설정합니다. 예산을 설정하면 대시보드에서 사용량을 확인할 수 있습니다.
       </p>
 
       {/* 월 선택 */}
-      <div ref={budgetDatePickerRef} className="flex items-center justify-center bg-bg-card border border-[var(--border)] rounded-[12px] relative select-none" style={{ padding: '12px', marginBottom: '16px', gap: '12px' }}>
+      <div ref={budgetDatePickerRef} className="flex items-center justify-center bg-bg-card border border-[var(--border)] rounded-[12px] relative select-none p-3 mb-4 gap-3">
         <button
           onClick={handleBudgetPreviousMonth}
           disabled={isBudgetPreviousMonthDisabled()}
@@ -129,10 +129,9 @@ export default function BudgetTab({
         {/* 달력 Picker */}
         {isBudgetDatePickerOpen && (
           <div
-            className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none"
-            style={{ width: '320px', padding: '20px', marginTop: '3px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)' }}
+            className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none w-80 p-5 mt-0.5 shadow-2xl"
           >
-            <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+            <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => setBudgetPickerYear(prev => prev - 1)}
                 disabled={isBudgetPastYear(budgetPickerYear - 1)}
@@ -140,7 +139,7 @@ export default function BudgetTab({
               >
                 ◀
               </button>
-              <div className="text-text-primary font-semibold" style={{ fontSize: '16px' }}>
+              <div className="text-text-primary font-semibold text-base">
                 {budgetPickerYear}년
               </div>
               <button
@@ -152,7 +151,7 @@ export default function BudgetTab({
               </button>
             </div>
 
-            <div className="grid grid-cols-4" style={{ gap: '8px' }}>
+            <div className="grid grid-cols-4 gap-2">
               {Array.from({ length: 12 }, (_, i) => i).map(month => {
                 const isSelected = budgetDate.getFullYear() === budgetPickerYear && budgetDate.getMonth() === month;
                 const now = new Date();
@@ -165,14 +164,13 @@ export default function BudgetTab({
                     key={month}
                     onClick={() => handleBudgetMonthSelect(budgetPickerYear, month)}
                     disabled={isDisabled}
-                    className={`rounded-[8px] font-medium transition-all ${
+                    className={`rounded-[8px] font-medium transition-all py-2.5 text-sm ${
                       isDisabled
                         ? 'bg-bg-secondary text-text-muted opacity-30 cursor-not-allowed'
                         : isSelected
                         ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary cursor-pointer'
                         : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover cursor-pointer'
                     }`}
-                    style={{ padding: '10px 0', fontSize: '14px' }}
                   >
                     {month + 1}월
                   </button>
@@ -183,8 +181,8 @@ export default function BudgetTab({
         )}
       </div>
 
-      <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
+      <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px] p-4">
+        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
           <FaCreditCard className="text-base sm:text-lg text-accent-coral" /> 지출 카테고리별 예산
         </h2>
 
@@ -193,7 +191,7 @@ export default function BudgetTab({
         ) : expenseCategories.length === 0 ? (
           <div className="text-center text-text-muted py-8 text-sm">지출 카테고리가 없습니다</div>
         ) : (
-          <div className="flex flex-col" style={{ gap: '12px' }}>
+          <div className="flex flex-col gap-3">
             {expenseCategories.map(category => {
               const budget = getBudgetForCategory(category.id);
               const hasMonthlyBudget = budget && budget.amount > 0;
@@ -203,23 +201,22 @@ export default function BudgetTab({
               return (
                 <div
                   key={category.id}
-                  className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover"
-                  style={{ padding: '16px' }}
+                  className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4"
                   onClick={() => onOpenBudgetModal(category)}
                 >
                   {/* 상단: 아이콘, 카테고리명, 기본예산, 설정 버튼 */}
                   <div className="flex items-center">
                     <div
-                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-[10px] sm:rounded-[12px] flex items-center justify-center text-lg sm:text-xl"
-                      style={{ marginRight: '12px', backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-[10px] sm:rounded-[12px] flex items-center justify-center text-lg sm:text-xl mr-3"
+                      style={{ backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
                     >
                       <IconComponent />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm sm:text-base font-medium truncate">{category.name}</div>
                       {hasDefaultBudget && (
-                        <div className="text-[11px] sm:text-xs text-text-muted" style={{ marginTop: '2px' }}>
-                          기본 <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(category.defaultBudget || 0)}
+                        <div className="text-[11px] sm:text-xs text-text-muted mt-0.5">
+                          기본 <span className="mr-px">₩</span>{formatNumber(category.defaultBudget || 0)}
                         </div>
                       )}
                     </div>
@@ -227,11 +224,11 @@ export default function BudgetTab({
                   </div>
 
                   {/* 하단: 예산 금액 */}
-                  <div className="border-t border-[var(--border)]" style={{ marginTop: '12px', paddingTop: '12px' }}>
+                  <div className="border-t border-[var(--border)] mt-3 pt-3">
                     <div className="text-right">
                       {hasMonthlyBudget ? (
                         <span className="text-lg sm:text-xl font-bold text-accent-mint">
-                          <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(budget.amount)}
+                          <span className="mr-px">₩</span>{formatNumber(budget.amount)}
                         </span>
                       ) : (
                         <span className="text-sm sm:text-base text-text-muted">미설정</span>

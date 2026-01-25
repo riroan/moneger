@@ -18,9 +18,9 @@ const CurrencyDisplay = memo(({ amount }: { amount: string }) => {
   const { sign, currencySymbol, number } = formatCurrencyDisplay(amount);
 
   return (
-    <span style={{ whiteSpace: 'nowrap' }}>
-      {sign && <span style={{ marginRight: '2px' }}>{sign}</span>}
-      {currencySymbol && <span style={{ marginRight: '1px' }}>{currencySymbol}</span>}
+    <span className="whitespace-nowrap">
+      {sign && <span className="mr-0.5">{sign}</span>}
+      {currencySymbol && <span className="mr-px">{currencySymbol}</span>}
       {number}
     </span>
   );
@@ -39,15 +39,14 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
 
   return (
     <div
-      className="rounded-[12px] sm:rounded-[14px] transition-colors cursor-pointer hover:opacity-80"
-      style={{ padding: '12px', backgroundColor: 'var(--bg-card-hover)' }}
+      className="rounded-[12px] sm:rounded-[14px] transition-colors cursor-pointer hover:opacity-80 p-3 bg-bg-card-hover"
       onClick={onClick}
     >
       <div className="flex items-center">
         {/* 아이콘 */}
         <div
-          className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0"
-          style={{ marginRight: '12px', color: isSavings ? 'var(--accent-blue)' : (tx.category?.color || 'var(--text-primary)') }}
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0 mr-3"
+          style={{ color: isSavings ? 'var(--accent-blue)' : (tx.category?.color || 'var(--text-primary)') }}
         >
           <IconComponent />
         </div>
@@ -55,7 +54,7 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
         <div className="flex-1 min-w-0">
           {/* 상단: 내용 + 금액 */}
           <div className="flex items-center justify-between">
-            <div className="text-sm sm:text-[15px] font-medium truncate flex-1 min-w-0" style={{ marginRight: '12px' }}>
+            <div className="text-sm sm:text-[15px] font-medium truncate flex-1 min-w-0 mr-3">
               {tx.description || tx.category?.name || '거래'}
             </div>
             <div className={`text-sm sm:text-base font-semibold whitespace-nowrap ${

@@ -201,29 +201,26 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
     <div className="animate-[fadeIn_0.5s_ease-out]">
       {/* 저축 요약 카드 */}
       <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-        style={{ gap: '12px', marginBottom: '16px' }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4"
       >
         {/* 총 저축액 */}
         <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]"
-          style={{ padding: '20px' }}
+          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-5"
         >
-          <p className="text-xs sm:text-sm text-text-secondary" style={{ marginBottom: '6px' }}>총 저축액</p>
+          <p className="text-xs sm:text-sm text-text-secondary mb-1.5">총 저축액</p>
           <p className="text-2xl sm:text-3xl font-bold text-text-primary">
-            <span style={{ marginRight: '2px' }}>₩</span>{formatNumber(totalSavings)}
+            <span className="mr-0.5">₩</span>{formatNumber(totalSavings)}
           </p>
-          <p className="text-xs text-text-muted" style={{ marginTop: '4px' }}>
-            목표 <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(totalTarget)}
+          <p className="text-xs text-text-muted mt-1">
+            목표 <span className="mr-px">₩</span>{formatNumber(totalTarget)}
           </p>
         </div>
 
         {/* 이번 달 저축 현황 */}
         <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]"
-          style={{ padding: '20px' }}
+          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-5"
         >
-          <p className="text-xs sm:text-sm text-text-secondary" style={{ marginBottom: '6px' }}>이번 달 저축</p>
+          <p className="text-xs sm:text-sm text-text-secondary mb-1.5">이번 달 저축</p>
           {totalMonthlyRemaining === 0 ? (
             <p className="text-2xl sm:text-3xl font-bold text-accent-mint">
               목표 달성!
@@ -234,21 +231,20 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
               <span className="text-base sm:text-lg text-text-muted font-normal"> 더 필요</span>
             </p>
           )}
-          <p className="text-xs text-text-muted" style={{ marginTop: '4px' }}>
+          <p className="text-xs text-text-muted mt-1">
             {savingsGoals.length}개 목표 기준
           </p>
         </div>
 
         {/* 전체 달성률 */}
         <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] sm:col-span-2 lg:col-span-1"
-          style={{ padding: '20px' }}
+          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] sm:col-span-2 lg:col-span-1 p-5"
         >
-          <p className="text-xs sm:text-sm text-text-secondary" style={{ marginBottom: '6px' }}>전체 달성률</p>
+          <p className="text-xs sm:text-sm text-text-secondary mb-1.5">전체 달성률</p>
           <p className="text-2xl sm:text-3xl font-bold text-accent-blue">
             {totalTarget > 0 ? Math.round((totalSavings / totalTarget) * 100) : 0}%
           </p>
-          <div className="w-full h-2 bg-bg-secondary rounded-full overflow-hidden" style={{ marginTop: '8px' }}>
+          <div className="w-full h-2 bg-bg-secondary rounded-full overflow-hidden mt-2">
             <div
               className="h-full rounded-full bg-gradient-to-r from-accent-mint to-accent-blue transition-all duration-300"
               style={{ width: `${totalTarget > 0 ? Math.min(Math.round((totalSavings / totalTarget) * 100), 100) : 0}%` }}
@@ -257,13 +253,12 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '16px' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 저축 목표 카드 */}
         <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]"
-          style={{ padding: '16px' }}
+          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4"
         >
-          <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
               <MdSavings className="text-lg sm:text-xl text-[#FBBF24]" /> 저축 목표
               <span className="text-xs sm:text-sm text-text-muted font-normal">({savingsGoals.length}/{MAX_GOALS})</span>
@@ -285,22 +280,20 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
               로딩 중...
             </div>
           ) : savingsGoals.length > 0 ? (
-            <div className="flex flex-col" style={{ gap: '12px' }}>
+            <div className="flex flex-col gap-3">
               {savingsGoals.map((goal) => {
                 const IconComponent = getIconComponent(goal.icon);
                 return (
                   <div
                     key={goal.id}
-                    className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover"
-                    style={{ padding: '16px' }}
+                    className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4"
                     onClick={() => handleGoalClick(goal)}
                   >
                     {/* 상단: 아이콘 + 이름/대표/날짜 */}
-                    <div className="flex items-center gap-3" style={{ marginBottom: '16px' }}>
+                    <div className="flex items-center gap-3 mb-4">
                       <button
                         onClick={(e) => handleTogglePrimary(e, goal.id, goal.isPrimary)}
-                        className="w-10 h-10 rounded-[10px] flex items-center justify-center text-lg relative cursor-pointer transition-all hover:scale-105"
-                        style={{ backgroundColor: 'rgba(251, 191, 36, 0.15)', color: '#FBBF24' }}
+                        className="w-10 h-10 rounded-[10px] flex items-center justify-center text-lg relative cursor-pointer transition-all hover:scale-105 bg-amber-400/15 text-amber-400"
                         title={goal.isPrimary ? '대표 목표 해제' : '대표 목표로 설정'}
                       >
                         <IconComponent />
@@ -326,14 +319,14 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                     </div>
 
                     {/* 중앙: 현재 금액 / 목표 금액 (퍼센트) */}
-                    <div className="text-right" style={{ marginBottom: '12px' }}>
+                    <div className="text-right mb-3">
                       {/* 모바일: 두 줄 */}
                       <div className="sm:hidden">
                         <p className="text-xl font-bold text-text-primary">
-                          <span style={{ marginRight: '2px' }}>₩</span>{formatNumber(goal.currentAmount)}
+                          <span className="mr-0.5">₩</span>{formatNumber(goal.currentAmount)}
                         </p>
                         <p className="text-sm font-normal text-text-muted">
-                          / <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(goal.targetAmount)}
+                          / <span className="mr-px">₩</span>{formatNumber(goal.targetAmount)}
                           <span className="font-semibold text-accent-mint">
                             {' '}({goal.progressPercent}%)
                           </span>
@@ -341,9 +334,9 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                       </div>
                       {/* 데스크톱: 한 줄 */}
                       <p className="hidden sm:block text-2xl font-bold text-text-primary">
-                        <span style={{ marginRight: '2px' }}>₩</span>{formatNumber(goal.currentAmount)}
+                        <span className="mr-0.5">₩</span>{formatNumber(goal.currentAmount)}
                         <span className="text-base font-normal text-text-muted ml-2">
-                          / <span style={{ marginRight: '1px' }}>₩</span>{formatNumber(goal.targetAmount)}
+                          / <span className="mr-px">₩</span>{formatNumber(goal.targetAmount)}
                         </span>
                         <span className="text-base font-semibold text-accent-mint">
                           {' '}({goal.progressPercent}%)
@@ -352,7 +345,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                     </div>
 
                     {/* 진행률 바 */}
-                    <div className="w-full h-2 bg-bg-card rounded-full overflow-hidden" style={{ marginBottom: '12px' }}>
+                    <div className="w-full h-2 bg-bg-card rounded-full overflow-hidden mb-3">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-accent-mint to-accent-blue transition-all duration-300"
                         style={{ width: `${Math.min(goal.progressPercent, 100)}%` }}
@@ -363,8 +356,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                     <div className="flex items-center justify-between">
                       <button
                         onClick={(e) => handleDepositClick(e, goal)}
-                        className="text-xs sm:text-sm text-accent-mint rounded-[8px] hover:opacity-80 transition-colors cursor-pointer flex items-center gap-1"
-                        style={{ padding: '8px 16px', backgroundColor: 'rgba(52, 211, 153, 0.15)' }}
+                        className="text-xs sm:text-sm text-accent-mint rounded-[8px] hover:opacity-80 transition-colors cursor-pointer flex items-center gap-1 py-2 px-4 bg-emerald-400/15"
                       >
                         <FaPlus className="text-[10px]" /> 저축하기
                       </button>
@@ -392,29 +384,26 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
 
         {/* 저축 요약 카드 */}
         <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]"
-          style={{ padding: '16px' }}
+          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4"
         >
-          <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
               <MdTrendingUp className="text-lg sm:text-xl text-accent-mint" /> 저축 현황
             </h2>
           </div>
 
           {savingsGoals.length > 0 ? (
-            <div className="flex flex-col" style={{ gap: '8px' }}>
+            <div className="flex flex-col gap-2">
               {savingsGoals.map((goal) => {
                 const IconComponent = getIconComponent(goal.icon);
                 return (
                   <div
                     key={goal.id}
-                    className="flex items-center justify-between bg-bg-secondary rounded-[12px]"
-                    style={{ padding: '12px' }}
+                    className="flex items-center justify-between bg-bg-secondary rounded-[12px] p-3"
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className="w-8 h-8 rounded-[8px] flex items-center justify-center text-sm"
-                        style={{ backgroundColor: 'rgba(251, 191, 36, 0.15)', color: '#FBBF24' }}
+                        className="w-8 h-8 rounded-[8px] flex items-center justify-center text-sm bg-amber-400/15 text-amber-400"
                       >
                         <IconComponent />
                       </div>

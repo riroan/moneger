@@ -329,9 +329,9 @@ export default function SettingsPage() {
       <div className="gradient-orb orb-1" />
       <div className="gradient-orb orb-2" />
 
-      <div className="relative z-10" style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px' }}>
+      <div className="relative z-10 max-w-[1400px] mx-auto p-4">
         {/* Header */}
-        <header className="animate-[fadeInUp_0.5s_ease-out]" style={{ marginBottom: '24px' }}>
+        <header className="animate-[fadeInUp_0.5s_ease-out] mb-6">
           <div className="flex justify-between items-center">
             <div
               className="flex items-center gap-2 sm:gap-3 cursor-pointer"
@@ -359,21 +359,15 @@ export default function SettingsPage() {
               {/* Profile Menu Dropdown */}
               {isProfileMenuOpen && (
                 <div
-                  className="absolute top-full right-0 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-hidden select-none z-[300]"
-                  style={{
-                    marginTop: '8px',
-                    minWidth: '180px',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-                  }}
+                  className="absolute top-full right-0 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-hidden select-none z-[300] mt-2 min-w-[180px] shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
                 >
-                  <div className="border-b border-[var(--border)]" style={{ padding: '12px 14px' }}>
-                    <div className="font-semibold text-text-primary" style={{ fontSize: '14px' }}>{userName || '사용자'}</div>
-                    <div className="text-text-secondary" style={{ fontSize: '12px', marginTop: '2px' }}>{userEmail}</div>
+                  <div className="border-b border-[var(--border)] py-3 px-3.5">
+                    <div className="font-semibold text-text-primary text-sm">{userName || '사용자'}</div>
+                    <div className="text-text-secondary text-xs mt-0.5">{userEmail}</div>
                   </div>
-                  <div style={{ padding: '6px 0' }}>
+                  <div className="py-1.5">
                     <div
-                      className="flex items-center justify-between text-text-primary"
-                      style={{ padding: '10px 14px', fontSize: '14px' }}
+                      className="flex items-center justify-between text-text-primary py-2.5 px-3.5 text-sm"
                     >
                       <span className="flex items-center gap-2">
                       {theme === 'dark' ? <MdDarkMode className="text-lg" /> : <MdLightMode className="text-lg" />}
@@ -393,8 +387,7 @@ export default function SettingsPage() {
                       </button>
                     </div>
                     <button
-                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
-                      style={{ padding: '10px 14px', fontSize: '14px' }}
+                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
                       onClick={() => {
                         setIsProfileMenuOpen(false);
                         router.push('/');
@@ -403,8 +396,7 @@ export default function SettingsPage() {
                       <span className="flex items-center gap-2"><MdDashboard className="text-lg" /> 대시보드</span>
                     </button>
                     <button
-                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
-                      style={{ padding: '10px 14px', fontSize: '14px' }}
+                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
                       onClick={() => {
                         setIsProfileMenuOpen(false);
                         handleLogout();
@@ -426,34 +418,31 @@ export default function SettingsPage() {
             <nav className="flex gap-2 bg-bg-card border border-[var(--border)] rounded-[12px] p-1">
               <button
                 onClick={() => setActiveTab('account')}
-                className={`flex-1 rounded-[8px] font-medium text-sm transition-all cursor-pointer ${
+                className={`flex-1 rounded-[8px] font-medium text-sm transition-all cursor-pointer p-2.5 ${
                   activeTab === 'account'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                     : 'text-text-secondary hover:text-text-primary'
                 }`}
-                style={{ padding: '10px' }}
               >
                 계정
               </button>
               <button
                 onClick={() => setActiveTab('category')}
-                className={`flex-1 rounded-[8px] font-medium text-sm transition-all cursor-pointer ${
+                className={`flex-1 rounded-[8px] font-medium text-sm transition-all cursor-pointer p-2.5 ${
                   activeTab === 'category'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                     : 'text-text-secondary hover:text-text-primary'
                 }`}
-                style={{ padding: '10px' }}
               >
                 카테고리
               </button>
               <button
                 onClick={() => setActiveTab('budget')}
-                className={`flex-1 rounded-[8px] font-medium text-sm transition-all cursor-pointer ${
+                className={`flex-1 rounded-[8px] font-medium text-sm transition-all cursor-pointer p-2.5 ${
                   activeTab === 'budget'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                     : 'text-text-secondary hover:text-text-primary'
                 }`}
-                style={{ padding: '10px' }}
               >
                 예산
               </button>
@@ -462,39 +451,36 @@ export default function SettingsPage() {
 
           {/* Desktop Sidebar */}
           <aside className="hidden md:block md:w-64 flex-shrink-0 animate-[fadeInUp_0.6s_ease-out]">
-            <nav className="bg-bg-card border border-[var(--border)] rounded-[16px]" style={{ padding: '12px' }}>
+            <nav className="bg-bg-card border border-[var(--border)] rounded-[16px] p-3">
               <button
                 onClick={() => setActiveTab('account')}
-                className={`w-full text-left rounded-[10px] font-medium transition-all cursor-pointer flex items-center gap-3 ${
+                className={`w-full text-left rounded-[10px] font-medium transition-all cursor-pointer flex items-center gap-3 py-3.5 px-4 mb-2 ${
                   activeTab === 'account'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
                 }`}
-                style={{ padding: '14px 16px', marginBottom: '8px' }}
               >
                 <MdPerson className="text-lg" />
                 계정
               </button>
               <button
                 onClick={() => setActiveTab('category')}
-                className={`w-full text-left rounded-[10px] font-medium transition-all cursor-pointer flex items-center gap-3 ${
+                className={`w-full text-left rounded-[10px] font-medium transition-all cursor-pointer flex items-center gap-3 py-3.5 px-4 mb-2 ${
                   activeTab === 'category'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
                 }`}
-                style={{ padding: '14px 16px', marginBottom: '8px' }}
               >
                 <MdCategory className="text-lg" />
                 카테고리
               </button>
               <button
                 onClick={() => setActiveTab('budget')}
-                className={`w-full text-left rounded-[10px] font-medium transition-all cursor-pointer flex items-center gap-3 ${
+                className={`w-full text-left rounded-[10px] font-medium transition-all cursor-pointer flex items-center gap-3 py-3.5 px-4 ${
                   activeTab === 'budget'
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
                 }`}
-                style={{ padding: '14px 16px' }}
               >
                 <MdAccountBalanceWallet className="text-lg" />
                 예산

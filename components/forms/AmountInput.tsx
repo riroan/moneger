@@ -19,7 +19,7 @@ export default function AmountInput({
 
   return (
     <div>
-      <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
+      <label className="block text-sm text-text-secondary font-medium mb-2">
         금액
       </label>
       <div className="relative">
@@ -30,16 +30,15 @@ export default function AmountInput({
           placeholder={placeholder}
           value={value}
           onChange={handleChange}
-          className={`w-full bg-bg-secondary border rounded-[12px] text-right text-text-primary text-lg focus:outline-none transition-colors ${
+          className={`w-full bg-bg-secondary border rounded-[12px] text-right text-text-primary text-lg focus:outline-none transition-colors py-3.5 pr-4 pl-8 ${
             error
               ? 'border-accent-coral focus:border-accent-coral'
               : 'border-[var(--border)] focus:border-accent-mint'
           }`}
-          style={{ padding: '14px 16px', paddingLeft: '32px' }}
         />
       </div>
       {error && (
-        <p className="text-accent-coral text-sm" style={{ marginTop: '6px' }}>
+        <p className="text-accent-coral text-sm mt-1.5">
           {error}
         </p>
       )}

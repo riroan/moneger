@@ -175,11 +175,10 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
       onClick={handleClose}
     >
       <div
-        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out] max-h-[90vh] overflow-y-auto"
-        style={{ padding: '32px', margin: '20px' }}
+        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out] max-h-[90vh] overflow-y-auto p-8 m-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between" style={{ marginBottom: '24px' }}>
+        <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-text-primary">
             저축 목표 수정
           </h2>
@@ -193,8 +192,8 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
         </div>
 
         {/* 목표 이름 */}
-        <div style={{ marginBottom: '20px' }}>
-          <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             목표 이름
           </label>
           <input
@@ -205,17 +204,16 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
               if (e.target.value.trim()) setNameError('');
             }}
             placeholder="예: 내 집 마련, 여행 자금"
-            className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors ${
+            className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 px-4 ${
               nameError ? 'border-accent-coral' : 'border-[var(--border)]'
             }`}
-            style={{ padding: '14px 16px' }}
           />
-          {nameError && <p className="text-xs text-accent-coral" style={{ marginTop: '6px' }}>{nameError}</p>}
+          {nameError && <p className="text-xs text-accent-coral mt-1.5">{nameError}</p>}
         </div>
 
         {/* 아이콘 선택 */}
-        <div style={{ marginBottom: '20px' }}>
-          <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             아이콘
           </label>
           <div className="grid grid-cols-4 gap-2">
@@ -227,12 +225,11 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
                   key={item.id}
                   type="button"
                   onClick={() => setSelectedIcon(item.id)}
-                  className={`flex items-center justify-center rounded-[12px] transition-all cursor-pointer ${
+                  className={`flex items-center justify-center rounded-[12px] transition-all cursor-pointer p-3 ${
                     isSelected
                       ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                       : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover'
                   }`}
-                  style={{ padding: '12px' }}
                 >
                   <IconComponent className="text-xl" />
                 </button>
@@ -242,8 +239,8 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
         </div>
 
         {/* 목표 금액 */}
-        <div style={{ marginBottom: '20px' }}>
-          <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             목표 금액
           </label>
           <div className="relative">
@@ -261,18 +258,17 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
                 }
               }}
               placeholder="0"
-              className={`w-full bg-bg-secondary border rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors ${
+              className={`w-full bg-bg-secondary border rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 pr-4 pl-8 ${
                 targetAmountError ? 'border-accent-coral' : 'border-[var(--border)]'
               }`}
-              style={{ padding: '14px 16px', paddingLeft: '32px' }}
             />
           </div>
-          {targetAmountError && <p className="text-xs text-accent-coral" style={{ marginTop: '6px' }}>{targetAmountError}</p>}
+          {targetAmountError && <p className="text-xs text-accent-coral mt-1.5">{targetAmountError}</p>}
         </div>
 
         {/* 현재 저축액 (읽기 전용) */}
-        <div style={{ marginBottom: '20px' }}>
-          <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             현재 저축액
           </label>
           <div className="relative">
@@ -282,18 +278,17 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
               value={currentAmount ? formatNumber(parseInt(currentAmount, 10)) : '0'}
               readOnly
               disabled
-              className="w-full bg-bg-secondary/50 border border-[var(--border)] rounded-[12px] text-right text-lg text-text-muted cursor-not-allowed"
-              style={{ padding: '14px 16px', paddingLeft: '32px' }}
+              className="w-full bg-bg-secondary/50 border border-[var(--border)] rounded-[12px] text-right text-lg text-text-muted cursor-not-allowed py-3.5 pr-4 pl-8"
             />
           </div>
-          <p className="text-xs text-text-muted" style={{ marginTop: '6px' }}>
+          <p className="text-xs text-text-muted mt-1.5">
             저축액은 &apos;저축하기&apos; 버튼으로만 변경할 수 있습니다
           </p>
         </div>
 
         {/* 목표 날짜 */}
-        <div style={{ marginBottom: '24px' }}>
-          <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             목표 날짜
           </label>
           <div className="flex gap-3">
@@ -314,21 +309,18 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
                   setIsYearOpen(!isYearOpen);
                   setIsMonthOpen(false);
                 }}
-                className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer flex items-center justify-between"
-                style={{ padding: '14px 16px' }}
+                className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer flex items-center justify-between py-3.5 px-4"
               >
                 <span>{targetYear}</span>
                 <span className="text-text-muted flex items-center">
                   년
-                  <MdKeyboardArrowDown className={`text-lg transition-transform ${isYearOpen ? 'rotate-180' : ''}`} style={{ marginLeft: '4px' }} />
+                  <MdKeyboardArrowDown className={`text-lg transition-transform ml-1 ${isYearOpen ? 'rotate-180' : ''}`} />
                 </span>
               </button>
               {isYearOpen && (
                 <div
-                  className="fixed bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-[300]"
+                  className="fixed bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-[300] shadow-[0_8px_24px_rgba(0,0,0,0.3)] max-h-[200px]"
                   style={{
-                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-                    maxHeight: '200px',
                     top: yearDropdownPos.top,
                     left: yearDropdownPos.left,
                     width: yearDropdownPos.width,
@@ -342,10 +334,9 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
                         setTargetYear(year);
                         setIsYearOpen(false);
                       }}
-                      className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer ${
+                      className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer py-3 px-4 ${
                         targetYear === year ? 'bg-bg-card-hover text-accent-mint' : 'text-text-primary'
                       }`}
-                      style={{ padding: '12px 16px' }}
                     >
                       {year}년
                     </button>
@@ -371,21 +362,18 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
                   setIsMonthOpen(!isMonthOpen);
                   setIsYearOpen(false);
                 }}
-                className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer flex items-center justify-between"
-                style={{ padding: '14px 16px' }}
+                className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer flex items-center justify-between py-3.5 px-4"
               >
                 <span>{targetMonth}</span>
                 <span className="text-text-muted flex items-center">
                   월
-                  <MdKeyboardArrowDown className={`text-lg transition-transform ${isMonthOpen ? 'rotate-180' : ''}`} style={{ marginLeft: '4px' }} />
+                  <MdKeyboardArrowDown className={`text-lg transition-transform ml-1 ${isMonthOpen ? 'rotate-180' : ''}`} />
                 </span>
               </button>
               {isMonthOpen && (
                 <div
-                  className="fixed bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-[300]"
+                  className="fixed bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-[300] shadow-[0_8px_24px_rgba(0,0,0,0.3)] max-h-[200px]"
                   style={{
-                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-                    maxHeight: '200px',
                     top: monthDropdownPos.top,
                     left: monthDropdownPos.left,
                     width: monthDropdownPos.width,
@@ -399,10 +387,9 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
                         setTargetMonth(month);
                         setIsMonthOpen(false);
                       }}
-                      className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer ${
+                      className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer py-3 px-4 ${
                         targetMonth === month ? 'bg-bg-card-hover text-accent-mint' : 'text-text-primary'
                       }`}
-                      style={{ padding: '12px 16px' }}
                     >
                       {month}월
                     </button>
@@ -418,8 +405,7 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
           <button
             type="button"
             onClick={handleClose}
-            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
             disabled={isSaving || isDeleting}
           >
             취소
@@ -428,8 +414,7 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
             type="button"
             onClick={handleDeleteClick}
             disabled={isSaving || isDeleting}
-            className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
           >
             삭제
           </button>
@@ -437,8 +422,7 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
             type="button"
             onClick={handleSave}
             disabled={isSaving || isDeleting}
-            className="flex-1 bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
           >
             {isSaving ? '저장 중...' : '저장'}
           </button>
@@ -452,14 +436,13 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
           onClick={() => setIsDeleteConfirmOpen(false)}
         >
           <div
-            className="bg-bg-card border border-[var(--border)] rounded-[20px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out]"
-            style={{ padding: '24px', margin: '20px' }}
+            className="bg-bg-card border border-[var(--border)] rounded-[20px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out] p-6 m-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-text-primary" style={{ marginBottom: '12px' }}>
+            <h3 className="text-lg font-bold text-text-primary mb-3">
               저축 목표 삭제
             </h3>
-            <p className="text-sm text-text-secondary" style={{ marginBottom: '20px' }}>
+            <p className="text-sm text-text-secondary mb-5">
               &apos;{goal?.name}&apos; 목표를 삭제하시겠습니까?<br />
               이 작업은 되돌릴 수 없습니다.
             </p>
@@ -467,8 +450,7 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
               <button
                 type="button"
                 onClick={() => setIsDeleteConfirmOpen(false)}
-                className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-                style={{ padding: '12px' }}
+                className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3"
                 disabled={isDeleting}
               >
                 취소
@@ -477,8 +459,7 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
                 type="button"
                 onClick={handleDeleteConfirm}
                 disabled={isDeleting}
-                className="flex-1 bg-accent-coral text-white rounded-[12px] font-medium hover:opacity-90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ padding: '12px' }}
+                className="flex-1 bg-accent-coral text-white rounded-[12px] font-medium hover:opacity-90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3"
               >
                 {isDeleting ? '삭제 중...' : '삭제'}
               </button>

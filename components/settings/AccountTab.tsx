@@ -73,37 +73,37 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
 
   return (
     <div>
-      <h1 className="text-xl sm:text-2xl font-bold text-text-primary" style={{ marginBottom: '6px' }}>
+      <h1 className="text-xl sm:text-2xl font-bold text-text-primary mb-1.5">
         계정
       </h1>
-      <p className="text-sm sm:text-base text-text-secondary" style={{ marginBottom: '16px' }}>
+      <p className="text-sm sm:text-base text-text-secondary mb-4">
         계정 정보를 확인하고 관리합니다.
       </p>
 
-      <div className="flex flex-col" style={{ gap: '16px' }}>
+      <div className="flex flex-col gap-4">
         {/* 프로필 정보 */}
-        <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-          <h2 className="text-base sm:text-lg font-semibold" style={{ marginBottom: '16px' }}>프로필 정보</h2>
-          <div className="flex flex-col" style={{ gap: '20px' }}>
+        <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px] p-4">
+          <h2 className="text-base sm:text-lg font-semibold mb-4">프로필 정보</h2>
+          <div className="flex flex-col gap-5">
             <div>
-              <div className="text-sm text-text-muted" style={{ marginBottom: '6px' }}>이름</div>
+              <div className="text-sm text-text-muted mb-1.5">이름</div>
               <div className="text-base text-text-primary font-medium">{userName || '이름 없음'}</div>
             </div>
             <div className="border-t border-[var(--border)]" />
             <div>
-              <div className="text-sm text-text-muted" style={{ marginBottom: '6px' }}>이메일</div>
+              <div className="text-sm text-text-muted mb-1.5">이메일</div>
               <div className="text-base text-text-primary font-medium">{userEmail}</div>
             </div>
           </div>
         </div>
 
         {/* 비밀번호 변경 */}
-        <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-          <h2 className="text-base sm:text-lg font-semibold" style={{ marginBottom: '16px' }}>비밀번호 변경</h2>
+        <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px] p-4">
+          <h2 className="text-base sm:text-lg font-semibold mb-4">비밀번호 변경</h2>
           <form onSubmit={handleChangePassword}>
-            <div className="flex flex-col" style={{ gap: '16px' }}>
+            <div className="flex flex-col gap-4">
               <div>
-                <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
+                <label className="block text-sm text-text-muted mb-2">
                   현재 비밀번호
                 </label>
                 <input
@@ -114,13 +114,12 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
                     setPasswordError('');
                     setPasswordSuccess('');
                   }}
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors"
-                  style={{ padding: '10px 12px' }}
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
                   placeholder="현재 비밀번호 입력"
                 />
               </div>
               <div>
-                <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
+                <label className="block text-sm text-text-muted mb-2">
                   새 비밀번호
                 </label>
                 <input
@@ -131,13 +130,12 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
                     setPasswordError('');
                     setPasswordSuccess('');
                   }}
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors"
-                  style={{ padding: '10px 12px' }}
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
                   placeholder="새 비밀번호 입력 (6자 이상)"
                 />
               </div>
               <div>
-                <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
+                <label className="block text-sm text-text-muted mb-2">
                   새 비밀번호 확인
                 </label>
                 <input
@@ -148,8 +146,7 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
                     setPasswordError('');
                     setPasswordSuccess('');
                   }}
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors"
-                  style={{ padding: '10px 12px' }}
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
                   placeholder="새 비밀번호 다시 입력"
                 />
               </div>
@@ -159,12 +156,11 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
               {passwordSuccess && (
                 <p className="text-accent-mint text-sm">{passwordSuccess}</p>
               )}
-              <div style={{ marginTop: '4px' }}>
+              <div className="mt-1">
                 <button
                   type="submit"
                   disabled={isChangingPassword}
-                  className="w-full sm:w-auto bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[10px] font-medium text-sm sm:text-base hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ padding: '12px 24px' }}
+                  className="w-full sm:w-auto bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[10px] font-medium text-sm sm:text-base hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed py-3 px-6"
                 >
                   {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
                 </button>
@@ -174,15 +170,14 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
         </div>
 
         {/* 계정 삭제 */}
-        <div className="bg-bg-card border border-accent-coral/30 rounded-[14px] sm:rounded-[16px]" style={{ padding: '16px' }}>
-          <h2 className="text-base sm:text-lg font-semibold text-accent-coral" style={{ marginBottom: '6px' }}>계정 삭제</h2>
-          <p className="text-xs sm:text-sm text-text-secondary" style={{ marginBottom: '16px' }}>
+        <div className="bg-bg-card border border-accent-coral/30 rounded-[14px] sm:rounded-[16px] p-4">
+          <h2 className="text-base sm:text-lg font-semibold text-accent-coral mb-1.5">계정 삭제</h2>
+          <p className="text-xs sm:text-sm text-text-secondary mb-4">
             계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
           </p>
           <button
             onClick={onDeleteAccountOpen}
-            className="w-full sm:w-auto bg-accent-coral text-white rounded-[10px] font-medium text-sm sm:text-base hover:shadow-lg transition-all cursor-pointer"
-            style={{ padding: '12px 24px' }}
+            className="w-full sm:w-auto bg-accent-coral text-white rounded-[10px] font-medium text-sm sm:text-base hover:shadow-lg transition-all cursor-pointer py-3 px-6"
           >
             계정 삭제
           </button>

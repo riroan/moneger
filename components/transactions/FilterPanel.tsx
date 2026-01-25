@@ -72,8 +72,7 @@ function CustomSelect({ value, options, onChange, placeholder }: CustomSelectPro
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-text-primary text-sm focus:outline-none focus:border-accent-blue cursor-pointer flex items-center justify-between"
-        style={{ padding: '8px 10px' }}
+        className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-text-primary text-sm focus:outline-none focus:border-accent-blue cursor-pointer flex items-center justify-between py-2 px-2.5"
       >
         <span>{selectedOption?.label || placeholder}</span>
         <svg
@@ -89,8 +88,7 @@ function CustomSelect({ value, options, onChange, placeholder }: CustomSelectPro
       </button>
       {isOpen && (
         <div
-          className="absolute top-full left-0 right-0 mt-1 bg-bg-card border border-[var(--border)] rounded-[8px] overflow-y-auto z-20"
-          style={{ boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', maxHeight: '160px' }}
+          className="absolute top-full left-0 right-0 mt-1 bg-bg-card border border-[var(--border)] rounded-[8px] overflow-y-auto z-20 shadow-lg max-h-40"
         >
           {options.map((option) => (
             <button
@@ -100,12 +98,11 @@ function CustomSelect({ value, options, onChange, placeholder }: CustomSelectPro
                 onChange(option.value);
                 setIsOpen(false);
               }}
-              className={`w-full text-left text-sm transition-colors cursor-pointer ${
+              className={`w-full text-left text-sm transition-colors cursor-pointer py-2 px-2.5 ${
                 value === option.value
                   ? 'bg-accent-mint/20 text-accent-mint'
                   : 'text-text-primary hover:bg-bg-card-hover'
               }`}
-              style={{ padding: '8px 10px' }}
             >
               {option.label}
             </button>
@@ -257,12 +254,11 @@ export default function FilterPanel({
 
   return (
     <div className="lg:block">
-      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]" style={{ padding: '16px' }}>
+      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
         {/* 모바일 필터 토글 */}
         <button
           onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className="lg:hidden w-full flex items-center justify-between cursor-pointer"
-          style={{ marginBottom: isFilterOpen ? '16px' : '0' }}
+          className={`lg:hidden w-full flex items-center justify-between cursor-pointer ${isFilterOpen ? 'mb-4' : ''}`}
         >
           <span className="text-base font-semibold flex items-center gap-2">
             <MdSearch className="text-lg" /> 필터 {hasActiveFilters && <span className="text-accent-mint text-sm font-normal">(적용됨)</span>}
@@ -271,7 +267,7 @@ export default function FilterPanel({
         </button>
 
         {/* 데스크탑 필터 헤더 */}
-        <h3 className="hidden lg:flex text-base font-semibold items-center gap-2" style={{ marginBottom: '16px' }}>
+        <h3 className="hidden lg:flex text-base font-semibold items-center gap-2 mb-4">
           <MdSearch className="text-lg" /> 필터
         </h3>
 
@@ -279,21 +275,20 @@ export default function FilterPanel({
         <div className={`${isFilterOpen ? 'block' : 'hidden'} lg:block`}>
 
         {/* 검색 */}
-        <div style={{ marginBottom: '16px' }}>
-          <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>검색</label>
+        <div className="mb-4">
+          <label className="block text-sm text-text-muted mb-2">검색</label>
           <input
             type="text"
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
             placeholder="내역 검색..."
-            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors"
-            style={{ padding: '10px 12px' }}
+            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
           />
         </div>
 
         {/* 기간 필터 */}
-        <div style={{ marginBottom: '16px' }}>
-          <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-text-muted">기간</label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -306,11 +301,11 @@ export default function FilterPanel({
             </label>
           </div>
           {isDateFilterEnabled && dateRange && (
-            <div className="bg-bg-secondary rounded-[10px]" style={{ padding: '12px' }}>
+            <div className="bg-bg-secondary rounded-[10px] p-3">
               <div className="flex flex-col gap-3">
                 {/* 시작 날짜 */}
                 <div>
-                  <label className="block text-xs text-text-muted" style={{ marginBottom: '6px' }}>시작</label>
+                  <label className="block text-xs text-text-muted mb-1.5">시작</label>
                   <div className="flex gap-2">
                     <CustomSelect
                       value={dateRange.startYear}
@@ -343,7 +338,7 @@ export default function FilterPanel({
                 </div>
                 {/* 종료 날짜 */}
                 <div>
-                  <label className="block text-xs text-text-muted" style={{ marginBottom: '6px' }}>종료</label>
+                  <label className="block text-xs text-text-muted mb-1.5">종료</label>
                   <div className="flex gap-2">
                     <CustomSelect
                       value={dateRange.endYear}
@@ -370,8 +365,8 @@ export default function FilterPanel({
         </div>
 
         {/* 금액 범위 필터 */}
-        <div style={{ marginBottom: '16px' }}>
-          <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-text-muted">금액 범위</label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -384,10 +379,10 @@ export default function FilterPanel({
             </label>
           </div>
           {isAmountFilterEnabled && amountRange && (
-            <div className="bg-bg-secondary rounded-[10px]" style={{ padding: '12px' }}>
+            <div className="bg-bg-secondary rounded-[10px] p-3">
               <div className="flex flex-col gap-3">
                 <div>
-                  <label className="block text-xs text-text-muted" style={{ marginBottom: '6px' }}>최소 금액</label>
+                  <label className="block text-xs text-text-muted mb-1.5">최소 금액</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">₩</span>
                     <input
@@ -396,13 +391,12 @@ export default function FilterPanel({
                       value={minAmountInput}
                       onChange={(e) => handleAmountInputChange('min', e.target.value)}
                       placeholder="0"
-                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors"
-                      style={{ padding: '8px 10px', paddingLeft: '24px' }}
+                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors py-2 pr-2.5 pl-6"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-text-muted" style={{ marginBottom: '6px' }}>최대 금액</label>
+                  <label className="block text-xs text-text-muted mb-1.5">최대 금액</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">₩</span>
                     <input
@@ -411,8 +405,7 @@ export default function FilterPanel({
                       value={maxAmountInput}
                       onChange={(e) => handleAmountInputChange('max', e.target.value)}
                       placeholder="제한 없음"
-                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors"
-                      style={{ padding: '8px 10px', paddingLeft: '24px' }}
+                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors py-2 pr-2.5 pl-6"
                     />
                   </div>
                 </div>
@@ -422,8 +415,8 @@ export default function FilterPanel({
         </div>
 
         {/* 거래 유형 */}
-        <div style={{ marginBottom: '16px' }}>
-          <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>거래 유형</label>
+        <div className="mb-4">
+          <label className="block text-sm text-text-muted mb-2">거래 유형</label>
           <div className="grid grid-cols-2 gap-2">
             {[
               { value: 'ALL', label: '전체', activeClass: 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary' },
@@ -434,12 +427,11 @@ export default function FilterPanel({
               <button
                 key={option.value}
                 onClick={() => setFilterType(option.value as 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS')}
-                className={`rounded-[8px] text-sm font-medium transition-all cursor-pointer ${
+                className={`rounded-[8px] text-sm font-medium transition-all cursor-pointer py-2 px-3 ${
                   filterType === option.value
                     ? option.activeClass
                     : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
                 }`}
-                style={{ padding: '8px 12px' }}
               >
                 {option.label}
               </button>
@@ -448,8 +440,8 @@ export default function FilterPanel({
         </div>
 
         {/* 정렬 */}
-        <div style={{ marginBottom: '16px' }}>
-          <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>정렬</label>
+        <div className="mb-4">
+          <label className="block text-sm text-text-muted mb-2">정렬</label>
           <div className="grid grid-cols-2 gap-2">
             {[
               { value: 'recent', label: '최근 순' },
@@ -460,12 +452,11 @@ export default function FilterPanel({
               <button
                 key={option.value}
                 onClick={() => setSortOrder(option.value as 'recent' | 'oldest' | 'expensive' | 'cheapest')}
-                className={`rounded-[8px] text-sm font-medium transition-all cursor-pointer ${
+                className={`rounded-[8px] text-sm font-medium transition-all cursor-pointer py-2 px-3 ${
                   sortOrder === option.value
                     ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                     : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
                 }`}
-                style={{ padding: '8px 12px' }}
               >
                 {option.label}
               </button>
@@ -475,8 +466,8 @@ export default function FilterPanel({
 
         {/* 카테고리 - 저축 필터일 때는 숨김 */}
         {filterType !== 'SAVINGS' && (
-        <div style={{ marginBottom: '16px' }}>
-          <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
+        <div className="mb-4">
+          <label className="block text-sm text-text-muted mb-2">
             카테고리 {filterCategories.length > 0 && <span className="text-accent-mint">({filterCategories.length})</span>}
           </label>
           <div className="flex flex-col gap-2">
@@ -486,8 +477,7 @@ export default function FilterPanel({
                 <button
                   type="button"
                   onClick={() => setIsIncomeCategoryOpen(!isIncomeCategoryOpen)}
-                  className="w-full flex items-center justify-between text-left cursor-pointer hover:bg-bg-card-hover transition-colors"
-                  style={{ padding: '10px 12px' }}
+                  className="w-full flex items-center justify-between text-left cursor-pointer hover:bg-bg-card-hover transition-colors py-2.5 px-3"
                 >
                   <span className="text-sm font-medium text-accent-mint flex items-center gap-2">
                     <FaMoneyBillWave className="text-sm" /> 수입
@@ -500,15 +490,14 @@ export default function FilterPanel({
                   </span>
                 </button>
                 {isIncomeCategoryOpen && (
-                  <div className="flex flex-col gap-1" style={{ padding: '0 8px 8px 8px' }}>
+                  <div className="flex flex-col gap-1 px-2 pb-2">
                     {categories.filter(c => c.type === 'INCOME').map((cat) => {
                       const isChecked = filterCategories.includes(cat.id);
                       const IconComponent = getIconComponent(cat.icon);
                       return (
                         <label
                           key={cat.id}
-                          className="flex items-center gap-2 bg-bg-card rounded-[6px] cursor-pointer hover:bg-bg-card-hover transition-colors"
-                          style={{ padding: '6px 8px' }}
+                          className="flex items-center gap-2 bg-bg-card rounded-[6px] cursor-pointer hover:bg-bg-card-hover transition-colors py-1.5 px-2"
                         >
                           <input
                             type="checkbox"
@@ -545,8 +534,7 @@ export default function FilterPanel({
                 <button
                   type="button"
                   onClick={() => setIsExpenseCategoryOpen(!isExpenseCategoryOpen)}
-                  className="w-full flex items-center justify-between text-left cursor-pointer hover:bg-bg-card-hover transition-colors"
-                  style={{ padding: '10px 12px' }}
+                  className="w-full flex items-center justify-between text-left cursor-pointer hover:bg-bg-card-hover transition-colors py-2.5 px-3"
                 >
                   <span className="text-sm font-medium text-accent-coral flex items-center gap-2">
                     <FaCreditCard className="text-sm" /> 지출
@@ -559,15 +547,14 @@ export default function FilterPanel({
                   </span>
                 </button>
                 {isExpenseCategoryOpen && (
-                  <div className="flex flex-col gap-1" style={{ padding: '0 8px 8px 8px' }}>
+                  <div className="flex flex-col gap-1 px-2 pb-2">
                     {categories.filter(c => c.type === 'EXPENSE').map((cat) => {
                       const isChecked = filterCategories.includes(cat.id);
                       const IconComponent = getIconComponent(cat.icon);
                       return (
                         <label
                           key={cat.id}
-                          className="flex items-center gap-2 bg-bg-card rounded-[6px] cursor-pointer hover:bg-bg-card-hover transition-colors"
-                          style={{ padding: '6px 8px' }}
+                          className="flex items-center gap-2 bg-bg-card rounded-[6px] cursor-pointer hover:bg-bg-card-hover transition-colors py-1.5 px-2"
                         >
                           <input
                             type="checkbox"
@@ -603,8 +590,8 @@ export default function FilterPanel({
 
         {/* 저축 필터 안내 */}
         {filterType === 'SAVINGS' && (
-          <div className="bg-accent-blue/10 rounded-[10px] text-center" style={{ padding: '16px', marginBottom: '16px' }}>
-            <MdSavings className="text-2xl text-accent-blue mx-auto" style={{ marginBottom: '8px' }} />
+          <div className="bg-accent-blue/10 rounded-[10px] text-center p-4 mb-4">
+            <MdSavings className="text-2xl text-accent-blue mx-auto mb-2" />
             <p className="text-sm text-text-secondary">
               저축 목표에 입금한 내역만 표시됩니다
             </p>
@@ -615,8 +602,7 @@ export default function FilterPanel({
         <button
           onClick={handleReset}
           disabled={!hasActiveFilters}
-          className="w-full bg-bg-secondary text-text-secondary hover:text-text-primary rounded-[10px] text-sm font-medium transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-text-secondary"
-          style={{ padding: '10px 12px' }}
+          className="w-full bg-bg-secondary text-text-secondary hover:text-text-primary rounded-[10px] text-sm font-medium transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-text-secondary py-2.5 px-3"
         >
           필터 초기화
         </button>

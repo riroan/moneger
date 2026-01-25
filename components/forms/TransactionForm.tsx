@@ -55,31 +55,29 @@ export default function TransactionForm({
   };
 
   return (
-    <form className="flex flex-col" style={{ gap: '20px' }} onSubmit={handleSubmit}>
+    <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
       {/* Transaction Type Toggle */}
       {mode === 'add' ? (
         <div className="flex gap-3">
           <button
             type="button"
             onClick={() => setters.setType('EXPENSE')}
-            className={`flex-1 rounded-[12px] font-medium transition-all cursor-pointer ${
+            className={`flex-1 rounded-[12px] font-medium transition-all cursor-pointer p-3.5 ${
               formState.type === 'EXPENSE'
                 ? 'bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary'
                 : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover'
             }`}
-            style={{ padding: '14px' }}
           >
             💳 지출
           </button>
           <button
             type="button"
             onClick={() => setters.setType('INCOME')}
-            className={`flex-1 rounded-[12px] font-medium transition-all cursor-pointer ${
+            className={`flex-1 rounded-[12px] font-medium transition-all cursor-pointer p-3.5 ${
               formState.type === 'INCOME'
                 ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary'
                 : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover'
             }`}
-            style={{ padding: '14px' }}
           >
             💼 수입
           </button>
@@ -87,22 +85,20 @@ export default function TransactionForm({
       ) : (
         <div className="flex rounded-[14px] bg-bg-secondary p-1.5">
           <div
-            className={`flex-1 rounded-[10px] font-medium transition-all ${
+            className={`flex-1 rounded-[10px] font-medium transition-all p-2.5 text-center ${
               formState.type === 'EXPENSE'
                 ? 'bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary shadow-lg'
-                : 'text-text-secondary'
+                : 'text-text-secondary opacity-50'
             }`}
-            style={{ padding: '10px', textAlign: 'center', opacity: formState.type === 'EXPENSE' ? 1 : 0.5 }}
           >
             지출
           </div>
           <div
-            className={`flex-1 rounded-[10px] font-medium transition-all ${
+            className={`flex-1 rounded-[10px] font-medium transition-all p-2.5 text-center ${
               formState.type === 'INCOME'
                 ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary shadow-lg'
-                : 'text-text-secondary'
+                : 'text-text-secondary opacity-50'
             }`}
-            style={{ padding: '10px', textAlign: 'center', opacity: formState.type === 'INCOME' ? 1 : 0.5 }}
           >
             수입
           </div>
@@ -111,7 +107,7 @@ export default function TransactionForm({
 
       {/* Description Input */}
       <div>
-        <label className="block text-sm text-text-secondary font-medium" style={{ marginBottom: '8px' }}>
+        <label className="block text-sm text-text-secondary font-medium mb-2">
           내용
         </label>
         <input
@@ -119,15 +115,14 @@ export default function TransactionForm({
           placeholder="예: 점심 식사, 월급 등"
           value={formState.description}
           onChange={(e) => setters.setDescription(e.target.value)}
-          className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors ${
+          className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors py-3.5 px-4 ${
             errors.descriptionError
               ? 'border-accent-coral focus:border-accent-coral'
               : 'border-[var(--border)] focus:border-accent-mint'
           }`}
-          style={{ padding: '14px 16px' }}
         />
         {errors.descriptionError && (
-          <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
+          <p className="text-accent-coral text-xs mt-1.5">
             {errors.descriptionError}
           </p>
         )}
@@ -150,12 +145,11 @@ export default function TransactionForm({
       />
 
       {/* Action Buttons */}
-      <div className="flex gap-3" style={{ marginTop: '8px' }}>
+      <div className="flex gap-3 mt-2">
         <button
           type="button"
           onClick={handleCancel}
-          className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-          style={{ padding: '14px' }}
+          className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
           disabled={isSubmitting}
         >
           취소
@@ -164,8 +158,7 @@ export default function TransactionForm({
           <button
             type="button"
             onClick={onDelete}
-            className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
             disabled={isSubmitting}
           >
             삭제
@@ -174,12 +167,11 @@ export default function TransactionForm({
         <button
           type="submit"
           disabled={isSubmitting || !!errors.amountError || !formState.amount}
-          className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5 ${
             formState.type === 'EXPENSE'
               ? 'bg-gradient-to-br from-accent-coral to-accent-yellow'
               : 'bg-gradient-to-br from-accent-mint to-accent-blue'
           } text-bg-primary`}
-          style={{ padding: '14px' }}
         >
           {isSubmitting ? (mode === 'add' ? '추가 중...' : '수정 중...') : (mode === 'add' ? '추가' : '수정')}
         </button>

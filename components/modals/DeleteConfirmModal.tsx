@@ -21,11 +21,10 @@ export default function DeleteConfirmModal({
       onClick={onClose}
     >
       <div
-        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out]"
-        style={{ padding: '32px', margin: '20px' }}
+        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out] p-8 m-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-end" style={{ marginBottom: '8px' }}>
+        <div className="flex justify-end mb-2">
           <button
             type="button"
             onClick={onClose}
@@ -34,11 +33,11 @@ export default function DeleteConfirmModal({
             ×
           </button>
         </div>
-        <div className="flex flex-col items-center" style={{ marginBottom: '24px' }}>
-          <div className="w-16 h-16 rounded-full bg-[var(--glow-coral)] flex items-center justify-center text-3xl" style={{ marginBottom: '16px' }}>
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-[var(--glow-coral)] flex items-center justify-center text-3xl mb-4">
             ⚠️
           </div>
-          <h2 className="text-xl font-bold text-text-primary" style={{ marginBottom: '8px' }}>
+          <h2 className="text-xl font-bold text-text-primary mb-2">
             내역 삭제
           </h2>
           <p className="text-sm text-text-secondary text-center">
@@ -51,8 +50,7 @@ export default function DeleteConfirmModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
             disabled={isSubmitting}
           >
             취소
@@ -60,8 +58,7 @@ export default function DeleteConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            className="flex-1 bg-gradient-to-br from-accent-coral to-red-600 text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-gradient-to-br from-accent-coral to-red-600 text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
             disabled={isSubmitting}
           >
             {isSubmitting ? '삭제 중...' : '삭제'}

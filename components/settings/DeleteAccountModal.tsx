@@ -69,11 +69,10 @@ export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAc
       onClick={handleClose}
     >
       <div
-        className="bg-bg-card border border-accent-coral/50 rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out]"
-        style={{ padding: '32px', margin: '20px' }}
+        className="bg-bg-card border border-accent-coral/50 rounded-[24px] w-full max-w-md animate-[fadeInUp_0.3s_ease-out] p-8 m-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center" style={{ marginBottom: '12px' }}>
+        <div className="flex justify-between items-center mb-3">
           <h2 className="text-2xl font-bold text-accent-coral">계정 삭제</h2>
           <button
             type="button"
@@ -83,13 +82,13 @@ export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAc
             ×
           </button>
         </div>
-        <p className="text-text-secondary" style={{ marginBottom: '24px' }}>
+        <p className="text-text-secondary mb-6">
           정말로 계정을 삭제하시겠습니까?<br />
           모든 데이터가 영구적으로 삭제되며, 이 작업은 되돌릴 수 없습니다.
         </p>
 
-        <div style={{ marginBottom: '20px' }}>
-          <label className="block text-sm text-text-muted" style={{ marginBottom: '8px' }}>
+        <div className="mb-5">
+          <label className="block text-sm text-text-muted mb-2">
             비밀번호 확인
           </label>
           <input
@@ -99,20 +98,18 @@ export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAc
               setDeletePassword(e.target.value);
               setDeleteError('');
             }}
-            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary focus:outline-none focus:border-accent-coral transition-colors"
-            style={{ padding: '12px 14px' }}
+            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary focus:outline-none focus:border-accent-coral transition-colors py-3 px-3.5"
             placeholder="비밀번호를 입력하세요"
           />
           {deleteError && (
-            <p className="text-accent-coral text-sm" style={{ marginTop: '8px' }}>{deleteError}</p>
+            <p className="text-accent-coral text-sm mt-2">{deleteError}</p>
           )}
         </div>
 
         <div className="flex gap-3">
           <button
             onClick={handleClose}
-            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
             disabled={isDeletingAccount}
           >
             취소
@@ -120,8 +117,7 @@ export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAc
           <button
             onClick={handleDeleteAccount}
             disabled={isDeletingAccount || !deletePassword}
-            className="flex-1 bg-accent-coral text-white rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-accent-coral text-white rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
           >
             {isDeletingAccount ? '삭제 중...' : '계정 삭제'}
           </button>

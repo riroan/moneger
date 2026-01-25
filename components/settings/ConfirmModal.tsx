@@ -31,11 +31,10 @@ export default function ConfirmModal({
       onClick={onCancel}
     >
       <div
-        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out]"
-        style={{ padding: '32px', margin: '20px' }}
+        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out] p-8 m-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center" style={{ marginBottom: '12px' }}>
+        <div className="flex justify-between items-center mb-3">
           <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
           <button
             type="button"
@@ -45,15 +44,14 @@ export default function ConfirmModal({
             ×
           </button>
         </div>
-        <div className="text-text-secondary" style={{ marginBottom: '24px' }}>
+        <div className="text-text-secondary mb-6">
           {message}
         </div>
 
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
             disabled={isLoading}
           >
             {cancelText}
@@ -61,8 +59,7 @@ export default function ConfirmModal({
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className={`flex-1 rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${confirmButtonClass}`}
-            style={{ padding: '14px' }}
+            className={`flex-1 rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5 ${confirmButtonClass}`}
           >
             {isLoading ? '처리 중...' : confirmText}
           </button>

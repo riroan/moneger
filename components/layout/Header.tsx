@@ -99,8 +99,7 @@ export default function Header({
 
   return (
     <header
-      className="flex justify-between items-center animate-[fadeInDown_0.6s_ease-out]"
-      style={{ marginBottom: '24px' }}
+      className="flex justify-between items-center animate-[fadeInDown_0.6s_ease-out] mb-6"
     >
       <div
         onClick={() => {
@@ -126,7 +125,7 @@ export default function Header({
 
       <div className="flex items-center gap-2 sm:gap-4">
         {showDatePicker && (
-          <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none" style={{ padding: '8px 12px', gap: '8px' }}>
+          <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none py-2 px-3 gap-2">
             <button
               onClick={onPreviousMonth}
               disabled={isPreviousMonthDisabled()}
@@ -150,10 +149,9 @@ export default function Header({
 
             {isDatePickerOpen && (
             <div
-              className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none"
-              style={{ width: '320px', padding: '20px', marginTop: '3px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)' }}
+              className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none w-80 p-5 mt-0.5 shadow-2xl"
             >
-              <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+              <div className="flex items-center justify-between mb-4">
                 <button
                   onClick={() => setPickerYear(prev => prev - 1)}
                   disabled={isPastYear(pickerYear - 1)}
@@ -161,7 +159,7 @@ export default function Header({
                 >
                   ◀
                 </button>
-                <div className="text-text-primary font-semibold" style={{ fontSize: '16px' }}>
+                <div className="text-text-primary font-semibold text-base">
                   {pickerYear}년
                 </div>
                 <button
@@ -173,7 +171,7 @@ export default function Header({
                 </button>
               </div>
 
-              <div className="grid grid-cols-4" style={{ gap: '8px' }}>
+              <div className="grid grid-cols-4 gap-2">
                 {Array.from({ length: 12 }, (_, i) => i).map(month => {
                   const isSelected = currentDate.getFullYear() === pickerYear && currentDate.getMonth() === month;
                   const now = new Date();
@@ -189,14 +187,13 @@ export default function Header({
                         setIsDatePickerOpen(false);
                       }}
                       disabled={isDisabled}
-                      className={`rounded-[8px] font-medium transition-all ${
+                      className={`rounded-[8px] font-medium transition-all py-2.5 text-sm ${
                         isDisabled
                           ? 'bg-bg-secondary text-text-muted opacity-30 cursor-not-allowed'
                           : isSelected
                           ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary cursor-pointer'
                           : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover cursor-pointer'
                       }`}
-                      style={{ padding: '10px 0', fontSize: '14px' }}
                     >
                       {month + 1}월
                     </button>
@@ -218,17 +215,15 @@ export default function Header({
 
           {isProfileMenuOpen && (
             <div
-              className="absolute top-full right-0 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-hidden select-none z-[300]"
-              style={{ marginTop: '8px', minWidth: '180px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)' }}
+              className="absolute top-full right-0 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-hidden select-none z-[300] mt-2 min-w-[180px] shadow-2xl"
             >
-              <div className="border-b border-[var(--border)]" style={{ padding: '12px 14px' }}>
-                <div className="font-semibold text-text-primary" style={{ fontSize: '14px' }}>{userName || '사용자'}</div>
-                <div className="text-text-secondary" style={{ fontSize: '12px', marginTop: '2px' }}>{userEmail}</div>
+              <div className="border-b border-[var(--border)] py-3 px-3.5">
+                <div className="font-semibold text-text-primary text-sm">{userName || '사용자'}</div>
+                <div className="text-text-secondary text-xs mt-0.5">{userEmail}</div>
               </div>
-              <div style={{ padding: '6px 0' }}>
+              <div className="py-1.5">
                 <div
-                  className="flex items-center justify-between text-text-primary"
-                  style={{ padding: '10px 14px', fontSize: '14px' }}
+                  className="flex items-center justify-between text-text-primary py-2.5 px-3.5 text-sm"
                 >
                   <span className="flex items-center gap-2">
                     {theme === 'dark' ? <MdDarkMode className="text-lg" /> : <MdLightMode className="text-lg" />}
@@ -248,8 +243,7 @@ export default function Header({
                   </button>
                 </div>
                 <button
-                  className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
-                  style={{ padding: '10px 14px', fontSize: '14px' }}
+                  className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
                   onClick={() => {
                     setIsProfileMenuOpen(false);
                     router.push('/settings');
@@ -258,8 +252,7 @@ export default function Header({
                   <span className="flex items-center gap-2"><MdSettings className="text-lg" /> 설정</span>
                 </button>
                 <button
-                  className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
-                  style={{ padding: '10px 14px', fontSize: '14px' }}
+                  className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
                   onClick={() => {
                     setIsProfileMenuOpen(false);
                     onLogout();

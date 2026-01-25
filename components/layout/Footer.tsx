@@ -2,45 +2,12 @@
 
 export default function Footer() {
   return (
-    <footer
-      className="border-t border-[var(--border)]"
-      style={{ padding: '32px 0', marginTop: '48px' }}
-    >
-      <div
-        style={{
-          maxWidth: '1400px',
-          margin: '0 auto',
-          padding: '0 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '16px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'linear-gradient(to bottom, #2dd4bf, #22d3ee, #06b6d4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <div
-              style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                border: '2px solid rgba(255, 255, 255, 0.9)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span style={{ color: 'white', fontWeight: 700, fontSize: '10px' }}>M</span>
+    <footer className="border-t border-[var(--border)] py-8 mt-12">
+      <div className="max-w-[1400px] mx-auto px-4 flex flex-col items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-b from-teal-400 via-cyan-400 to-cyan-500 flex items-center justify-center">
+            <div className="w-[22px] h-[22px] rounded-full border-2 border-white/90 flex items-center justify-center">
+              <span className="text-white font-bold text-[10px]">M</span>
             </div>
           </div>
           <span className="text-text-primary font-semibold">MONEGER</span>

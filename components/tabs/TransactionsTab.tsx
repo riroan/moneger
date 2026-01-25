@@ -93,7 +93,7 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
   }, [allTransactions]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] animate-[fadeIn_0.5s_ease-out]" style={{ gap: '16px' }}>
+    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] animate-[fadeIn_0.5s_ease-out] gap-4">
       <FilterPanel
         filterType={filterType}
         setFilterType={setFilterType}
@@ -113,8 +113,8 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
         setAmountRange={setAmountRange}
       />
 
-      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px]" style={{ padding: '16px' }}>
-        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ marginBottom: '16px' }}>
+      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
+        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
           <MdReceipt className="text-lg sm:text-xl text-accent-purple" /> 전체 내역
           {allTransactions.length > 0 && (
             <span className="text-sm text-text-muted font-normal">({allTransactions.length}건)</span>
@@ -124,10 +124,9 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <div
-            className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right"
-            style={{ padding: '12px' }}
+            className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right p-3"
           >
-            <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>
+            <p className="text-xs text-text-muted mb-1">
               수입
             </p>
             <p className="text-sm sm:text-base font-bold text-accent-mint">
@@ -135,10 +134,9 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
             </p>
           </div>
           <div
-            className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right"
-            style={{ padding: '12px' }}
+            className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right p-3"
           >
-            <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>
+            <p className="text-xs text-text-muted mb-1">
               지출
             </p>
             <p className="text-sm sm:text-base font-bold text-accent-coral">
@@ -146,10 +144,9 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
             </p>
           </div>
           <div
-            className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right"
-            style={{ padding: '12px' }}
+            className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right p-3"
           >
-            <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>
+            <p className="text-xs text-text-muted mb-1">
               저축
             </p>
             <p className="text-sm sm:text-base font-bold text-accent-blue">
@@ -157,10 +154,9 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
             </p>
           </div>
           <div
-            className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right"
-            style={{ padding: '12px' }}
+            className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right p-3"
           >
-            <p className="text-xs text-text-muted" style={{ marginBottom: '4px' }}>
+            <p className="text-xs text-text-muted mb-1">
               합계
             </p>
             <p className="text-sm sm:text-base font-bold text-accent-purple">
@@ -171,7 +167,7 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
         </div>
 
         {/* Divider */}
-        <div className="border-t border-[var(--border)]" style={{ margin: '16px 0' }} />
+        <div className="border-t border-[var(--border)] my-4" />
 
         <TransactionList
           ref={transactionsEndRef}

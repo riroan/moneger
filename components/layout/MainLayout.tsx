@@ -102,7 +102,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <div className="gradient-orb orb-1" />
       <div className="gradient-orb orb-2" />
 
-      <div className="relative z-10" style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px' }}>
+      <div className="relative z-10 max-w-[1400px] mx-auto p-4">
         <Header
           userName={userName}
           userEmail={userEmail}

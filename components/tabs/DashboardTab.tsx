@@ -136,12 +136,11 @@ export default function DashboardTab({
         onSavingsClick={onViewSavings}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]" style={{ gap: '16px' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4">
         <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-2 lg:order-1"
-          style={{ padding: '16px' }}
+          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-2 lg:order-1 p-4"
         >
-          <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
               {chartViewMode === 'category' ? (
                 <>
@@ -155,8 +154,7 @@ export default function DashboardTab({
             </h2>
             <button
               onClick={() => setChartViewMode(chartViewMode === 'category' ? 'calendar' : 'category')}
-              className="flex items-center gap-1 text-xs sm:text-sm text-text-muted hover:text-text-secondary bg-bg-secondary hover:bg-bg-card-hover rounded-lg transition-colors cursor-pointer"
-              style={{ padding: '6px 10px' }}
+              className="flex items-center gap-1 text-xs sm:text-sm text-text-muted hover:text-text-secondary bg-bg-secondary hover:bg-bg-card-hover rounded-lg transition-colors cursor-pointer py-1.5 px-2.5"
             >
               {chartViewMode === 'category' ? (
                 <>
@@ -189,7 +187,7 @@ export default function DashboardTab({
           )}
         </div>
 
-        <div className="flex flex-col order-1 lg:order-2" style={{ gap: '16px' }}>
+        <div className="flex flex-col order-1 lg:order-2 gap-4">
           <TodaySummaryCard data={todaySummary} isLoading={isLoadingTodaySummary} />
 
           <SavingsCard
@@ -200,10 +198,9 @@ export default function DashboardTab({
           />
 
           <div
-            className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards]"
-            style={{ padding: '16px' }}
+            className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] p-4"
           >
-            <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
                 <MdHistory className="text-lg sm:text-xl text-accent-mint" /> 최근 내역
               </h2>
@@ -214,7 +211,7 @@ export default function DashboardTab({
                 전체보기 →
               </button>
             </div>
-            <div className="flex flex-col" style={{ gap: '8px' }}>
+            <div className="flex flex-col gap-2">
               {isLoadingTransactions ? (
                 <div className="text-center text-text-muted py-6">로딩 중...</div>
               ) : recentTransactions.length > 0 ? (

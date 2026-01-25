@@ -104,11 +104,10 @@ export default function CategoryFormModal({
       onClick={handleClose}
     >
       <div
-        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md max-h-[90vh] flex flex-col animate-[fadeInUp_0.3s_ease-out]"
-        style={{ margin: '20px' }}
+        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-md max-h-[90vh] flex flex-col animate-[fadeInUp_0.3s_ease-out] m-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center flex-shrink-0" style={{ padding: '32px 32px 0 32px', marginBottom: '24px' }}>
+        <div className="flex justify-between items-center flex-shrink-0 pt-8 px-8 mb-6">
           <h2 className="text-2xl font-bold text-text-primary">
             {mode === 'add' ? '카테고리 추가' : '카테고리 수정'}
           </h2>
@@ -121,34 +120,32 @@ export default function CategoryFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto min-h-0 flex flex-col" style={{ padding: '0 32px 32px 32px' }}>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto min-h-0 flex flex-col px-8 pb-8">
           {/* Type Display */}
-          <div className="flex rounded-[14px] bg-bg-secondary p-1.5" style={{ marginBottom: '20px' }}>
+          <div className="flex rounded-[14px] bg-bg-secondary p-1.5 mb-5">
             <div
-              className={`flex-1 rounded-[10px] font-medium text-center ${
+              className={`flex-1 rounded-[10px] font-medium text-center p-2.5 ${
                 categoryType === 'EXPENSE'
                   ? 'bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary shadow-lg'
                   : 'text-text-secondary opacity-50'
               }`}
-              style={{ padding: '10px' }}
             >
               지출
             </div>
             <div
-              className={`flex-1 rounded-[10px] font-medium text-center ${
+              className={`flex-1 rounded-[10px] font-medium text-center p-2.5 ${
                 categoryType === 'INCOME'
                   ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary shadow-lg'
                   : 'text-text-secondary opacity-50'
               }`}
-              style={{ padding: '10px' }}
             >
               수입
             </div>
           </div>
 
           {/* Name Input */}
-          <div style={{ marginBottom: '20px' }}>
-            <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-text-secondary mb-2">
               카테고리 이름
             </label>
             <input
@@ -158,20 +155,19 @@ export default function CategoryFormModal({
                 setCategoryName(e.target.value);
                 setNameError('');
               }}
-              className={`w-full bg-bg-secondary border ${nameError ? 'border-accent-coral' : 'border-[var(--border)]'} rounded-[12px] text-text-primary focus:outline-none focus:border-accent-blue transition-colors`}
-              style={{ padding: '14px 16px' }}
+              className={`w-full bg-bg-secondary border ${nameError ? 'border-accent-coral' : 'border-[var(--border)]'} rounded-[12px] text-text-primary focus:outline-none focus:border-accent-blue transition-colors py-3.5 px-4`}
               placeholder="예: 식비, 교통비 등"
             />
             {nameError && (
-              <p className="text-accent-coral text-xs" style={{ marginTop: '6px' }}>
+              <p className="text-accent-coral text-xs mt-1.5">
                 {nameError}
               </p>
             )}
           </div>
 
           {/* Icon Selection */}
-          <div style={{ marginBottom: '20px' }}>
-            <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-text-secondary mb-2">
               아이콘
             </label>
             <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
@@ -196,8 +192,8 @@ export default function CategoryFormModal({
           </div>
 
           {/* Color Selection */}
-          <div style={{ marginBottom: categoryType === 'EXPENSE' ? '20px' : '24px' }}>
-            <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+          <div className={categoryType === 'EXPENSE' ? 'mb-5' : 'mb-6'}>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
               색상
             </label>
             <div className="grid grid-cols-6 gap-2">
@@ -220,8 +216,8 @@ export default function CategoryFormModal({
 
           {/* Default Budget (Expense only) */}
           {categoryType === 'EXPENSE' && (
-            <div style={{ marginBottom: '24px' }}>
-              <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-text-secondary mb-2">
                 기본 예산 (선택)
               </label>
               <div className="relative">
@@ -238,23 +234,21 @@ export default function CategoryFormModal({
                     }
                   }}
                   placeholder="0"
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-base text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
-                  style={{ padding: '14px 16px', paddingLeft: '32px' }}
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-base text-text-primary focus:outline-none focus:border-accent-blue transition-colors py-3.5 pr-4 pl-8"
                 />
               </div>
-              <p className="text-xs text-text-muted" style={{ marginTop: '6px' }}>
+              <p className="text-xs text-text-muted mt-1.5">
                 월별 예산을 설정하지 않으면 기본 예산이 적용됩니다.
               </p>
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 flex-shrink-0" style={{ marginTop: 'auto', paddingTop: '4px' }}>
+          <div className="flex gap-3 flex-shrink-0 mt-auto pt-1">
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-              style={{ padding: '14px' }}
+              className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
               disabled={isSubmitting}
             >
               취소
@@ -263,8 +257,7 @@ export default function CategoryFormModal({
               <button
                 type="button"
                 onClick={onDelete}
-                className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ padding: '14px' }}
+                className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
                 disabled={isSubmitting}
               >
                 삭제
@@ -273,12 +266,11 @@ export default function CategoryFormModal({
             <button
               type="submit"
               disabled={isSubmitting || !categoryName}
-              className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`flex-1 rounded-[12px] font-medium transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5 ${
                 categoryType === 'EXPENSE'
                   ? 'bg-gradient-to-br from-accent-coral to-accent-yellow'
                   : 'bg-gradient-to-br from-accent-mint to-accent-blue'
               } text-bg-primary`}
-              style={{ padding: '14px' }}
             >
               {isSubmitting ? (mode === 'add' ? '추가 중...' : '수정 중...') : (mode === 'add' ? '추가' : '수정')}
             </button>

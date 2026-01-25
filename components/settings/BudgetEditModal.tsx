@@ -54,11 +54,10 @@ export default function BudgetEditModal({
       onClick={onClose}
     >
       <div
-        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out]"
-        style={{ padding: '32px', margin: '20px' }}
+        className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out] p-8 m-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
+        <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-text-primary">예산 설정</h2>
           <button
             type="button"
@@ -73,10 +72,10 @@ export default function BudgetEditModal({
         {(() => {
           const IconComponent = getIconComponent(category.icon);
           return (
-            <div className="flex items-center bg-bg-secondary rounded-[12px]" style={{ padding: '12px', marginBottom: '20px' }}>
+            <div className="flex items-center bg-bg-secondary rounded-[12px] p-3 mb-5">
               <div
-                className="w-10 h-10 rounded-[8px] flex items-center justify-center text-lg"
-                style={{ marginRight: '12px', backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
+                className="w-10 h-10 rounded-[8px] flex items-center justify-center text-lg mr-3"
+                style={{ backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
               >
                 <IconComponent />
               </div>
@@ -89,8 +88,8 @@ export default function BudgetEditModal({
         })()}
 
         {/* 예산 입력 */}
-        <div style={{ marginBottom: '16px' }}>
-          <label className="block text-sm font-medium text-text-secondary" style={{ marginBottom: '8px' }}>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             월 예산
           </label>
           <div className="relative">
@@ -107,8 +106,7 @@ export default function BudgetEditModal({
                 }
               }}
               placeholder="0"
-              className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors"
-              style={{ padding: '14px 16px', paddingLeft: '32px' }}
+              className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 pr-4 pl-8"
               autoFocus
             />
           </div>
@@ -119,22 +117,20 @@ export default function BudgetEditModal({
           <button
             type="button"
             onClick={() => setBudgetAmount((category.defaultBudget ?? 0).toString())}
-            className="w-full text-sm text-accent-blue hover:text-accent-mint transition-colors cursor-pointer"
-            style={{ marginBottom: '24px', textAlign: 'left' }}
+            className="w-full text-sm text-accent-blue hover:text-accent-mint transition-colors cursor-pointer mb-6 text-left"
           >
-            기본값 적용 (<span style={{ marginRight: '1px' }}>₩</span>{formatNumber(category.defaultBudget ?? 0)})
+            기본값 적용 (<span className="mr-px">₩</span>{formatNumber(category.defaultBudget ?? 0)})
           </button>
         )}
 
-        {!category.defaultBudget && <div style={{ marginBottom: '8px' }} />}
+        {!category.defaultBudget && <div className="mb-2" />}
 
         {/* 버튼 */}
         <div className="flex gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
             disabled={isSaving}
           >
             취소
@@ -143,8 +139,7 @@ export default function BudgetEditModal({
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="flex-1 bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ padding: '14px' }}
+            className="flex-1 bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
           >
             {isSaving ? '저장 중...' : '저장'}
           </button>
