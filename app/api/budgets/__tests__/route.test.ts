@@ -8,7 +8,7 @@ jest.mock('@/lib/prisma', () => ({
     budget: {
       findMany: jest.fn(),
       upsert: jest.fn(),
-      deleteMany: jest.fn(),
+      updateMany: jest.fn(),
     },
   },
 }));
@@ -230,7 +230,7 @@ describe('DELETE /api/budgets', () => {
   });
 
   it('예산을 성공적으로 삭제해야 함', async () => {
-    (prisma.budget.deleteMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (prisma.budget.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
 
     const url = new URL('http://localhost:3000/api/budgets');
     url.searchParams.set('userId', 'user-1');
@@ -274,7 +274,7 @@ describe('DELETE /api/budgets', () => {
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
-    (prisma.budget.deleteMany as jest.Mock).mockRejectedValue(new Error('Database error'));
+    (prisma.budget.updateMany as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/budgets');
     url.searchParams.set('userId', 'user-1');

@@ -1,12 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { useRouter } from 'next/navigation';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import HomePage from '../page';
+import { useAuthStore } from '@/stores';
 
 // Mock useRouter and usePathname
 jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+  })),
   usePathname: jest.fn(() => '/'),
 }));
 
@@ -111,12 +115,13 @@ const setupFetchMock = () => {
 };
 
 describe('HomePage', () => {
-  let mockPush: jest.Mock;
-
   beforeEach(() => {
-    mockPush = jest.fn();
-    (useRouter as jest.Mock).mockReturnValue({
-      push: mockPush,
+    // Reset auth store state
+    useAuthStore.setState({
+      userId: 'user-1',
+      userName: '테스트',
+      userEmail: 'test@example.com',
+      isLoading: false,
     });
 
     // Mock localStorage
@@ -138,16 +143,27 @@ describe('HomePage', () => {
     renderWithTheme(<HomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('MONEGER')).toBeInTheDocument();
-    });
-  });
+      // Header의 logo가 포함되어 있어야 함 (alt="MONEGER")
+      expect(screen.getByAltText('MONEGER')).toBeInTheDocument();
+    }, { timeout: 3000 });
+  }, 10000);
 
-  it('로그인하지 않은 경우 로그인 페이지로 이동해야 함', () => {
+  it('로그인하지 않은 경우 랜딩 페이지가 표시되어야 함', async () => {
+    useAuthStore.setState({
+      userId: null,
+      userName: '',
+      userEmail: '',
+      isLoading: false,
+    });
     Storage.prototype.getItem = jest.fn(() => null);
 
     renderWithTheme(<HomePage />);
 
-    expect(mockPush).toHaveBeenCalledWith('/login');
+    await waitFor(() => {
+      // LandingPage의 시작하기 버튼이 표시되어야 함
+      const startButtons = screen.getAllByText('시작하기');
+      expect(startButtons.length).toBeGreaterThan(0);
+    }, { timeout: 3000 });
   });
 
   it('사용자 이름 이니셜이 표시되어야 함', async () => {
@@ -157,7 +173,7 @@ describe('HomePage', () => {
       // 사용자 이름의 첫 글자가 표시되어야 함
       const initials = screen.getAllByText('테');
       expect(initials.length).toBeGreaterThan(0);
-    });
+    }, { timeout: 3000 });
   });
 
   it('API 에러 시에도 페이지가 렌더링되어야 함', async () => {
@@ -166,7 +182,9 @@ describe('HomePage', () => {
     renderWithTheme(<HomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('MONEGER')).toBeInTheDocument();
-    });
+      // 로그인 상태이므로 MainLayout이 렌더링되어야 함
+      // Header의 logo가 포함되어 있어야 함 (alt="MONEGER")
+      expect(screen.getByAltText('MONEGER')).toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 });

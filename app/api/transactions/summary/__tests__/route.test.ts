@@ -10,7 +10,6 @@ jest.mock('@/lib/prisma', () => ({
       groupBy: jest.fn(),
     },
     budget: {
-      findFirst: jest.fn(),
       findMany: jest.fn(),
     },
     category: {
@@ -51,14 +50,15 @@ describe('GET /api/transactions/summary', () => {
       { id: 'cat-2', name: '식비', color: '#EF4444', icon: '🍽️', defaultBudget: null },
     ]);
 
-    const mockBudget = {
-      id: 'budget-1',
-      amount: 200000,
-      month: new Date('2024-01-01'),
-    };
-
-    (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.budget.findFirst as jest.Mock).mockResolvedValue(mockBudget);
+    // 전체 예산 (categoryId: null)을 포함하여 반환
+    (prisma.budget.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'budget-1',
+        amount: 200000,
+        month: new Date('2024-01-01'),
+        categoryId: null,
+      },
+    ]);
 
     const url = new URL('http://localhost:3000/api/transactions/summary');
     url.searchParams.set('userId', 'user-1');
@@ -106,7 +106,6 @@ describe('GET /api/transactions/summary', () => {
     ]);
 
     (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.budget.findFirst as jest.Mock).mockResolvedValue(null);
 
     const url = new URL('http://localhost:3000/api/transactions/summary');
     url.searchParams.set('userId', 'user-1');
