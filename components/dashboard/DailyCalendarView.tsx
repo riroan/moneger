@@ -1,14 +1,11 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import Holidays from 'date-holidays';
+import { useMemo, useState, useEffect, memo } from 'react';
+import { getHolidayDaysInMonth } from '@/lib/korean-holidays';
 import { formatNumber } from '@/utils/formatters';
 import { useAppStore, useAuthStore } from '@/stores';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import type { TransactionWithCategory } from '@/types';
-
-// 한국 공휴일 인스턴스 생성
-const hd = new Holidays('KR');
 
 interface DailyData {
   date: Date;
@@ -28,7 +25,7 @@ interface DailyCalendarViewProps {
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-export default function DailyCalendarView({
+function DailyCalendarView({
   data,
   year,
   month,
@@ -105,17 +102,7 @@ export default function DailyCalendarView({
 
   // 해당 월의 공휴일 Set 생성
   const holidayDays = useMemo(() => {
-    const holidays = hd.getHolidays(year);
-    const holidaySet = new Set<number>();
-
-    holidays.forEach((holiday) => {
-      const date = new Date(holiday.date);
-      if (date.getMonth() === month - 1 && holiday.type === 'public') {
-        holidaySet.add(date.getDate());
-      }
-    });
-
-    return holidaySet;
+    return getHolidayDaysInMonth(year, month);
   }, [year, month]);
 
   // 월 합계 계산
@@ -329,3 +316,5 @@ export default function DailyCalendarView({
     </div>
   );
 }
+
+export default memo(DailyCalendarView);

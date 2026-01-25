@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { FaChartLine, FaStar, FaGift, FaHeartbeat } from 'react-icons/fa';
 import { MdSavings, MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices } from 'react-icons/md';
@@ -32,7 +33,7 @@ const GOAL_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>>
   savings: MdSavings,
 };
 
-export default function SavingsCard({
+function SavingsCard({
   savingsGoal,
   currentSavings,
   primaryGoal,
@@ -128,3 +129,5 @@ export default function SavingsCard({
     </div>
   );
 }
+
+export default memo(SavingsCard);

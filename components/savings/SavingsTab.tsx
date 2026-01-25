@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { formatNumber } from '@/utils/formatters';
 import { FaPlus, FaGift, FaHeartbeat, FaStar, FaRegStar } from 'react-icons/fa';
 import { MdSavings, MdTrendingUp, MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices } from 'react-icons/md';
-import AddSavingsGoalModal from './AddSavingsGoalModal';
-import EditSavingsGoalModal from './EditSavingsGoalModal';
-import DepositModal from './DepositModal';
+
+const AddSavingsGoalModal = dynamic(() => import('./AddSavingsGoalModal'), { ssr: false });
+const EditSavingsGoalModal = dynamic(() => import('./EditSavingsGoalModal'), { ssr: false });
+const DepositModal = dynamic(() => import('./DepositModal'), { ssr: false });
 
 const MAX_GOALS = 10;
 

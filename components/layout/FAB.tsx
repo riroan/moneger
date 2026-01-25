@@ -1,11 +1,13 @@
 'use client';
 
+import { memo } from 'react';
+
 interface FABProps {
   onClick: () => void;
   visible?: boolean;
 }
 
-export default function FAB({ onClick, visible = true }: FABProps) {
+function FAB({ onClick, visible = true }: FABProps) {
   if (!visible) return null;
 
   return (
@@ -17,3 +19,5 @@ export default function FAB({ onClick, visible = true }: FABProps) {
     </button>
   );
 }
+
+export default memo(FAB);

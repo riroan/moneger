@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -9,16 +10,13 @@ import { useOutsideClick, useBodyScrollLock } from '@/hooks';
 import type { Category, Budget } from '@/types';
 import { MdDarkMode, MdLightMode, MdDashboard, MdLogout, MdPerson, MdCategory, MdAccountBalanceWallet } from 'react-icons/md';
 import Footer from '@/components/layout/Footer';
-import {
-  AccountTab,
-  CategoryTab,
-  BudgetTab,
-  CategoryFormModal,
-  ConfirmModal,
-  BudgetEditModal,
-  DeleteAccountModal,
-} from '@/components/settings';
+import { AccountTab, CategoryTab, BudgetTab } from '@/components/settings';
 import type { CategoryFormData } from '@/components/settings';
+
+const CategoryFormModal = dynamic(() => import('@/components/settings/CategoryFormModal'), { ssr: false });
+const ConfirmModal = dynamic(() => import('@/components/settings/ConfirmModal'), { ssr: false });
+const BudgetEditModal = dynamic(() => import('@/components/settings/BudgetEditModal'), { ssr: false });
+const DeleteAccountModal = dynamic(() => import('@/components/settings/DeleteAccountModal'), { ssr: false });
 
 type SettingTab = 'account' | 'category' | 'budget';
 
