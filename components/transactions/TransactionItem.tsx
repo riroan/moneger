@@ -39,8 +39,8 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
 
   return (
     <div
-      className="bg-bg-card rounded-[12px] sm:rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
-      style={{ padding: '12px' }}
+      className="rounded-[12px] sm:rounded-[14px] transition-colors cursor-pointer hover:opacity-80"
+      style={{ padding: '12px', backgroundColor: 'var(--bg-card-hover)' }}
       onClick={onClick}
     >
       <div className="flex items-center">
