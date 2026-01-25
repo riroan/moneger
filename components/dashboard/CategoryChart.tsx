@@ -34,22 +34,7 @@ function CategoryChart({
 }: CategoryChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  if (isLoading) {
-    return (
-      <div className="text-center text-text-muted py-8">
-        로딩 중...
-      </div>
-    );
-  }
-
-  if (categories.length === 0) {
-    return (
-      <div className="text-center text-text-muted py-8">
-        이번 달 지출 내역이 없습니다
-      </div>
-    );
-  }
-
+  // Hooks는 항상 동일한 순서로 호출되어야 함 (early return 전에 선언)
   // chartData 메모이제이션
   const chartData = useMemo(() =>
     categories.map((category, index) => ({
@@ -69,6 +54,22 @@ function CategoryChart({
     });
     return map;
   }, [categories]);
+
+  if (isLoading) {
+    return (
+      <div className="text-center text-text-muted py-8">
+        로딩 중...
+      </div>
+    );
+  }
+
+  if (categories.length === 0) {
+    return (
+      <div className="text-center text-text-muted py-8">
+        이번 달 지출 내역이 없습니다
+      </div>
+    );
+  }
 
   return (
     <>

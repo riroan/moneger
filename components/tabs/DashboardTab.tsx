@@ -16,8 +16,10 @@ const CategoryChart = dynamic(() => import('@/components/dashboard/CategoryChart
   loading: () => <div className="text-center text-text-muted py-8">차트 로딩 중...</div>,
 });
 
-const DailyCalendarView = dynamic(() => import('@/components/dashboard/DailyCalendarView'), {
-  loading: () => <div className="text-center text-text-muted py-8">달력 로딩 중...</div>,
+// DailyCalendarView 동적 임포트 및 프리로드
+const dailyCalendarViewImport = () => import('@/components/dashboard/DailyCalendarView');
+const DailyCalendarView = dynamic(dailyCalendarViewImport, {
+  ssr: false,
 });
 
 type ChartViewMode = 'category' | 'calendar';
@@ -64,10 +66,18 @@ export default function DashboardTab({
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
 
-  // 달력 데이터 지연 로드 (달력 뷰 선택 시에만)
+  // DailyCalendarView 컴포넌트 프리로드 (대시보드 로드 시)
   useEffect(() => {
-    if (userId && chartViewMode === 'calendar' && !calendarDataLoaded) {
-      setIsLoadingCalendar(true);
+    dailyCalendarViewImport();
+  }, []);
+
+  // 달력 데이터 백그라운드 프리페치 (대시보드 로드 시)
+  useEffect(() => {
+    if (userId && !calendarDataLoaded) {
+      // 달력 뷰가 선택되면 로딩 표시, 아니면 백그라운드에서 조용히 로드
+      if (chartViewMode === 'calendar') {
+        setIsLoadingCalendar(true);
+      }
       fetch(`/api/daily-balance?userId=${userId}&year=${year}&month=${month}`)
         .then((res) => res.json())
         .then((data) => {
@@ -84,7 +94,7 @@ export default function DashboardTab({
         .catch(console.error)
         .finally(() => setIsLoadingCalendar(false));
     }
-  }, [userId, year, month, chartViewMode, calendarDataLoaded]);
+  }, [userId, year, month, calendarDataLoaded, chartViewMode]);
 
   // 월 변경 시 캐시 초기화
   useEffect(() => {
