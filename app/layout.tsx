@@ -20,6 +20,9 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   title: "Moneger - 스마트한 가계부",
   description: "머니플로우로 간편하게 관리하는 가계부 서비스",
+  verification: {
+    google: "HLbX_4Syh6kD_uuV07IHVQMAj7QKDzRv-Nx26eootXM",
+  },
 };
 
 export default function RootLayout({
