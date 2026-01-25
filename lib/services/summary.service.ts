@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { getMonthRange } from '@/lib/date-utils';
+import { CATEGORY_WITH_BUDGET_SELECT } from '@/lib/prisma-selects';
 
 interface CategorySummary {
   id: string;
@@ -16,8 +18,7 @@ interface CategorySummary {
  */
 export async function getTransactionSummary(userId: string, year: number, month: number) {
   // 날짜 범위 설정
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+  const { startDate, endDate } = getMonthRange(year, month);
 
   const whereClause = {
     userId,
@@ -103,7 +104,7 @@ export async function getTransactionSummary(userId: string, year: number, month:
   const categories = categoryIds.length > 0
     ? await prisma.category.findMany({
         where: { id: { in: categoryIds } },
-        select: { id: true, name: true, icon: true, color: true, defaultBudget: true },
+        select: CATEGORY_WITH_BUDGET_SELECT,
       })
     : [];
 

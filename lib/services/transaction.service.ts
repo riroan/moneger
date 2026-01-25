@@ -1,14 +1,9 @@
 import { prisma } from '@/lib/prisma';
 import { TransactionType, Prisma } from '@prisma/client';
 import { updateDailyBalanceInTransaction } from './daily-balance.service';
-
-const CATEGORY_SELECT = {
-  id: true,
-  name: true,
-  type: true,
-  color: true,
-  icon: true,
-} as const;
+import { CATEGORY_SELECT } from '@/lib/prisma-selects';
+import { getMonthRange } from '@/lib/date-utils';
+import { PAGINATION } from '@/lib/constants';
 
 interface CreateTransactionInput {
   userId: string;
@@ -173,7 +168,7 @@ export async function findTransaction(id: string, userId: string) {
  * 거래 목록 조회 (페이지네이션)
  */
 export async function getTransactions(input: GetTransactionsInput) {
-  const { userId, year, month, type, categoryIds, search, sort = 'recent', cursor, limit = 20 } = input;
+  const { userId, year, month, type, categoryIds, search, sort = 'recent', cursor, limit = PAGINATION.DEFAULT_LIMIT } = input;
 
   // 필터 조건
   const where: Prisma.TransactionWhereInput = { userId, deletedAt: null };
@@ -186,8 +181,7 @@ export async function getTransactions(input: GetTransactionsInput) {
     where.date = { gte: startDate, lte: endDate };
   } else if (year && month) {
     // 기존 단일 월 필터
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    const { startDate, endDate } = getMonthRange(year, month);
     where.date = { gte: startDate, lte: endDate };
   }
 

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { TransactionType, Prisma } from '@prisma/client';
+import { DEFAULT_CATEGORY } from '@/lib/constants';
 
 interface CreateCategoryInput {
   userId: string;
@@ -64,8 +65,8 @@ export async function createCategory(input: CreateCategoryInput) {
       userId: input.userId,
       name: input.name,
       type: input.type,
-      color: input.color || '#6366F1',
-      icon: input.icon || '💰',
+      color: input.color || DEFAULT_CATEGORY.color,
+      icon: input.icon || DEFAULT_CATEGORY.icon,
       defaultBudget: input.type === 'EXPENSE' ? input.defaultBudget : null,
     },
   });

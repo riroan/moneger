@@ -1,12 +1,6 @@
 import { prisma } from '@/lib/prisma';
-
-const CATEGORY_SELECT = {
-  id: true,
-  name: true,
-  type: true,
-  color: true,
-  icon: true,
-} as const;
+import { CATEGORY_SELECT } from '@/lib/prisma-selects';
+import { getMonthRange, getLastNDaysRange, getDateKey } from '@/lib/date-utils';
 
 interface CategoryStat {
   categoryId: string;
@@ -22,8 +16,7 @@ interface CategoryStat {
  */
 export async function getMonthlyStats(userId: string, year: number, month: number) {
   // 날짜 범위 설정
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+  const { startDate, endDate } = getMonthRange(year, month);
 
   // 병렬로 DB 집계 쿼리 실행
   const [
@@ -129,12 +122,7 @@ export async function getMonthlyStats(userId: string, year: number, month: numbe
  * 최근 7일 일별 지출 계산 - DB 집계 사용
  */
 async function getLast7DaysExpensesFromDB(userId: string) {
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  const startDate = new Date(today);
-  startDate.setDate(startDate.getDate() - 6);
-  startDate.setHours(0, 0, 0, 0);
+  const { startDate, endDate } = getLastNDaysRange(7);
 
   // DB에서 일별 지출 집계
   const dailyExpenses = await prisma.transaction.groupBy({
@@ -143,7 +131,7 @@ async function getLast7DaysExpensesFromDB(userId: string) {
       userId,
       deletedAt: null,
       type: 'EXPENSE',
-      date: { gte: startDate, lte: today },
+      date: { gte: startDate, lte: endDate },
     },
     _sum: { amount: true },
   });
@@ -151,19 +139,19 @@ async function getLast7DaysExpensesFromDB(userId: string) {
   // 날짜별 맵 생성
   const expenseMap = new Map<string, number>();
   dailyExpenses.forEach((item) => {
-    const dateKey = new Date(item.date).toISOString().split('T')[0];
-    expenseMap.set(dateKey, (expenseMap.get(dateKey) || 0) + (item._sum.amount || 0));
+    const key = getDateKey(new Date(item.date));
+    expenseMap.set(key, (expenseMap.get(key) || 0) + (item._sum.amount || 0));
   });
 
   // 최근 7일 결과 생성
   const last7Days: { date: string; amount: number }[] = [];
   for (let i = 6; i >= 0; i--) {
-    const date = new Date(today);
+    const date = new Date(endDate);
     date.setDate(date.getDate() - i);
-    const dateKey = date.toISOString().split('T')[0];
+    const key = getDateKey(date);
     last7Days.push({
-      date: dateKey,
-      amount: expenseMap.get(dateKey) || 0,
+      date: key,
+      amount: expenseMap.get(key) || 0,
     });
   }
 

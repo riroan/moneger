@@ -1,61 +1,17 @@
 import { prisma } from '@/lib/prisma';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import {
+  getDayRange,
+  getMonthRangeKST,
+  getDaysInMonth,
+  getKSTDay,
+  getDateKey,
+  getLastNDaysRange,
+  KST_OFFSET_MS,
+} from '@/lib/date-utils';
 
 type TransactionClient = Prisma.TransactionClient;
-
-/**
- * 한국 시간대(KST, UTC+9) 기준으로 날짜 추출
- */
-function getKSTDay(date: Date): number {
-  const KST_OFFSET = 9 * 60 * 60 * 1000; // 9시간을 밀리초로
-  const kstDate = new Date(date.getTime() + KST_OFFSET);
-  return kstDate.getUTCDate();
-}
-
-interface Transaction {
-  type: 'INCOME' | 'EXPENSE';
-  amount: number;
-}
-
-/**
- * 거래 목록에서 잔액 계산
- */
-function calculateBalance(transactions: Transaction[]): number {
-  return transactions.reduce((balance, tx) => {
-    return tx.type === 'INCOME' ? balance + tx.amount : balance - tx.amount;
-  }, 0);
-}
-
-/**
- * 거래 목록에서 일별 수입/지출 계산
- */
-function calculateDailyStats(transactions: Transaction[]): { income: number; expense: number } {
-  return transactions.reduce(
-    (stats, tx) => {
-      if (tx.type === 'INCOME') {
-        stats.income += tx.amount;
-      } else {
-        stats.expense += tx.amount;
-      }
-      return stats;
-    },
-    { income: 0, expense: 0 }
-  );
-}
-
-/**
- * 특정 날짜의 시작/끝 시간 반환
- */
-function getDayBoundaries(date: Date): { startOfDay: Date; endOfDay: Date } {
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const endOfDay = new Date(startOfDay);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  return { startOfDay, endOfDay };
-}
 
 /**
  * 일별 잔액 업데이트 (Prisma 트랜잭션 내에서 사용) - DB 집계로 최적화
@@ -65,7 +21,7 @@ export async function updateDailyBalanceInTransaction(
   userId: string,
   date: Date
 ): Promise<void> {
-  const { startOfDay, endOfDay } = getDayBoundaries(date);
+  const { startOfDay, endOfDay } = getDayRange(date);
 
   // 병렬로 DB 집계 쿼리 실행
   const [incomeAgg, expenseAgg, dayIncomeAgg, dayExpenseAgg] = await Promise.all([
@@ -111,7 +67,7 @@ export async function updateDailyBalanceInTransaction(
  */
 export async function updateDailyBalance(userId: string, date: Date): Promise<void> {
   try {
-    const { startOfDay, endOfDay } = getDayBoundaries(date);
+    const { startOfDay, endOfDay } = getDayRange(date);
 
     // 병렬로 DB 집계 쿼리 실행
     const [incomeAgg, expenseAgg, dayIncomeAgg, dayExpenseAgg] = await Promise.all([
@@ -210,17 +166,8 @@ export async function getMonthlyDailyBalances(userId: string, year: number, mont
  * 거래 데이터로부터 특정 월의 일별 잔액 계산 - DB 집계 최적화
  */
 async function calculateMonthlyDailyBalancesFromTransactions(userId: string, year: number, month: number) {
-  // KST 기준 월의 시작과 끝을 UTC로 변환
-  const KST_OFFSET_HOURS = 9;
-
-  // KST 기준 월 1일 00:00:00 -> UTC
-  const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0) - KST_OFFSET_HOURS * 60 * 60 * 1000);
-
-  // KST 기준 월 마지막일 23:59:59 -> UTC
-  const lastDayOfMonth = new Date(year, month, 0).getDate();
-  const endDate = new Date(Date.UTC(year, month - 1, lastDayOfMonth, 23, 59, 59, 999) - KST_OFFSET_HOURS * 60 * 60 * 1000);
-
-  const daysInMonth = lastDayOfMonth;
+  const { startDate, endDate } = getMonthRangeKST(year, month);
+  const daysInMonth = getDaysInMonth(year, month);
 
   // DB에서 일별로 그룹화하여 집계 (type별, savingsGoalId 존재 여부별)
   const [incomeGrouped, expenseGrouped, savingsGrouped] = await Promise.all([
@@ -312,12 +259,7 @@ async function calculateMonthlyDailyBalancesFromTransactions(userId: string, yea
  * 거래 데이터로부터 일별 잔액 계산
  */
 export async function calculateDailyBalancesFromTransactions(userId: string, days: number) {
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days + 1);
-  startDate.setHours(0, 0, 0, 0);
-
-  const endDate = new Date();
-  endDate.setHours(23, 59, 59, 999);
+  const { startDate, endDate } = getLastNDaysRange(days);
 
   const transactions = await prisma.transaction.findMany({
     where: {
@@ -341,9 +283,8 @@ export async function calculateDailyBalancesFromTransactions(userId: string, day
   // 거래 데이터로부터 일별 수입/지출 계산 (KST 기준)
   transactions.forEach((transaction) => {
     const txDate = new Date(transaction.date);
-    const KST_OFFSET = 9 * 60 * 60 * 1000;
-    const kstDate = new Date(txDate.getTime() + KST_OFFSET);
-    const dateKey = kstDate.toISOString().split('T')[0];
+    const kstDate = new Date(txDate.getTime() + KST_OFFSET_MS);
+    const dateKey = getDateKey(kstDate);
     if (dailyData[dateKey]) {
       if (transaction.type === 'INCOME') {
         dailyData[dateKey].income += transaction.amount;
