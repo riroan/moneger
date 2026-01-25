@@ -148,7 +148,7 @@ export default function DashboardTab({
                 </>
               ) : (
                 <>
-                  <MdCalendarMonth className="text-lg sm:text-xl text-accent-mint" /> 일별 수입/지출
+                  <MdCalendarMonth className="text-lg sm:text-xl text-accent-mint" /> 일별 내역
                 </>
               )}
             </h2>
