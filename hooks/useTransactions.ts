@@ -101,7 +101,7 @@ export function useTransactions({
         setHasMore(data.hasMore);
       }
     } catch (error) {
-      console.error('Failed to fetch transactions:', error);
+      console.error('Failed to fetch transactions:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsLoading(false);
       isLoadingRef.current = false;

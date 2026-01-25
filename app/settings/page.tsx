@@ -101,7 +101,7 @@ export default function SettingsPage() {
           setOldestTransactionDate({ year: oldestDateData.data.year, month: oldestDateData.data.month });
         }
       } catch (error) {
-        console.error('Failed to fetch initial data:', error);
+        console.error('Failed to fetch initial data:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
         setIsLoadingCategories(false);
       }
@@ -126,7 +126,7 @@ export default function SettingsPage() {
           setBudgets(data.data);
         }
       } catch (error) {
-        console.error('Failed to fetch budgets:', error);
+        console.error('Failed to fetch budgets:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
         setIsLoadingBudgets(false);
       }
@@ -269,7 +269,7 @@ export default function SettingsPage() {
         setCategories(categoriesData.data);
       }
     } catch (error) {
-      console.error('Failed to delete category:', error);
+      console.error('Failed to delete category:', error instanceof Error ? error.message : 'Unknown error');
       showToast(error instanceof Error ? error.message : '카테고리 삭제에 실패했습니다', 'error');
     } finally {
       setIsSubmitting(false);

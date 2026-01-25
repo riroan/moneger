@@ -59,7 +59,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         setSavingsGoals(data.data || []);
       }
     } catch (error) {
-      console.error('Failed to fetch savings goals:', error);
+      console.error('Failed to fetch savings goals:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +97,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         onDataChange?.();
       }
     } catch (error) {
-      console.error('Failed to add savings goal:', error);
+      console.error('Failed to add savings goal:', error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -121,7 +121,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         onDataChange?.();
       }
     } catch (error) {
-      console.error('Failed to update savings goal:', error);
+      console.error('Failed to update savings goal:', error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -136,7 +136,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         onDataChange?.();
       }
     } catch (error) {
-      console.error('Failed to delete savings goal:', error);
+      console.error('Failed to delete savings goal:', error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -167,7 +167,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         onDataChange?.();
       }
     } catch (error) {
-      console.error('Failed to deposit:', error);
+      console.error('Failed to deposit:', error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -189,7 +189,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         onDataChange?.();
       }
     } catch (error) {
-      console.error('Failed to toggle primary goal:', error);
+      console.error('Failed to toggle primary goal:', error instanceof Error ? error.message : 'Unknown error');
     }
   };
 

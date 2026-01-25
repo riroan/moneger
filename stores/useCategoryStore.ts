@@ -42,7 +42,7 @@ export const useCategoryStore = create<CategoryStore>((set) => ({
         }
       }
     } catch (error) {
-      console.error('Failed to fetch categories:', error);
+      console.error('Failed to fetch categories:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       set({ isLoading: false });
     }

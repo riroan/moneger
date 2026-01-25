@@ -57,7 +57,7 @@ export function useDashboardData() {
           setTodaySummary(todayData.data);
         }
       } catch (error) {
-        console.error('Failed to fetch initial data:', error);
+        console.error('Failed to fetch initial data:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
         setIsLoadingTransactions(false);
         setIsLoadingTodaySummary(false);
@@ -98,7 +98,7 @@ export function useDashboardData() {
           setLastMonthBalance(lastData.data.summary.balance || 0);
         }
       } catch (error) {
-        console.error('Failed to fetch summary:', error);
+        console.error('Failed to fetch summary:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
         setIsLoadingSummary(false);
       }
