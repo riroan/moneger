@@ -37,7 +37,7 @@ export default function DailyCalendarView({
 }: DailyCalendarViewProps) {
   const isMobile = useAppStore((state) => state.isMobile);
   const userId = useAuthStore((state) => state.userId);
-  const [dayTransactions, setDayTransactions] = useState<TransactionWithCategory[]>([]);
+  const [monthTransactions, setMonthTransactions] = useState<TransactionWithCategory[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
 
   // 현재 월이면 오늘 날짜, 아니면 1일을 기본값으로
@@ -134,33 +134,35 @@ export default function DailyCalendarView({
     return data.find((d) => new Date(d.date).getDate() === selectedDay) || null;
   }, [data, selectedDay]);
 
-  // 선택된 날짜의 거래 내역 로드
+  // 월별 거래 내역 로드 (한 번만)
   useEffect(() => {
-    if (selectedDay && userId) {
+    if (userId) {
       setIsLoadingTransactions(true);
 
       fetch(`/api/transactions?userId=${userId}&year=${year}&month=${month}&limit=100`)
         .then((res) => res.json())
         .then((res) => {
           if (res.data) {
-            // 선택된 날짜의 거래만 필터링 (로컬 타임존 기준)
-            const filtered = res.data.filter((tx: TransactionWithCategory) => {
-              const txDate = new Date(tx.date);
-              // 로컬 타임존 기준으로 날짜 비교
-              const txDay = txDate.getDate();
-              const txMonth = txDate.getMonth() + 1;
-              const txYear = txDate.getFullYear();
-              return txDay === selectedDay && txMonth === month && txYear === year;
-            });
-            setDayTransactions(filtered);
+            setMonthTransactions(res.data);
           }
         })
         .catch(console.error)
         .finally(() => setIsLoadingTransactions(false));
     } else {
-      setDayTransactions([]);
+      setMonthTransactions([]);
     }
-  }, [selectedDay, userId, year, month]);
+  }, [userId, year, month]);
+
+  // 선택된 날짜의 거래 필터링 (메모이제이션)
+  const dayTransactions = useMemo(() => {
+    return monthTransactions.filter((tx: TransactionWithCategory) => {
+      const txDate = new Date(tx.date);
+      const txDay = txDate.getDate();
+      const txMonth = txDate.getMonth() + 1;
+      const txYear = txDate.getFullYear();
+      return txDay === selectedDay && txMonth === month && txYear === year;
+    });
+  }, [monthTransactions, selectedDay, month, year]);
 
   if (isLoading) {
     return (
