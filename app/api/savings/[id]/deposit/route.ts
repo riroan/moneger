@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, validateUserId } from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/prisma';
+import { updateDailyBalanceInTransaction } from '@/lib/services/daily-balance.service';
 
 // POST /api/savings/[id]/deposit - 저축 목표에 입금 (거래 내역도 함께 생성)
 export async function POST(
@@ -29,15 +30,17 @@ export async function POST(
       return errorResponse('Savings goal not found', 404);
     }
 
-    // 트랜잭션으로 저축 목표 업데이트 + 거래 내역 생성 (카테고리 없이)
-    const [updatedGoal, transaction] = await prisma.$transaction([
-      prisma.savingsGoal.update({
+    // 트랜잭션으로 저축 목표 업데이트 + 거래 내역 생성 + DailyBalance 업데이트
+    const transactionDate = new Date();
+    const { updatedGoal, transaction } = await prisma.$transaction(async (tx) => {
+      const updatedGoal = await tx.savingsGoal.update({
         where: { id },
         data: {
           currentAmount: savingsGoal.currentAmount + amount,
         },
-      }),
-      prisma.transaction.create({
+      });
+
+      const transaction = await tx.transaction.create({
         data: {
           userId,
           amount,
@@ -45,10 +48,15 @@ export async function POST(
           description: `${savingsGoal.name} 저축`,
           categoryId: null,
           savingsGoalId: id,
-          date: new Date(),
+          date: transactionDate,
         },
-      }),
-    ]);
+      });
+
+      // DailyBalance 업데이트
+      await updateDailyBalanceInTransaction(tx, userId, transactionDate);
+
+      return { updatedGoal, transaction };
+    });
 
     return successResponse({
       savingsGoal: updatedGoal,

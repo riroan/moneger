@@ -12,25 +12,26 @@ export async function GET(request: NextRequest) {
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;
 
-    const savingsGoals = await prisma.savingsGoal.findMany({
-      where: {
-        userId: userId!,
-        deletedAt: null,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1; // 1-12
 
-    // 목표일이 지나지 않은 목표만 필터링 (목표 월까지는 표시)
-    const activeGoals = savingsGoals.filter((goal) => {
-      // 목표 연도가 현재 연도보다 크면 표시
-      if (goal.targetYear > currentYear) return true;
-      // 목표 연도가 현재 연도와 같고, 목표 월이 현재 월 이상이면 표시
-      if (goal.targetYear === currentYear && goal.targetMonth >= currentMonth) return true;
-      return false;
+    // 목표일이 지나지 않은 목표만 DB 레벨에서 필터링
+    const activeGoals = await prisma.savingsGoal.findMany({
+      where: {
+        userId: userId!,
+        deletedAt: null,
+        OR: [
+          // 목표 연도가 현재 연도보다 큰 경우
+          { targetYear: { gt: currentYear } },
+          // 목표 연도가 현재 연도와 같고, 목표 월이 현재 월 이상인 경우
+          {
+            targetYear: currentYear,
+            targetMonth: { gte: currentMonth },
+          },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
     });
 
     // 이번 달 시작/끝 날짜

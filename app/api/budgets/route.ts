@@ -132,11 +132,16 @@ export async function DELETE(request: NextRequest) {
 
     const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
 
-    await prisma.budget.deleteMany({
+    // Soft delete로 변경 (다른 테이블과 일관성 유지)
+    await prisma.budget.updateMany({
       where: {
         userId: userId!,
         categoryId,
         month: monthDate,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
       },
     });
 

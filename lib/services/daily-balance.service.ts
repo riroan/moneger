@@ -207,11 +207,10 @@ export async function getMonthlyDailyBalances(userId: string, year: number, mont
 }
 
 /**
- * 거래 데이터로부터 특정 월의 일별 잔액 계산
+ * 거래 데이터로부터 특정 월의 일별 잔액 계산 - DB 집계 최적화
  */
 async function calculateMonthlyDailyBalancesFromTransactions(userId: string, year: number, month: number) {
   // KST 기준 월의 시작과 끝을 UTC로 변환
-  // KST는 UTC+9이므로, KST 00:00:00은 UTC 전날 15:00:00
   const KST_OFFSET_HOURS = 9;
 
   // KST 기준 월 1일 00:00:00 -> UTC
@@ -223,33 +222,70 @@ async function calculateMonthlyDailyBalancesFromTransactions(userId: string, yea
 
   const daysInMonth = lastDayOfMonth;
 
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      userId,
-      date: { gte: startDate, lte: endDate },
-      deletedAt: null,
-    },
-    orderBy: { date: 'asc' },
-  });
+  // DB에서 일별로 그룹화하여 집계 (type별, savingsGoalId 존재 여부별)
+  const [incomeGrouped, expenseGrouped, savingsGrouped] = await Promise.all([
+    // 수입 (저축 제외)
+    prisma.transaction.groupBy({
+      by: ['date'],
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate },
+        deletedAt: null,
+        type: 'INCOME',
+        savingsGoalId: null,
+      },
+      _sum: { amount: true },
+    }),
+    // 지출 (저축 제외)
+    prisma.transaction.groupBy({
+      by: ['date'],
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate },
+        deletedAt: null,
+        type: 'EXPENSE',
+        savingsGoalId: null,
+      },
+      _sum: { amount: true },
+    }),
+    // 저축
+    prisma.transaction.groupBy({
+      by: ['date'],
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate },
+        deletedAt: null,
+        savingsGoalId: { not: null },
+      },
+      _sum: { amount: true },
+    }),
+  ]);
 
-  // 일별 데이터 초기화 (저축 포함)
+  // 일별 데이터 초기화
   const dailyData: { [day: number]: { income: number; expense: number; savings: number } } = {};
   for (let day = 1; day <= daysInMonth; day++) {
     dailyData[day] = { income: 0, expense: 0, savings: 0 };
   }
 
-  // 거래 데이터로부터 일별 수입/지출/저축 계산 (KST 기준)
-  transactions.forEach((transaction) => {
-    const day = getKSTDay(new Date(transaction.date));
+  // 집계 결과를 일별 데이터에 매핑
+  incomeGrouped.forEach((item) => {
+    const day = getKSTDay(new Date(item.date));
     if (dailyData[day]) {
-      // 저축 거래인 경우
-      if (transaction.savingsGoalId) {
-        dailyData[day].savings += transaction.amount;
-      } else if (transaction.type === 'INCOME') {
-        dailyData[day].income += transaction.amount;
-      } else {
-        dailyData[day].expense += transaction.amount;
-      }
+      dailyData[day].income += item._sum.amount || 0;
+    }
+  });
+
+  expenseGrouped.forEach((item) => {
+    const day = getKSTDay(new Date(item.date));
+    if (dailyData[day]) {
+      dailyData[day].expense += item._sum.amount || 0;
+    }
+  });
+
+  savingsGrouped.forEach((item) => {
+    const day = getKSTDay(new Date(item.date));
+    if (dailyData[day]) {
+      dailyData[day].savings += item._sum.amount || 0;
     }
   });
 

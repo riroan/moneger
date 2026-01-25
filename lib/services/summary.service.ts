@@ -25,8 +25,13 @@ export async function getTransactionSummary(userId: string, year: number, month:
     date: { gte: startDate, lte: endDate },
   };
 
+  // 현재 날짜 정보 (저축 목표 필터링용)
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
   // 병렬로 DB 집계 쿼리 실행
-  const [incomeAgg, expenseAgg, categoryStats, transactionCounts, savingsData, monthlySavingsAgg] = await Promise.all([
+  const [incomeAgg, expenseAgg, categoryStats, transactionCounts, activeSavingsData, monthlySavingsAgg] = await Promise.all([
     // 수입 합계
     prisma.transaction.aggregate({
       where: { ...whereClause, type: 'INCOME' },
@@ -50,11 +55,18 @@ export async function getTransactionSummary(userId: string, year: number, month:
       where: whereClause,
       _count: true,
     }),
-    // 저축 목표 데이터
+    // 저축 목표 데이터 - DB 레벨에서 활성 목표만 필터링
     prisma.savingsGoal.findMany({
       where: {
         userId,
         deletedAt: null,
+        OR: [
+          { targetYear: { gt: currentYear } },
+          {
+            targetYear: currentYear,
+            targetMonth: { gte: currentMonth },
+          },
+        ],
       },
       select: {
         id: true,
@@ -82,16 +94,7 @@ export async function getTransactionSummary(userId: string, year: number, month:
   const monthlySavingsAmount = monthlySavingsAgg._sum.amount || 0;
   const monthlySavingsCount = monthlySavingsAgg._count || 0;
 
-  // 목표일이 지나지 않은 저축 목표만 필터링
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  const activeSavingsData = savingsData.filter((goal) => {
-    if (goal.targetYear > currentYear) return true;
-    if (goal.targetYear === currentYear && goal.targetMonth >= currentMonth) return true;
-    return false;
-  });
-
+  // 저축 목표 합계 (이미 DB에서 활성 목표만 필터링됨)
   const totalSavingsTarget = activeSavingsData.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const primaryGoal = activeSavingsData.find((goal) => goal.isPrimary);
 
@@ -106,16 +109,29 @@ export async function getTransactionSummary(userId: string, year: number, month:
 
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-  // 카테고리별 예산 조회
-  const categoryBudgets = await prisma.budget.findMany({
+  // 예산 조회 - 카테고리별 + 전체 예산을 한 번에 조회
+  const allBudgets = await prisma.budget.findMany({
     where: {
       userId,
       month: startDate,
-      categoryId: { in: categoryIds },
       deletedAt: null,
+      OR: [
+        { categoryId: { in: categoryIds } },
+        { categoryId: null },
+      ],
     },
   });
-  const budgetMap = new Map(categoryBudgets.map((b) => [b.categoryId, b.amount]));
+
+  // 카테고리별 예산 맵 + 전체 예산 분리
+  const budgetMap = new Map<string | null, number>();
+  let overallBudget: number | null = null;
+  allBudgets.forEach((b) => {
+    if (b.categoryId === null) {
+      overallBudget = b.amount;
+    } else {
+      budgetMap.set(b.categoryId, b.amount);
+    }
+  });
 
   // 카테고리별 통계 매핑 (예산 정보 포함)
   const categoryList: CategorySummary[] = categoryStats
@@ -148,20 +164,7 @@ export async function getTransactionSummary(userId: string, year: number, month:
   const incomeCount = transactionCounts.find((t) => t.type === 'INCOME')?._count || 0;
   const expenseCount = transactionCounts.find((t) => t.type === 'EXPENSE')?._count || 0;
 
-  // 예산 정보 조회
-  const budget = await prisma.budget.findFirst({
-    where: {
-      userId,
-      month: {
-        gte: startDate,
-        lt: new Date(year, month, 1),
-      },
-      deletedAt: null,
-      categoryId: null,
-    },
-  });
-
-  const monthlyBudget = budget?.amount || 0;
+  const monthlyBudget = overallBudget || 0;
   const budgetUsed = totalExpense;
   const budgetRemaining = Math.max(0, monthlyBudget - budgetUsed);
   const budgetUsagePercent = monthlyBudget > 0
