@@ -4,6 +4,15 @@ import { logger } from '@/lib/logger';
 
 type TransactionClient = Prisma.TransactionClient;
 
+/**
+ * 한국 시간대(KST, UTC+9) 기준으로 날짜 추출
+ */
+function getKSTDay(date: Date): number {
+  const KST_OFFSET = 9 * 60 * 60 * 1000; // 9시간을 밀리초로
+  const kstDate = new Date(date.getTime() + KST_OFFSET);
+  return kstDate.getUTCDate();
+}
+
 interface Transaction {
   type: 'INCOME' | 'EXPENSE';
   amount: number;
@@ -182,6 +191,88 @@ export async function getRecentDailyBalances(userId: string, days: number) {
 }
 
 /**
+ * 특정 월의 일별 잔액 조회
+ */
+export async function getMonthlyDailyBalances(userId: string, year: number, month: number) {
+  const startDate = new Date(year, month - 1, 1);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(year, month, 0);
+  endDate.setHours(23, 59, 59, 999);
+
+  const daysInMonth = endDate.getDate();
+
+  // 항상 거래 데이터로부터 계산 (타임존 정확성 보장)
+  return calculateMonthlyDailyBalancesFromTransactions(userId, year, month);
+}
+
+/**
+ * 거래 데이터로부터 특정 월의 일별 잔액 계산
+ */
+async function calculateMonthlyDailyBalancesFromTransactions(userId: string, year: number, month: number) {
+  // KST 기준 월의 시작과 끝을 UTC로 변환
+  // KST는 UTC+9이므로, KST 00:00:00은 UTC 전날 15:00:00
+  const KST_OFFSET_HOURS = 9;
+
+  // KST 기준 월 1일 00:00:00 -> UTC
+  const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0) - KST_OFFSET_HOURS * 60 * 60 * 1000);
+
+  // KST 기준 월 마지막일 23:59:59 -> UTC
+  const lastDayOfMonth = new Date(year, month, 0).getDate();
+  const endDate = new Date(Date.UTC(year, month - 1, lastDayOfMonth, 23, 59, 59, 999) - KST_OFFSET_HOURS * 60 * 60 * 1000);
+
+  const daysInMonth = lastDayOfMonth;
+
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      userId,
+      date: { gte: startDate, lte: endDate },
+      deletedAt: null,
+    },
+    orderBy: { date: 'asc' },
+  });
+
+  // 일별 데이터 초기화 (저축 포함)
+  const dailyData: { [day: number]: { income: number; expense: number; savings: number } } = {};
+  for (let day = 1; day <= daysInMonth; day++) {
+    dailyData[day] = { income: 0, expense: 0, savings: 0 };
+  }
+
+  // 거래 데이터로부터 일별 수입/지출/저축 계산 (KST 기준)
+  transactions.forEach((transaction) => {
+    const day = getKSTDay(new Date(transaction.date));
+    if (dailyData[day]) {
+      // 저축 거래인 경우
+      if (transaction.savingsGoalId) {
+        dailyData[day].savings += transaction.amount;
+      } else if (transaction.type === 'INCOME') {
+        dailyData[day].income += transaction.amount;
+      } else {
+        dailyData[day].expense += transaction.amount;
+      }
+    }
+  });
+
+  // 결과 생성
+  const result: { date: Date; income: number; expense: number; savings: number; balance: number }[] = [];
+  let cumulativeBalance = 0;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const { income, expense, savings } = dailyData[day];
+    cumulativeBalance += income - expense - savings;
+    result.push({
+      date: new Date(year, month - 1, day),
+      income,
+      expense,
+      savings,
+      balance: cumulativeBalance,
+    });
+  }
+
+  return result;
+}
+
+/**
  * 거래 데이터로부터 일별 잔액 계산
  */
 export async function calculateDailyBalancesFromTransactions(userId: string, days: number) {
@@ -211,9 +302,12 @@ export async function calculateDailyBalancesFromTransactions(userId: string, day
     dailyData[dateKey] = { income: 0, expense: 0, balance: 0 };
   }
 
-  // 거래 데이터로부터 일별 수입/지출 계산
+  // 거래 데이터로부터 일별 수입/지출 계산 (KST 기준)
   transactions.forEach((transaction) => {
-    const dateKey = new Date(transaction.date).toISOString().split('T')[0];
+    const txDate = new Date(transaction.date);
+    const KST_OFFSET = 9 * 60 * 60 * 1000;
+    const kstDate = new Date(txDate.getTime() + KST_OFFSET);
+    const dateKey = kstDate.toISOString().split('T')[0];
     if (dailyData[dateKey]) {
       if (transaction.type === 'INCOME') {
         dailyData[dateKey].income += transaction.amount;

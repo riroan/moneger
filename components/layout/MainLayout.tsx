@@ -9,6 +9,7 @@ import { useTransactionHandlers } from '@/hooks/useTransactionHandlers';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTransactionStore } from '@/stores';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 import FAB from '@/components/layout/FAB';
 
 const TransactionModal = dynamic(() => import('@/components/modals/TransactionModal'), { ssr: false });
@@ -115,6 +116,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
         />
 
         {children}
+
+        <Footer />
       </div>
 
       <FAB onClick={openTransactionModal} visible={activeTab !== 'savings'} />

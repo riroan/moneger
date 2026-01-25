@@ -31,7 +31,7 @@ export default function TransactionItem({ transaction: tx, onClick }: Transactio
 
   return (
     <div
-      className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
+      className="bg-bg-card rounded-[12px] sm:rounded-[14px] transition-colors hover:bg-bg-card-hover cursor-pointer"
       style={{ padding: '12px' }}
       onClick={onClick}
     >

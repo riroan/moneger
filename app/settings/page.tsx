@@ -8,6 +8,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useOutsideClick, useBodyScrollLock } from '@/hooks';
 import type { Category, Budget } from '@/types';
 import { MdDarkMode, MdLightMode, MdDashboard, MdLogout, MdPerson, MdCategory, MdAccountBalanceWallet } from 'react-icons/md';
+import Footer from '@/components/layout/Footer';
 import {
   AccountTab,
   CategoryTab,
@@ -535,6 +536,8 @@ export default function SettingsPage() {
             )}
           </main>
         </div>
+
+        <Footer />
       </div>
 
       {/* Category Form Modal */}
