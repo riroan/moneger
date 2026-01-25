@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { formatNumber } from '@/utils/formatters';
-import { MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices, MdSavings, MdKeyboardArrowDown } from 'react-icons/md';
-import { FaGift, FaHeartbeat } from 'react-icons/fa';
+import { useState, useRef, useCallback } from 'react';
+import { MdKeyboardArrowDown } from 'react-icons/md';
+import { SAVINGS_GOAL } from '@/lib/constants';
+import { CurrencyInput } from '@/components/common';
+import { useOutsideClickWithRef } from '@/hooks';
+import { GOAL_ICONS } from './constants';
 
 interface AddSavingsGoalModalProps {
   isOpen: boolean;
@@ -17,17 +19,6 @@ interface AddSavingsGoalModalProps {
     targetMonth: number;
   }) => void;
 }
-
-const GOAL_ICONS = [
-  { id: 'home', icon: MdHome, label: '내 집' },
-  { id: 'car', icon: MdDirectionsCar, label: '자동차' },
-  { id: 'school', icon: MdSchool, label: '교육' },
-  { id: 'travel', icon: MdFlight, label: '여행' },
-  { id: 'device', icon: MdDevices, label: '전자기기' },
-  { id: 'gift', icon: FaGift, label: '선물' },
-  { id: 'health', icon: FaHeartbeat, label: '건강' },
-  { id: 'savings', icon: MdSavings, label: '저축' },
-];
 
 export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavingsGoalModalProps) {
   const [name, setName] = useState('');
@@ -51,22 +42,14 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
   const monthButtonRef = useRef<HTMLButtonElement>(null);
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 21 }, (_, i) => currentYear + i);
+  const years = Array.from({ length: SAVINGS_GOAL.YEARS_RANGE }, (_, i) => currentYear + i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (yearRef.current && !yearRef.current.contains(event.target as Node)) {
-        setIsYearOpen(false);
-      }
-      if (monthRef.current && !monthRef.current.contains(event.target as Node)) {
-        setIsMonthOpen(false);
-      }
-    };
+  const closeYearDropdown = useCallback(() => setIsYearOpen(false), []);
+  const closeMonthDropdown = useCallback(() => setIsMonthOpen(false), []);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  useOutsideClickWithRef(yearRef, closeYearDropdown);
+  useOutsideClickWithRef(monthRef, closeMonthDropdown);
 
   const handleSave = async () => {
     let hasError = false;
@@ -200,26 +183,14 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
           <label className="block text-sm font-medium text-text-secondary mb-2">
             목표 금액
           </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={targetAmount ? formatNumber(parseInt(targetAmount, 10)) : ''}
-              onChange={(e) => {
-                const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                const maxAmount = 100000000000000;
-                if (numericValue === '' || parseInt(numericValue, 10) <= maxAmount) {
-                  setTargetAmount(numericValue);
-                  if (numericValue && parseInt(numericValue, 10) > 0) setTargetAmountError('');
-                }
-              }}
-              placeholder="0"
-              className={`w-full bg-bg-secondary border rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 pr-4 pl-8 ${
-                targetAmountError ? 'border-accent-coral' : 'border-[var(--border)]'
-              }`}
-            />
-          </div>
+          <CurrencyInput
+            value={targetAmount}
+            onChange={(value) => {
+              setTargetAmount(value);
+              if (value && parseInt(value, 10) > 0) setTargetAmountError('');
+            }}
+            hasError={!!targetAmountError}
+          />
           {targetAmountError && <p className="text-xs text-accent-coral mt-1.5">{targetAmountError}</p>}
         </div>
 
@@ -228,23 +199,10 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
           <label className="block text-sm font-medium text-text-secondary mb-2">
             현재 저축액 (선택)
           </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={currentAmount ? formatNumber(parseInt(currentAmount, 10)) : ''}
-              onChange={(e) => {
-                const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                const maxAmount = 100000000000000;
-                if (numericValue === '' || parseInt(numericValue, 10) <= maxAmount) {
-                  setCurrentAmount(numericValue);
-                }
-              }}
-              placeholder="0"
-              className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 pr-4 pl-8"
-            />
-          </div>
+          <CurrencyInput
+            value={currentAmount}
+            onChange={setCurrentAmount}
+          />
         </div>
 
         {/* 목표 날짜 */}

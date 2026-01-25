@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { formatNumber } from '@/utils/formatters';
-import { MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices, MdSavings } from 'react-icons/md';
-import { FaGift, FaHeartbeat } from 'react-icons/fa';
+import { CurrencyInput } from '@/components/common';
+import { getGoalIcon } from './constants';
 
 interface SavingsGoal {
   id: string;
@@ -22,17 +22,6 @@ interface DepositModalProps {
   onClose: () => void;
   onDeposit: (goalId: string, amount: number) => Promise<void>;
 }
-
-const GOAL_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  home: MdHome,
-  car: MdDirectionsCar,
-  school: MdSchool,
-  travel: MdFlight,
-  device: MdDevices,
-  gift: FaGift,
-  health: FaHeartbeat,
-  savings: MdSavings,
-};
 
 const QUICK_AMOUNTS = [10000, 50000, 100000, 500000];
 
@@ -74,7 +63,7 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
 
   if (!isOpen || !goal) return null;
 
-  const IconComponent = GOAL_ICON_MAP[goal.icon] || MdSavings;
+  const IconComponent = getGoalIcon(goal.icon);
   const remainingAmount = goal.targetAmount - goal.currentAmount;
   const newAmount = goal.currentAmount + (parseInt(amount || '0', 10));
   const newProgress = goal.targetAmount > 0 ? Math.round((newAmount / goal.targetAmount) * 100) : 0;
@@ -136,26 +125,14 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
           <label className="block text-sm font-medium text-text-secondary mb-2">
             저축 금액
           </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={amount ? formatNumber(parseInt(amount, 10)) : ''}
-              onChange={(e) => {
-                const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                const maxAmount = 100000000000000;
-                if (numericValue === '' || parseInt(numericValue, 10) <= maxAmount) {
-                  setAmount(numericValue);
-                  if (numericValue && parseInt(numericValue, 10) > 0) setAmountError('');
-                }
-              }}
-              placeholder="0"
-              className={`w-full bg-bg-secondary border rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 pr-4 pl-8 ${
-                amountError ? 'border-accent-coral' : 'border-[var(--border)]'
-              }`}
-            />
-          </div>
+          <CurrencyInput
+            value={amount}
+            onChange={(value) => {
+              setAmount(value);
+              if (value && parseInt(value, 10) > 0) setAmountError('');
+            }}
+            hasError={!!amountError}
+          />
           {amountError && <p className="text-xs text-accent-coral mt-1.5">{amountError}</p>}
         </div>
 

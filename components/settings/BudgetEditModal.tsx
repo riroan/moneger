@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { getIconComponent } from './constants';
+import { CurrencyInput } from '@/components/common';
 import type { Category } from '@/types';
 
 interface BudgetEditModalProps {
@@ -92,24 +93,11 @@ export default function BudgetEditModal({
           <label className="block text-sm font-medium text-text-secondary mb-2">
             월 예산
           </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={budgetAmount ? formatNumber(parseInt(budgetAmount, 10)) : ''}
-              onChange={(e) => {
-                const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                const maxBudget = 100000000000000;
-                if (numericValue === '' || parseInt(numericValue, 10) <= maxBudget) {
-                  setBudgetAmount(numericValue);
-                }
-              }}
-              placeholder="0"
-              className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 pr-4 pl-8"
-              autoFocus
-            />
-          </div>
+          <CurrencyInput
+            value={budgetAmount}
+            onChange={setBudgetAmount}
+            autoFocus
+          />
         </div>
 
         {/* 기본값 적용 버튼 */}

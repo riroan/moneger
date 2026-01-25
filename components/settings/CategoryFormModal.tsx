@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { formatNumber } from '@/utils/formatters';
 import { ICON_LIST, ICON_MAP, COLOR_LIST } from './constants';
+import { CurrencyInput } from '@/components/common';
 import type { Category } from '@/types';
 
 interface CategoryFormModalProps {
@@ -220,23 +220,11 @@ export default function CategoryFormModal({
               <label className="block text-sm font-medium text-text-secondary mb-2">
                 기본 예산 (선택)
               </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={categoryDefaultBudget ? formatNumber(parseInt(categoryDefaultBudget, 10)) : ''}
-                  onChange={(e) => {
-                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                    const maxBudget = 100000000000000;
-                    if (numericValue === '' || parseInt(numericValue, 10) <= maxBudget) {
-                      setCategoryDefaultBudget(numericValue);
-                    }
-                  }}
-                  placeholder="0"
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-right text-base text-text-primary focus:outline-none focus:border-accent-blue transition-colors py-3.5 pr-4 pl-8"
-                />
-              </div>
+              <CurrencyInput
+                value={categoryDefaultBudget}
+                onChange={setCategoryDefaultBudget}
+                className="text-base focus:border-accent-blue"
+              />
               <p className="text-xs text-text-muted mt-1.5">
                 월별 예산을 설정하지 않으면 기본 예산이 적용됩니다.
               </p>

@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { formatNumber } from '@/utils/formatters';
-import { MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices, MdSavings, MdKeyboardArrowDown } from 'react-icons/md';
-import { FaGift, FaHeartbeat } from 'react-icons/fa';
+import { MdKeyboardArrowDown } from 'react-icons/md';
+import { SAVINGS_GOAL } from '@/lib/constants';
+import { CurrencyInput } from '@/components/common';
+import { useOutsideClickWithRef } from '@/hooks';
+import { GOAL_ICONS } from './constants';
 
 interface SavingsGoal {
   id: string;
@@ -30,17 +33,6 @@ interface EditSavingsGoalModalProps {
   }) => void;
   onDelete: (id: string) => void;
 }
-
-const GOAL_ICONS = [
-  { id: 'home', icon: MdHome, label: '내 집' },
-  { id: 'car', icon: MdDirectionsCar, label: '자동차' },
-  { id: 'school', icon: MdSchool, label: '교육' },
-  { id: 'travel', icon: MdFlight, label: '여행' },
-  { id: 'device', icon: MdDevices, label: '전자기기' },
-  { id: 'gift', icon: FaGift, label: '선물' },
-  { id: 'health', icon: FaHeartbeat, label: '건강' },
-  { id: 'savings', icon: MdSavings, label: '저축' },
-];
 
 function parseTargetDate(targetDate: string): { year: number; month: number } {
   const match = targetDate.match(/(\d{4})년\s*(\d{1,2})월/);
@@ -74,8 +66,14 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
   const monthButtonRef = useRef<HTMLButtonElement>(null);
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 21 }, (_, i) => currentYear + i);
+  const years = Array.from({ length: SAVINGS_GOAL.YEARS_RANGE }, (_, i) => currentYear + i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
+
+  const closeYearDropdown = useCallback(() => setIsYearOpen(false), []);
+  const closeMonthDropdown = useCallback(() => setIsMonthOpen(false), []);
+
+  useOutsideClickWithRef(yearRef, closeYearDropdown);
+  useOutsideClickWithRef(monthRef, closeMonthDropdown);
 
   useEffect(() => {
     if (goal && isOpen) {
@@ -90,20 +88,6 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
       setTargetAmountError('');
     }
   }, [goal, isOpen]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (yearRef.current && !yearRef.current.contains(event.target as Node)) {
-        setIsYearOpen(false);
-      }
-      if (monthRef.current && !monthRef.current.contains(event.target as Node)) {
-        setIsMonthOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleSave = async () => {
     if (!goal) return;
@@ -243,26 +227,14 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
           <label className="block text-sm font-medium text-text-secondary mb-2">
             목표 금액
           </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={targetAmount ? formatNumber(parseInt(targetAmount, 10)) : ''}
-              onChange={(e) => {
-                const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                const maxAmount = 100000000000000;
-                if (numericValue === '' || parseInt(numericValue, 10) <= maxAmount) {
-                  setTargetAmount(numericValue);
-                  if (numericValue && parseInt(numericValue, 10) > 0) setTargetAmountError('');
-                }
-              }}
-              placeholder="0"
-              className={`w-full bg-bg-secondary border rounded-[12px] text-right text-lg text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 pr-4 pl-8 ${
-                targetAmountError ? 'border-accent-coral' : 'border-[var(--border)]'
-              }`}
-            />
-          </div>
+          <CurrencyInput
+            value={targetAmount}
+            onChange={(value) => {
+              setTargetAmount(value);
+              if (value && parseInt(value, 10) > 0) setTargetAmountError('');
+            }}
+            hasError={!!targetAmountError}
+          />
           {targetAmountError && <p className="text-xs text-accent-coral mt-1.5">{targetAmountError}</p>}
         </div>
 
@@ -271,16 +243,12 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
           <label className="block text-sm font-medium text-text-secondary mb-2">
             현재 저축액
           </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-base">₩</span>
-            <input
-              type="text"
-              value={currentAmount ? formatNumber(parseInt(currentAmount, 10)) : '0'}
-              readOnly
-              disabled
-              className="w-full bg-bg-secondary/50 border border-[var(--border)] rounded-[12px] text-right text-lg text-text-muted cursor-not-allowed py-3.5 pr-4 pl-8"
-            />
-          </div>
+          <CurrencyInput
+            value={currentAmount}
+            onChange={() => {}}
+            disabled
+            className="bg-bg-secondary/50 text-text-muted"
+          />
           <p className="text-xs text-text-muted mt-1.5">
             저축액은 &apos;저축하기&apos; 버튼으로만 변경할 수 있습니다
           </p>

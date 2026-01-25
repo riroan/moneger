@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { TransactionWithCategory } from '@/types';
+import { AMOUNT_LIMITS } from '@/lib/constants';
 
 export interface TransactionFormState {
   type: 'INCOME' | 'EXPENSE';
@@ -72,7 +73,7 @@ export function useTransactionForm(options: UseTransactionFormOptions = {}) {
       return;
     }
 
-    if (parseInt(rawValue) > 100000000000) {
+    if (parseInt(rawValue) > AMOUNT_LIMITS.TRANSACTION_MAX) {
       setAmountError('1000억 원을 초과할 수 없습니다');
       return;
     }

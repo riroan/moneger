@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { MdSearch, MdSavings } from 'react-icons/md';
 import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 import { getIconComponent } from '@/components/settings/constants';
+import { AMOUNT_LIMITS } from '@/lib/constants';
 
 interface Category {
   id: string;
@@ -212,7 +213,7 @@ export default function FilterPanel({
     if (!/^\d+$/.test(rawValue)) return;
 
     const numValue = parseInt(rawValue);
-    if (numValue > 100000000000) return;
+    if (numValue > AMOUNT_LIMITS.TRANSACTION_MAX) return;
 
     const formattedValue = numValue.toLocaleString('ko-KR');
 
