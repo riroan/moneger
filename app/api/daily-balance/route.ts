@@ -64,7 +64,8 @@ export async function GET(request: NextRequest) {
       }
 
       const monthlyBalances = await getMonthlyDailyBalances(userId!, yearNum, monthNum);
-      return successResponse(monthlyBalances);
+      // 60초 캐시, 5분간 stale-while-revalidate
+      return successResponse(monthlyBalances, 200, { maxAge: 60, staleWhileRevalidate: 300 });
     }
 
     // 최근 N일 데이터 조회

@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
 import { MdToday, MdSavings } from 'react-icons/md';
@@ -32,7 +33,7 @@ interface TodaySummaryCardProps {
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
-export default function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
+function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
   if (isLoading) {
     return (
       <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-pulse" style={{ padding: '16px' }}>
@@ -143,3 +144,5 @@ export default function TodaySummaryCard({ data, isLoading }: TodaySummaryCardPr
     </div>
   );
 }
+
+export default memo(TodaySummaryCard);

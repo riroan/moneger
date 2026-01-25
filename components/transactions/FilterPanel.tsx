@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { MdSearch, MdSavings } from 'react-icons/md';
 import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 import { getIconComponent } from '@/components/settings/constants';
@@ -228,28 +228,32 @@ export default function FilterPanel({
     }
   };
 
-  const generateYearOptions = () => {
+  // 연도 옵션 메모이제이션
+  const yearOptions = useMemo(() => {
     const years = [];
     for (let year = minYear; year <= currentYear; year++) {
-      years.push(year);
+      years.push({ value: year, label: `${year}년` });
     }
     return years;
-  };
+  }, [minYear, currentYear]);
 
-  const generateMonthOptions = (year: number, isEnd: boolean = false) => {
-    const months = [];
-    const maxMonth = year === currentYear ? currentMonth : 11;
+  // 월 옵션 생성 함수 (startYear/endYear에 따라 다름)
+  const getMonthOptions = useMemo(() => {
+    return (year: number, isEnd: boolean = false) => {
+      const months = [];
+      const maxMonth = year === currentYear ? currentMonth : 11;
 
-    for (let month = 0; month <= maxMonth; month++) {
-      if (isEnd && dateRange) {
-        if (year === dateRange.startYear && month < dateRange.startMonth) {
-          continue;
+      for (let month = 0; month <= maxMonth; month++) {
+        if (isEnd && dateRange) {
+          if (year === dateRange.startYear && month < dateRange.startMonth) {
+            continue;
+          }
         }
+        months.push({ value: month, label: `${month + 1}월` });
       }
-      months.push(month);
-    }
-    return months;
-  };
+      return months;
+    };
+  }, [currentYear, currentMonth, dateRange]);
 
   return (
     <div className="lg:block">
@@ -310,7 +314,7 @@ export default function FilterPanel({
                   <div className="flex gap-2">
                     <CustomSelect
                       value={dateRange.startYear}
-                      options={generateYearOptions().map(year => ({ value: year, label: `${year}년` }))}
+                      options={yearOptions}
                       onChange={(newYear) => {
                         const maxMonth = newYear === currentYear ? currentMonth : 11;
                         const newStartMonth = dateRange.startMonth > maxMonth ? maxMonth : dateRange.startMonth;
@@ -325,7 +329,7 @@ export default function FilterPanel({
                     />
                     <CustomSelect
                       value={dateRange.startMonth}
-                      options={generateMonthOptions(dateRange.startYear).map(month => ({ value: month, label: `${month + 1}월` }))}
+                      options={getMonthOptions(dateRange.startYear)}
                       onChange={(newMonth) => {
                         let newEndYear = dateRange.endYear;
                         let newEndMonth = dateRange.endMonth;
@@ -343,7 +347,7 @@ export default function FilterPanel({
                   <div className="flex gap-2">
                     <CustomSelect
                       value={dateRange.endYear}
-                      options={generateYearOptions().filter(year => year >= dateRange.startYear).map(year => ({ value: year, label: `${year}년` }))}
+                      options={yearOptions.filter(opt => opt.value >= dateRange.startYear)}
                       onChange={(newYear) => {
                         const maxMonth = newYear === currentYear ? currentMonth : 11;
                         let newEndMonth = dateRange.endMonth > maxMonth ? maxMonth : dateRange.endMonth;
@@ -355,7 +359,7 @@ export default function FilterPanel({
                     />
                     <CustomSelect
                       value={dateRange.endMonth}
-                      options={generateMonthOptions(dateRange.endYear, true).map(month => ({ value: month, label: `${month + 1}월` }))}
+                      options={getMonthOptions(dateRange.endYear, true)}
                       onChange={(newMonth) => setDateRange({ ...dateRange, endMonth: newMonth })}
                     />
                   </div>

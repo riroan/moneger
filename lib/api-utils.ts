@@ -1,10 +1,34 @@
 import { NextResponse } from 'next/server';
 
+// 캐시 헤더 옵션
+interface CacheOptions {
+  maxAge?: number; // 초 단위
+  staleWhileRevalidate?: number; // 초 단위
+}
+
+/**
+ * 캐시 헤더가 포함된 응답 생성
+ */
+function createResponseWithCache<T>(
+  body: T,
+  status: number,
+  cacheOptions?: CacheOptions
+) {
+  const headers: Record<string, string> = {};
+
+  if (cacheOptions) {
+    const { maxAge = 0, staleWhileRevalidate = 0 } = cacheOptions;
+    headers['Cache-Control'] = `private, max-age=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`;
+  }
+
+  return NextResponse.json(body, { status, headers });
+}
+
 /**
  * 성공 응답 생성
  */
-export function successResponse<T>(data: T, status = 200) {
-  return NextResponse.json({ success: true, data }, { status });
+export function successResponse<T>(data: T, status = 200, cacheOptions?: CacheOptions) {
+  return createResponseWithCache({ success: true, data }, status, cacheOptions);
 }
 
 /**
@@ -24,8 +48,8 @@ export function errorResponse(error: string, status = 400) {
 /**
  * 목록 응답 생성 (with count)
  */
-export function listResponse<T>(data: T[], count: number, status = 200) {
-  return NextResponse.json({ success: true, data, count }, { status });
+export function listResponse<T>(data: T[], count: number, status = 200, cacheOptions?: CacheOptions) {
+  return createResponseWithCache({ success: true, data, count }, status, cacheOptions);
 }
 
 /**

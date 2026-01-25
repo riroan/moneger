@@ -1,9 +1,16 @@
 'use client';
 
+import { memo, useMemo } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
 import { FaMoneyBillWave, FaCreditCard, FaWallet, FaChartLine } from 'react-icons/fa';
 import { ReactNode } from 'react';
+
+// 아이콘 컴포넌트를 밖에서 정의하여 재생성 방지
+const IncomeIcon = <FaMoneyBillWave className="text-white text-xl sm:text-2xl" />;
+const ExpenseIcon = <FaCreditCard className="text-white text-xl sm:text-2xl" />;
+const SavingsIcon = <FaChartLine className="text-white text-xl sm:text-2xl" />;
+const BalanceIcon = <FaWallet className="text-white text-xl sm:text-2xl" />;
 
 interface SummaryCardsProps {
   totalIncome: number;
@@ -20,7 +27,7 @@ interface SummaryCardsProps {
   onSavingsClick?: () => void;
 }
 
-export default function SummaryCards({
+function SummaryCards({
   totalIncome,
   totalExpense,
   balance,
@@ -36,21 +43,11 @@ export default function SummaryCards({
 }: SummaryCardsProps) {
   const balanceDiff = balance - lastMonthBalance;
 
-  const cards: {
-    type: string;
-    icon: ReactNode;
-    label: string;
-    amount: string;
-    change: string;
-    positive: boolean;
-    iconBg: string;
-    barColor: string;
-    badgeBg: string;
-    badgeText: string;
-  }[] = [
+  // cards 배열 메모이제이션
+  const cards = useMemo(() => [
     {
       type: 'income',
-      icon: <FaMoneyBillWave className="text-white text-xl sm:text-2xl" />,
+      icon: IncomeIcon,
       label: '이번 달 수입',
       amount: `₩${formatNumber(totalIncome)}`,
       change: `${incomeCount}건의 수입`,
@@ -62,7 +59,7 @@ export default function SummaryCards({
     },
     {
       type: 'expense',
-      icon: <FaCreditCard className="text-white text-xl sm:text-2xl" />,
+      icon: ExpenseIcon,
       label: '이번 달 지출',
       amount: `₩${formatNumber(totalExpense)}`,
       change: `${expenseCount}건의 지출`,
@@ -74,7 +71,7 @@ export default function SummaryCards({
     },
     {
       type: 'savings',
-      icon: <FaChartLine className="text-white text-xl sm:text-2xl" />,
+      icon: SavingsIcon,
       label: '저축',
       amount: `₩${formatNumber(totalSavings)}`,
       change: `${savingsCount}건의 저축`,
@@ -86,7 +83,7 @@ export default function SummaryCards({
     },
     {
       type: 'balance',
-      icon: <FaWallet className="text-white text-xl sm:text-2xl" />,
+      icon: BalanceIcon,
       label: '잔액',
       amount: `${balance >= 0 ? '' : '-'}₩${formatNumber(Math.abs(balance))}`,
       change: `지난달 대비 ${balanceDiff >= 0 ? '+' : '-'}₩${formatNumber(Math.abs(balanceDiff))}`,
@@ -96,7 +93,7 @@ export default function SummaryCards({
       badgeBg: 'rgba(168, 85, 247, 0.2)',
       badgeText: '#c084fc',
     },
-  ];
+  ], [totalIncome, incomeCount, totalExpense, expenseCount, totalSavings, savingsCount, balance, balanceDiff]);
 
   return (
     <div
@@ -150,3 +147,5 @@ export default function SummaryCards({
     </div>
   );
 }
+
+export default memo(SummaryCards);

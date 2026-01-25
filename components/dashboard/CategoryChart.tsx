@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
@@ -26,7 +26,7 @@ interface CategoryChartProps {
 
 const DEFAULT_COLOR = '#6B7280';
 
-export default function CategoryChart({
+function CategoryChart({
   categories,
   totalExpense,
   isLoading,
@@ -50,12 +50,25 @@ export default function CategoryChart({
     );
   }
 
-  const chartData = categories.map((category, index) => ({
-    name: category.name,
-    value: category.amount,
-    color: category.color || DEFAULT_COLOR,
-    index,
-  }));
+  // chartData 메모이제이션
+  const chartData = useMemo(() =>
+    categories.map((category, index) => ({
+      name: category.name,
+      value: category.amount,
+      color: category.color || DEFAULT_COLOR,
+      index,
+    })),
+    [categories]
+  );
+
+  // 아이콘 컴포넌트 맵 메모이제이션
+  const iconMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof getIconComponent>>();
+    categories.forEach((cat) => {
+      map.set(cat.id, getIconComponent(cat.icon));
+    });
+    return map;
+  }, [categories]);
 
   return (
     <>
@@ -124,7 +137,7 @@ export default function CategoryChart({
         {categories.map((category, index) => {
           const usagePercent = category.budgetUsagePercent ?? 0;
           const isHovered = hoveredIndex === index;
-          const IconComponent = getIconComponent(category.icon);
+          const IconComponent = iconMap.get(category.id) || getIconComponent(null);
           const categoryColor = category.color || DEFAULT_COLOR;
 
           return (
@@ -206,3 +219,5 @@ export default function CategoryChart({
     </>
   );
 }
+
+export default memo(CategoryChart);

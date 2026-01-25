@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
       type && (type === 'INCOME' || type === 'EXPENSE') ? type : undefined
     );
 
-    return listResponse(categories, categories.length);
+    // 5분 캐시, 10분간 stale-while-revalidate (카테고리는 자주 변하지 않음)
+    return listResponse(categories, categories.length, 200, { maxAge: 300, staleWhileRevalidate: 600 });
   } catch (error) {
     logger.error('Failed to fetch categories', error);
     return errorResponse('Failed to fetch categories', 500);
