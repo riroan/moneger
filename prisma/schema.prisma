@@ -69,6 +69,8 @@ model Transaction {
   @@index([userId, type])
   @@index([userId, deletedAt, date])
   @@index([savingsGoalId])
+  @@index([userId, savingsGoalId])
+  @@index([userId, categoryId, deletedAt])
 }
 
 model Budget {
@@ -85,6 +87,7 @@ model Budget {
 
   @@unique([userId, categoryId, month])
   @@index([userId, month])
+  @@index([userId, categoryId, month, deletedAt])
 }
 
 model DailyBalance {

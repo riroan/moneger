@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useMemo } from 'react';
 import { formatNumber, formatDate, formatCurrencyDisplay } from '@/utils/formatters';
 import { getIconComponent } from '@/components/settings/constants';
 import { MdSavings } from 'react-icons/md';
@@ -13,7 +14,7 @@ interface TransactionItemProps {
 /**
  * 통화 표시 컴포넌트
  */
-const CurrencyDisplay = ({ amount }: { amount: string }) => {
+const CurrencyDisplay = memo(({ amount }: { amount: string }) => {
   const { sign, currencySymbol, number } = formatCurrencyDisplay(amount);
 
   return (
@@ -23,11 +24,18 @@ const CurrencyDisplay = ({ amount }: { amount: string }) => {
       {number}
     </span>
   );
-};
+});
 
-export default function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
+CurrencyDisplay.displayName = 'CurrencyDisplay';
+
+function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
   const isSavings = !!tx.savingsGoalId;
-  const IconComponent = isSavings ? MdSavings : getIconComponent(tx.category?.icon);
+
+  // 아이콘 컴포넌트 메모이제이션
+  const IconComponent = useMemo(
+    () => (isSavings ? MdSavings : getIconComponent(tx.category?.icon)),
+    [isSavings, tx.category?.icon]
+  );
 
   return (
     <div
@@ -66,5 +74,15 @@ export default function TransactionItem({ transaction: tx, onClick }: Transactio
     </div>
   );
 }
+
+// React.memo로 불필요한 리렌더 방지
+export default memo(TransactionItem, (prevProps, nextProps) => {
+  return (
+    prevProps.transaction.id === nextProps.transaction.id &&
+    prevProps.transaction.amount === nextProps.transaction.amount &&
+    prevProps.transaction.description === nextProps.transaction.description &&
+    prevProps.onClick === nextProps.onClick
+  );
+});
 
 export { CurrencyDisplay };

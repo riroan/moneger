@@ -1,16 +1,24 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, memo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useAppStore, useTransactionStore, useCategoryStore, useAuthStore } from '@/stores';
 import { useFilterHandlers } from '@/hooks/useFilterHandlers';
 import SummaryCards from '@/components/dashboard/SummaryCards';
-import CategoryChart from '@/components/dashboard/CategoryChart';
-import DailyCalendarView from '@/components/dashboard/DailyCalendarView';
 import TodaySummaryCard from '@/components/dashboard/TodaySummaryCard';
 import SavingsCard from '@/components/dashboard/SavingsCard';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import { MdPieChart, MdHistory, MdCalendarMonth } from 'react-icons/md';
 import type { TransactionWithCategory, CategoryChartData } from '@/types';
+
+// 동적 임포트로 번들 최적화
+const CategoryChart = dynamic(() => import('@/components/dashboard/CategoryChart'), {
+  loading: () => <div className="text-center text-text-muted py-8">차트 로딩 중...</div>,
+});
+
+const DailyCalendarView = dynamic(() => import('@/components/dashboard/DailyCalendarView'), {
+  loading: () => <div className="text-center text-text-muted py-8">달력 로딩 중...</div>,
+});
 
 type ChartViewMode = 'category' | 'calendar';
 
@@ -36,28 +44,29 @@ export default function DashboardTab({
   const isMobile = useAppStore((state) => state.isMobile);
   const currentDate = useAppStore((state) => state.currentDate);
   const userId = useAuthStore((state) => state.userId);
-  const {
-    summary,
-    todaySummary,
-    recentTransactions,
-    lastMonthBalance,
-    isLoadingSummary,
-    isLoadingTransactions,
-    isLoadingTodaySummary,
-  } = useTransactionStore();
+
+  // 개별 selector로 불필요한 리렌더 방지
+  const summary = useTransactionStore((state) => state.summary);
+  const todaySummary = useTransactionStore((state) => state.todaySummary);
+  const recentTransactions = useTransactionStore((state) => state.recentTransactions);
+  const lastMonthBalance = useTransactionStore((state) => state.lastMonthBalance);
+  const isLoadingSummary = useTransactionStore((state) => state.isLoadingSummary);
+  const isLoadingTransactions = useTransactionStore((state) => state.isLoadingTransactions);
+  const isLoadingTodaySummary = useTransactionStore((state) => state.isLoadingTodaySummary);
 
   const { handleCategoryClick, handleIncomeClick, handleExpenseClick, handleBalanceClick } = useFilterHandlers();
 
   const [chartViewMode, setChartViewMode] = useState<ChartViewMode>('category');
   const [calendarData, setCalendarData] = useState<DailyBalanceData[]>([]);
-  const [isLoadingCalendar, setIsLoadingCalendar] = useState(true);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [calendarDataLoaded, setCalendarDataLoaded] = useState(false);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
 
-  // 달력 데이터 미리 로드 (뷰 모드와 상관없이)
+  // 달력 데이터 지연 로드 (달력 뷰 선택 시에만)
   useEffect(() => {
-    if (userId) {
+    if (userId && chartViewMode === 'calendar' && !calendarDataLoaded) {
       setIsLoadingCalendar(true);
       fetch(`/api/daily-balance?userId=${userId}&year=${year}&month=${month}`)
         .then((res) => res.json())
@@ -69,12 +78,18 @@ export default function DashboardTab({
                 date: new Date(d.date),
               }))
             );
+            setCalendarDataLoaded(true);
           }
         })
         .catch(console.error)
         .finally(() => setIsLoadingCalendar(false));
     }
-  }, [userId, year, month]);
+  }, [userId, year, month, chartViewMode, calendarDataLoaded]);
+
+  // 월 변경 시 캐시 초기화
+  useEffect(() => {
+    setCalendarDataLoaded(false);
+  }, [year, month]);
 
   const totalIncome = summary?.summary?.totalIncome || 0;
   const totalExpense = summary?.summary?.totalExpense || 0;
