@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores';
 import { useTheme } from '@/contexts/ThemeContext';
 import { MdDarkMode, MdLightMode } from 'react-icons/md';
+import Footer from '@/components/layout/Footer';
 
 export default function TermsPage() {
   const router = useRouter();
@@ -244,12 +245,7 @@ export default function TermsPage() {
           </div>
         </Section>
 
-        {/* Footer */}
-        <footer className="mt-16 pt-8 border-t border-white/10 text-center animate-[fadeInUp_1.3s_ease-out]">
-          <p className="text-[13px] text-text-muted">
-            © 2026 MONEGER. All rights reserved.
-          </p>
-        </footer>
+        <Footer />
       </div>
     </>
   );
