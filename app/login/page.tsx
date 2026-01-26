@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,6 +21,9 @@ export default function LoginPage() {
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreementError, setAgreementError] = useState('');
 
   // 이메일 유효성 검사
   const validateEmail = (email: string): boolean => {
@@ -43,7 +47,7 @@ export default function LoginPage() {
     setName(value);
 
     if (isSignup && !value.trim()) {
-      setNameError('이름을 입력해주세요');
+      setNameError('닉네임을 입력해주세요');
     } else {
       setNameError('');
     }
@@ -112,9 +116,9 @@ export default function LoginPage() {
       hasError = true;
     }
 
-    // 이름 검증 (회원가입만)
+    // 닉네임 검증 (회원가입만)
     if (isSignup && !name.trim()) {
-      setNameError('이름을 입력해주세요');
+      setNameError('닉네임을 입력해주세요');
       hasError = true;
     }
 
@@ -137,6 +141,14 @@ export default function LoginPage() {
     } else if (isSignup && password !== passwordConfirm) {
       setPasswordConfirmError('비밀번호가 일치하지 않습니다');
       hasError = true;
+    }
+
+    // 약관 동의 검증 (회원가입만)
+    if (isSignup && (!agreeTerms || !agreePrivacy)) {
+      setAgreementError('이용약관과 개인정보 처리방침에 모두 동의해주세요');
+      hasError = true;
+    } else {
+      setAgreementError('');
     }
 
     if (hasError) {
@@ -177,6 +189,9 @@ export default function LoginPage() {
         setNameError('');
         setPasswordError('');
         setPasswordConfirmError('');
+        setAgreeTerms(false);
+        setAgreePrivacy(false);
+        setAgreementError('');
         setSuccessMessage('회원가입이 완료되었습니다. 로그인해주세요.');
         // 3초 후 성공 메시지 제거
         setTimeout(() => setSuccessMessage(''), 3000);
@@ -249,7 +264,7 @@ export default function LoginPage() {
           {isSignup && (
             <div>
               <label className="block text-[11px] sm:text-sm text-text-secondary font-medium mb-1 pl-0.5">
-                이름
+                닉네임
               </label>
               <input
                 type="text"
@@ -368,6 +383,51 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Agreement Checkboxes (회원가입 시에만) */}
+          {isSignup && (
+            <div className="flex flex-col gap-2 mt-1">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreeTerms}
+                  onChange={(e) => {
+                    setAgreeTerms(e.target.checked);
+                    if (e.target.checked && agreePrivacy) setAgreementError('');
+                  }}
+                  className="mt-0.5 w-4 h-4 accent-accent-mint cursor-pointer"
+                />
+                <span className="text-[11px] sm:text-xs text-text-secondary">
+                  <Link href="/terms" target="_blank" className="text-accent-mint hover:underline">
+                    이용약관
+                  </Link>
+                  에 동의합니다 (필수)
+                </span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreePrivacy}
+                  onChange={(e) => {
+                    setAgreePrivacy(e.target.checked);
+                    if (agreeTerms && e.target.checked) setAgreementError('');
+                  }}
+                  className="mt-0.5 w-4 h-4 accent-accent-mint cursor-pointer"
+                />
+                <span className="text-[11px] sm:text-xs text-text-secondary">
+                  <Link href="/privacy" target="_blank" className="text-accent-mint hover:underline">
+                    개인정보 처리방침
+                  </Link>
+                  에 동의합니다 (필수)
+                </span>
+              </label>
+              {agreementError && (
+                <p className="text-accent-coral text-xs">
+                  {agreementError}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Success Message */}
           {successMessage && (
             <div className="bg-[rgba(16,185,129,0.1)] border border-accent-mint rounded-[8px] sm:rounded-[12px] text-accent-mint text-xs sm:text-sm animate-[fadeIn_0.3s_ease-out] py-2.5 px-3">
@@ -406,6 +466,9 @@ export default function LoginPage() {
               setPasswordConfirm('');
               setShowPassword(false);
               setShowPasswordConfirm(false);
+              setAgreeTerms(false);
+              setAgreePrivacy(false);
+              setAgreementError('');
             }}
             className="text-[11px] sm:text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
           >

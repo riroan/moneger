@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 export default function Footer() {
   return (
     <footer className="border-t border-[var(--border)] py-8 mt-12">
@@ -11,6 +13,22 @@ export default function Footer() {
             </div>
           </div>
           <span className="text-text-primary font-semibold">MONEGER</span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <Link
+            href="/terms"
+            className="text-sm text-text-muted hover:text-text-secondary transition-colors"
+          >
+            이용약관
+          </Link>
+          <span className="text-text-muted">|</span>
+          <Link
+            href="/privacy"
+            className="text-sm text-text-muted hover:text-text-secondary transition-colors"
+          >
+            개인정보 처리방침
+          </Link>
         </div>
 
         <div className="text-sm text-text-muted">

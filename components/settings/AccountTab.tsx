@@ -86,8 +86,8 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
           <h2 className="text-base sm:text-lg font-semibold mb-4">프로필 정보</h2>
           <div className="flex flex-col gap-5">
             <div>
-              <div className="text-sm text-text-muted mb-1.5">이름</div>
-              <div className="text-base text-text-primary font-medium">{userName || '이름 없음'}</div>
+              <div className="text-sm text-text-muted mb-1.5">닉네임</div>
+              <div className="text-base text-text-primary font-medium">{userName || '닉네임 없음'}</div>
             </div>
             <div className="border-t border-[var(--border)]" />
             <div>
