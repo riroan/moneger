@@ -9,7 +9,7 @@ import { Colors } from '../../constants/Colors';
 
 const tabs = [
   { name: 'index', path: '/(tabs)', title: '홈', icon: 'home' },
-  { name: 'budget', path: '/(tabs)/budget', title: '예산', icon: 'wallet' },
+  { name: 'transactions', path: '/(tabs)/transactions', title: '내역', icon: 'receipt' },
   { name: 'add', path: '', title: '', icon: 'add' }, // Center add button placeholder
   { name: 'savings', path: '/(tabs)/savings', title: '저축', icon: 'trending-up' },
   { name: 'settings', path: '/(tabs)/settings', title: '설정', icon: 'settings' },
