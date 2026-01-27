@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/web/public/banner.svg" alt="Moneger Banner" width="100%" />
+  <img src="public/banner.svg" alt="Moneger Banner" width="100%" />
 </p>
 
 ---
@@ -55,6 +55,78 @@
 
 - 월 예산 금액 설정
 - 예산 대비 지출 현황 확인
+
+---
+
+## 시작하기
+
+### 요구사항
+
+- Node.js 24.x
+- PostgreSQL
+- Yarn
+
+### 설치
+
+```bash
+# 의존성 설치
+yarn install
+
+# 환경 변수 설정
+cp .env.example .env
+# .env 파일에서 DATABASE_URL 설정
+
+# 데이터베이스 설정
+yarn prisma migrate dev
+yarn prisma generate
+```
+
+### 실행
+
+```bash
+# 개발 서버 실행
+yarn dev
+
+# 프로덕션 빌드 및 실행
+yarn build
+yarn start
+```
+
+브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 확인하세요.
+
+---
+
+## 환경 변수
+
+`.env` 파일에 다음 환경 변수를 설정하세요:
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/moneger?schema=public"
+```
+
+---
+
+## 테스트
+
+```bash
+# 테스트 실행
+npm test
+
+# 테스트 커버리지 확인
+npm run test:coverage
+```
+
+---
+
+## 기술 스택
+
+| 분류 | 기술 |
+|------|------|
+| Frontend | Next.js 16, React 19, TypeScript |
+| Styling | Tailwind CSS 4 |
+| State | Zustand |
+| Database | PostgreSQL, Prisma 7 |
+| Charts | Recharts |
 
 ---
 
