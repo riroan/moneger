@@ -11,6 +11,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
+import Svg, { Path, G } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_PADDING = 20;
@@ -123,7 +124,83 @@ const MOCK_SAVINGS_GOAL = {
   progressPercent: 42,
 };
 
+// Mock category expense data
+const MOCK_CATEGORY_EXPENSES = [
+  { id: '1', name: '식비', icon: '🍔', color: '#ff6b6b', amount: 450000, count: 12, budget: 500000 },
+  { id: '2', name: '교통', icon: '🚌', color: '#60a5fa', amount: 120000, count: 8, budget: 150000 },
+  { id: '3', name: '생활용품', icon: '🛒', color: '#a78bfa', amount: 230000, count: 5, budget: 200000 },
+  { id: '4', name: '문화/여가', icon: '🎬', color: '#fbbf24', amount: 180000, count: 3, budget: 300000 },
+  { id: '5', name: '의료/건강', icon: '💊', color: '#34d399', amount: 85000, count: 2, budget: 100000 },
+];
+
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+// Donut Chart Component
+interface DonutChartProps {
+  data: { color: string; amount: number }[];
+  size: number;
+  strokeWidth: number;
+  centerText: string;
+  centerSubtext: string;
+  textColor: string;
+  mutedColor: string;
+}
+
+function DonutChart({ data, size, strokeWidth, centerText, centerSubtext, textColor, mutedColor }: DonutChartProps) {
+  const total = data.reduce((sum, item) => sum + item.amount, 0);
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const center = size / 2;
+
+  let currentAngle = -90; // Start from top
+
+  const paths = data.map((item, index) => {
+    const percentage = total > 0 ? item.amount / total : 0;
+    const angle = percentage * 360;
+    const startAngle = currentAngle;
+    const endAngle = currentAngle + angle;
+    currentAngle = endAngle;
+
+    // Convert angles to radians
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+
+    // Calculate arc path
+    const x1 = center + radius * Math.cos(startRad);
+    const y1 = center + radius * Math.sin(startRad);
+    const x2 = center + radius * Math.cos(endRad);
+    const y2 = center + radius * Math.sin(endRad);
+
+    const largeArcFlag = angle > 180 ? 1 : 0;
+
+    const d = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
+
+    return (
+      <Path
+        key={index}
+        d={d}
+        stroke={item.color}
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeLinecap="round"
+      />
+    );
+  });
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size}>
+        <G>
+          {paths}
+        </G>
+      </Svg>
+      <View style={{ position: 'absolute', alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>{centerText}</Text>
+        <Text style={{ fontSize: 11, color: mutedColor, marginTop: 2 }}>{centerSubtext}</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const { userId, userName } = useAuthStore();
@@ -614,6 +691,82 @@ export default function HomeScreen() {
       height: 1,
       backgroundColor: colors.border,
     },
+    // Category expense styles
+    categoryCard: {
+      backgroundColor: colors.bgCard,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chartContainer: {
+      alignItems: 'center',
+      marginBottom: 16,
+      paddingVertical: 8,
+    },
+    categoryItem: {
+      backgroundColor: colors.bgSecondary,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+    },
+    categoryItemLast: {
+      marginBottom: 0,
+    },
+    categoryItemHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    categoryIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    categoryIconText: {
+      fontSize: 18,
+    },
+    categoryInfo: {
+      flex: 1,
+    },
+    categoryName: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textPrimary,
+    },
+    categoryCount: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    categoryAmountContainer: {
+      alignItems: 'flex-end',
+    },
+    categoryAmount: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    categoryBudget: {
+      fontSize: 11,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    categoryProgressContainer: {
+      marginTop: 8,
+    },
+    categoryProgressBar: {
+      height: 6,
+      backgroundColor: colors.bgCard,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    categoryProgressFill: {
+      height: '100%',
+      borderRadius: 3,
+    },
   });
 
   if (isLoading) {
@@ -899,6 +1052,105 @@ export default function HomeScreen() {
                   )}
                 </View>
               ))
+            )}
+          </View>
+        </View>
+
+        {/* Category Expenses */}
+        <View style={styles.section}>
+          <View style={styles.categoryCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <MaterialIcons name="pie-chart" size={20} color={colors.accentMint} />
+                <Text style={styles.sectionTitle}>카테고리별 지출</Text>
+              </View>
+              <TouchableOpacity>
+                <Text style={styles.sectionViewAll}>전체보기 →</Text>
+              </TouchableOpacity>
+            </View>
+            {MOCK_CATEGORY_EXPENSES.length === 0 ? (
+              <View style={styles.emptyState}>
+                <MaterialIcons name="pie-chart-outline" size={40} color={colors.textMuted} />
+                <Text style={styles.emptyText}>이번 달 지출 내역이 없습니다</Text>
+              </View>
+            ) : (
+              <>
+                {/* Donut Chart */}
+                <View style={styles.chartContainer}>
+                  <DonutChart
+                    data={MOCK_CATEGORY_EXPENSES.map(cat => ({ color: cat.color, amount: cat.amount }))}
+                    size={160}
+                    strokeWidth={20}
+                    centerText={`₩${formatNumber(MOCK_CATEGORY_EXPENSES.reduce((sum, cat) => sum + cat.amount, 0))}`}
+                    centerSubtext="총 지출"
+                    textColor={colors.textPrimary}
+                    mutedColor={colors.textMuted}
+                  />
+                </View>
+
+                {/* Category List */}
+                {MOCK_CATEGORY_EXPENSES.map((cat, index) => {
+                const usagePercent = cat.budget ? Math.round((cat.amount / cat.budget) * 100) : 0;
+                const progressColor = usagePercent >= 90
+                  ? colors.accentCoral
+                  : usagePercent >= 66
+                  ? colors.accentYellow
+                  : colors.accentMint;
+
+                return (
+                  <View
+                    key={cat.id}
+                    style={[
+                      styles.categoryItem,
+                      index === MOCK_CATEGORY_EXPENSES.length - 1 && styles.categoryItemLast,
+                    ]}
+                  >
+                    <View style={styles.categoryItemHeader}>
+                      <View
+                        style={[
+                          styles.categoryIconContainer,
+                          { backgroundColor: `${cat.color}20` },
+                        ]}
+                      >
+                        <Text style={styles.categoryIconText}>{cat.icon}</Text>
+                      </View>
+                      <View style={styles.categoryInfo}>
+                        <Text style={styles.categoryName}>{cat.name}</Text>
+                        <Text style={styles.categoryCount}>{cat.count}건</Text>
+                      </View>
+                      <View style={styles.categoryAmountContainer}>
+                        <Text style={styles.categoryAmount}>
+                          ₩{formatNumber(cat.amount)}
+                        </Text>
+                        {cat.budget && (
+                          <Text style={styles.categoryBudget}>
+                            / ₩{formatNumber(cat.budget)}{' '}
+                            <Text style={{ color: progressColor, fontWeight: '500' }}>
+                              ({usagePercent}%)
+                            </Text>
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    {cat.budget && (
+                      <View style={styles.categoryProgressContainer}>
+                        <View style={styles.categoryProgressBar}>
+                          <View
+                            style={[
+                              styles.categoryProgressFill,
+                              {
+                                width: `${Math.min(usagePercent, 100)}%`,
+                                backgroundColor: progressColor,
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+              </>
             )}
           </View>
         </View>
