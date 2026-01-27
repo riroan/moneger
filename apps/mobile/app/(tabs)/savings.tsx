@@ -560,7 +560,6 @@ export default function SavingsScreen() {
             )}
           </View>
         </View>
-
       </ScrollView>
     </View>
   );

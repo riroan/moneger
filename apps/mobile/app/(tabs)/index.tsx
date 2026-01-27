@@ -1236,8 +1236,6 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );

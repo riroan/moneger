@@ -995,8 +995,6 @@ export default function TransactionsScreen() {
             ))
           )}
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Filter Modal */}
