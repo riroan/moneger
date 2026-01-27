@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Slot, usePathname, useRouter } from 'expo-router';
-import { View, TouchableOpacity, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { getIconName, type MaterialIconName } from '../../constants/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeStore } from '../../stores/themeStore';
+import { useAuthStore } from '../../stores/authStore';
 import { Colors } from '../../constants/Colors';
+import { transactionApi, categoryApi, Category } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
+import { useRefreshStore } from '../../stores/refreshStore';
 
 const tabs: { name: string; path: string; title: string; icon: MaterialIconName }[] = [
   { name: 'index', path: '/(tabs)', title: '홈', icon: 'home' },
@@ -16,26 +20,29 @@ const tabs: { name: string; path: string; title: string; icon: MaterialIconName 
   { name: 'settings', path: '/(tabs)/settings', title: '설정', icon: 'settings' },
 ];
 
-// Mock categories for testing
-const MOCK_CATEGORIES = {
+// Fallback mock categories (used when API fails or user is not logged in)
+const FALLBACK_CATEGORIES = {
   EXPENSE: [
-    { id: '1', name: '식비', icon: 'restaurant', color: '#ff6b6b' },
-    { id: '2', name: '교통', icon: 'car', color: '#60a5fa' },
-    { id: '3', name: '생활용품', icon: 'cart', color: '#a78bfa' },
-    { id: '4', name: '의료/건강', icon: 'hospital', color: '#34d399' },
-    { id: '5', name: '문화/여가', icon: 'movie', color: '#fbbf24' },
-    { id: '6', name: '기타', icon: 'box', color: '#9ca3af' },
+    { id: '1', name: '식비', icon: 'restaurant', color: '#ff6b6b', type: 'EXPENSE' as const },
+    { id: '2', name: '교통', icon: 'car', color: '#60a5fa', type: 'EXPENSE' as const },
+    { id: '3', name: '생활용품', icon: 'cart', color: '#a78bfa', type: 'EXPENSE' as const },
+    { id: '4', name: '의료/건강', icon: 'hospital', color: '#34d399', type: 'EXPENSE' as const },
+    { id: '5', name: '문화/여가', icon: 'movie', color: '#fbbf24', type: 'EXPENSE' as const },
+    { id: '6', name: '기타', icon: 'box', color: '#9ca3af', type: 'EXPENSE' as const },
   ],
   INCOME: [
-    { id: '7', name: '급여', icon: 'money', color: '#4ade80' },
-    { id: '8', name: '부수입', icon: 'star', color: '#fbbf24' },
-    { id: '9', name: '용돈', icon: 'gift', color: '#f472b6' },
-    { id: '10', name: '기타', icon: 'box', color: '#9ca3af' },
+    { id: '7', name: '급여', icon: 'money', color: '#4ade80', type: 'INCOME' as const },
+    { id: '8', name: '부수입', icon: 'star', color: '#fbbf24', type: 'INCOME' as const },
+    { id: '9', name: '용돈', icon: 'gift', color: '#f472b6', type: 'INCOME' as const },
+    { id: '10', name: '기타', icon: 'box', color: '#9ca3af', type: 'INCOME' as const },
   ],
 };
 
 export default function TabsLayout() {
   const { theme } = useThemeStore();
+  const { userId } = useAuthStore();
+  const { showToast } = useToast();
+  const { triggerRefresh } = useRefreshStore();
   const colors = Colors[theme];
   const pathname = usePathname();
   const router = useRouter();
@@ -48,6 +55,30 @@ export default function TabsLayout() {
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Categories from API
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
+
+  // Fetch categories from API
+  const fetchCategories = useCallback(async () => {
+    if (!userId) return;
+
+    setIsCategoriesLoading(true);
+    const result = await categoryApi.getAll(userId);
+    if (result.success && result.data) {
+      setAllCategories(result.data);
+    }
+    setIsCategoriesLoading(false);
+  }, [userId]);
+
+  // Fetch categories when modal opens
+  useEffect(() => {
+    if (isModalVisible && userId) {
+      fetchCategories();
+    }
+  }, [isModalVisible, userId, fetchCategories]);
 
   const resetForm = () => {
     setTransactionType('EXPENSE');
@@ -67,10 +98,52 @@ export default function TabsLayout() {
     resetForm();
   };
 
-  const handleSubmit = () => {
-    // TODO: Implement actual submission
-    console.log('Submit:', { transactionType, description, amount, selectedCategory });
-    handleCloseModal();
+  const handleSubmit = async () => {
+    if (!userId) {
+      showToast('로그인이 필요합니다.', 'error');
+      return;
+    }
+
+    // Parse amount (remove commas)
+    const numericAmount = parseInt(amount.replace(/,/g, ''), 10);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      showToast('올바른 금액을 입력해주세요.', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // 로컬 시간 기준 날짜 (YYYY-MM-DD 형식)
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const requestData = {
+      userId,
+      amount: numericAmount,
+      type: transactionType,
+      description: description.trim() || undefined,
+      date: today,
+      categoryId: selectedCategory || undefined,
+    };
+
+    console.log('Creating transaction:', requestData);
+
+    const result = await transactionApi.create(requestData);
+
+    console.log('Transaction result:', result);
+
+    setIsSubmitting(false);
+
+    if (result.success) {
+      console.log('Transaction created successfully, triggering refresh');
+      handleCloseModal();
+      showToast('내역이 추가되었습니다.', 'success');
+      triggerRefresh();
+      console.log('triggerRefresh called');
+    } else {
+      console.error('Transaction error:', result.error);
+      showToast(result.error || '내역 추가에 실패했습니다.', 'error');
+    }
   };
 
   const formatAmount = (value: string) => {
@@ -86,7 +159,12 @@ export default function TabsLayout() {
     setAmount(formatted);
   };
 
-  const categories = transactionType === 'EXPENSE' ? MOCK_CATEGORIES.EXPENSE : MOCK_CATEGORIES.INCOME;
+  // Use API categories if available, otherwise fallback to mock
+  const expenseCategories = allCategories.filter(c => c.type === 'EXPENSE');
+  const incomeCategories = allCategories.filter(c => c.type === 'INCOME');
+  const categories = transactionType === 'EXPENSE'
+    ? (expenseCategories.length > 0 ? expenseCategories : FALLBACK_CATEGORIES.EXPENSE)
+    : (incomeCategories.length > 0 ? incomeCategories : FALLBACK_CATEGORIES.INCOME);
 
   const styles = StyleSheet.create({
     container: {
@@ -503,8 +581,16 @@ export default function TabsLayout() {
                       <TouchableOpacity
                         style={styles.categoryDropdownTrigger}
                         onPress={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                        disabled={isCategoriesLoading}
                       >
-                        {selectedCategory ? (
+                        {isCategoriesLoading ? (
+                          <View style={styles.categoryDropdownSelected}>
+                            <ActivityIndicator size="small" color={colors.textMuted} />
+                            <Text style={[styles.categoryDropdownTriggerText, { marginLeft: 8 }]}>
+                              로딩 중...
+                            </Text>
+                          </View>
+                        ) : selectedCategory ? (
                           <View style={styles.categoryDropdownSelected}>
                             <MaterialIcons
                               name={getIconName(categories.find(c => c.id === selectedCategory)?.icon)}
@@ -526,7 +612,7 @@ export default function TabsLayout() {
                           color={colors.textMuted}
                         />
                       </TouchableOpacity>
-                      {isCategoryDropdownOpen && (
+                      {isCategoryDropdownOpen && !isCategoriesLoading && (
                         <ScrollView style={styles.categoryDropdownList} nestedScrollEnabled>
                           {categories.map((cat, index) => (
                             <TouchableOpacity
@@ -559,16 +645,20 @@ export default function TabsLayout() {
 
                   {/* Action Buttons */}
                   <View style={styles.actionButtons}>
-                    <TouchableOpacity style={styles.cancelButton} onPress={handleCloseModal}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={handleCloseModal}
+                      disabled={isSubmitting}
+                    >
                       <Text style={styles.cancelButtonText}>취소</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
                         styles.submitButton,
-                        !isFormValid && styles.submitButtonDisabled,
+                        (!isFormValid || isSubmitting) && styles.submitButtonDisabled,
                       ]}
                       onPress={handleSubmit}
-                      disabled={!isFormValid}
+                      disabled={!isFormValid || isSubmitting}
                     >
                       <LinearGradient
                         colors={transactionType === 'EXPENSE'
@@ -578,7 +668,11 @@ export default function TabsLayout() {
                         end={{ x: 1, y: 1 }}
                         style={styles.submitButtonGradient}
                       >
-                        <Text style={styles.submitButtonText}>추가</Text>
+                        {isSubmitting ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={styles.submitButtonText}>추가</Text>
+                        )}
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>

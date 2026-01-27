@@ -34,6 +34,7 @@ import {
   TransactionWithCategory,
   CategorySummary,
 } from '../../lib/api';
+import { useRefreshStore } from '../../stores/refreshStore';
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -228,6 +229,7 @@ function DonutChart({
 export default function HomeScreen() {
   const { userId, userName } = useAuthStore();
   const { theme } = useThemeStore();
+  const { lastTransactionUpdate } = useRefreshStore();
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -250,6 +252,7 @@ export default function HomeScreen() {
   const month = now.getMonth() + 1;
 
   const fetchData = useCallback(async () => {
+    console.log('fetchData called, userId:', userId);
     if (!userId) {
       setIsLoading(false);
       return;
@@ -264,6 +267,9 @@ export default function HomeScreen() {
         // Get last month stats for comparison
         statsApi.get(userId, month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1),
       ]);
+
+      console.log('todayRes:', JSON.stringify(todayRes, null, 2));
+      console.log('recentRes:', JSON.stringify(recentRes, null, 2));
 
       if (summaryRes.success && summaryRes.data) {
         setSummary(summaryRes.data);
@@ -291,6 +297,14 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Refresh when transaction is added
+  useEffect(() => {
+    if (lastTransactionUpdate > 0) {
+      console.log('Refresh triggered, lastTransactionUpdate:', lastTransactionUpdate);
+      fetchData();
+    }
+  }, [lastTransactionUpdate, fetchData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
