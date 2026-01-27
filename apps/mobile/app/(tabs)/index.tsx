@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_PADDING = 20; // 좌우 패딩
-const CARD_GAP = 12; // 카드 사이 간격
-const CARD_WIDTH = SCREEN_WIDTH - CARD_PADDING * 2; // 카드 실제 너비
-const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP; // 스냅 간격 (카드 너비 + 간격)
+const CARD_PADDING = 20;
+const CARD_GAP = 12;
+const CARD_WIDTH = SCREEN_WIDTH - CARD_PADDING * 2;
+const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
@@ -101,6 +102,29 @@ const MOCK_SUMMARY_CARDS = {
   netBalance: { amount: -6605123, lastMonthDiff: -6605123 },
 };
 
+// Mock today summary data
+const MOCK_TODAY_SUMMARY = {
+  month: new Date().getMonth() + 1,
+  day: new Date().getDate(),
+  dayOfWeek: new Date().getDay(),
+  income: { total: 200000, count: 1 },
+  expense: { total: 154000, count: 3 },
+  savings: { total: 100000, count: 1 },
+};
+
+// Mock savings goal data
+const MOCK_SAVINGS_GOAL = {
+  id: '1',
+  name: '해외여행',
+  icon: 'travel',
+  currentAmount: 1250000,
+  targetAmount: 3000000,
+  targetDate: '2026-06-30',
+  progressPercent: 42,
+};
+
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
 export default function HomeScreen() {
   const { userId, userName } = useAuthStore();
   const { theme } = useThemeStore();
@@ -123,7 +147,7 @@ export default function HomeScreen() {
       label: '이번 달 수입',
       amount: MOCK_SUMMARY_CARDS.income.amount,
       badge: `${MOCK_SUMMARY_CARDS.income.count}건의 수입`,
-      icon: 'money-bill-wave', // FaMoneyBillWave
+      icon: 'money-bill-wave',
       iconBg: '#10B981',
       barColor: '#10B981',
       badgeBg: 'rgba(34, 197, 94, 0.2)',
@@ -134,7 +158,7 @@ export default function HomeScreen() {
       label: '이번 달 지출',
       amount: MOCK_SUMMARY_CARDS.expense.amount,
       badge: `${MOCK_SUMMARY_CARDS.expense.count}건의 지출`,
-      icon: 'credit-card', // FaCreditCard
+      icon: 'credit-card',
       iconBg: '#B91C1C',
       barColor: '#EF4444',
       badgeBg: 'rgba(239, 68, 68, 0.2)',
@@ -145,7 +169,7 @@ export default function HomeScreen() {
       label: '저축',
       amount: MOCK_SUMMARY_CARDS.savings.amount,
       badge: `${MOCK_SUMMARY_CARDS.savings.count}건의 저축`,
-      icon: 'chart-line', // FaChartLine
+      icon: 'chart-line',
       iconBg: '#0891B2',
       barColor: '#06B6D4',
       badgeBg: 'rgba(6, 182, 212, 0.2)',
@@ -156,7 +180,7 @@ export default function HomeScreen() {
       label: '잔액',
       amount: MOCK_SUMMARY_CARDS.netBalance.amount,
       badge: `지난달 대비 ${MOCK_SUMMARY_CARDS.netBalance.lastMonthDiff < 0 ? '-' : '+'}₩${Math.abs(MOCK_SUMMARY_CARDS.netBalance.lastMonthDiff).toLocaleString()}`,
-      icon: 'wallet', // FaWallet
+      icon: 'wallet',
       iconBg: '#7C3AED',
       barColor: '#8B5CF6',
       badgeBg: 'rgba(168, 85, 247, 0.2)',
@@ -177,7 +201,6 @@ export default function HomeScreen() {
 
   const fetchData = useCallback(async () => {
     if (USE_MOCK_DATA) {
-      // Use mock data for testing
       setBalance(MOCK_BALANCE.balance);
       setTotalIncome(MOCK_BALANCE.totalIncome);
       setTotalExpense(MOCK_BALANCE.totalExpense);
@@ -226,6 +249,10 @@ export default function HomeScreen() {
     return amount.toLocaleString('ko-KR') + '원';
   };
 
+  const formatNumber = (amount: number) => {
+    return amount.toLocaleString('ko-KR');
+  };
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -245,111 +272,6 @@ export default function HomeScreen() {
       color: colors.textPrimary,
       marginTop: 4,
     },
-    balanceCard: {
-      backgroundColor: colors.bgCard,
-      borderRadius: 20,
-      padding: 24,
-      margin: 20,
-      marginTop: 0,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    balanceLabel: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      marginBottom: 8,
-    },
-    balanceAmount: {
-      fontSize: 32,
-      fontWeight: 'bold',
-      color: colors.textPrimary,
-    },
-    summaryRow: {
-      flexDirection: 'row',
-      marginTop: 20,
-      gap: 12,
-    },
-    summaryItem: {
-      flex: 1,
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 12,
-      padding: 16,
-    },
-    summaryLabel: {
-      fontSize: 12,
-      color: colors.textMuted,
-      marginBottom: 4,
-    },
-    summaryIncome: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.accentMint,
-    },
-    summaryExpense: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.accentCoral,
-    },
-    section: {
-      padding: 20,
-    },
-    sectionTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginBottom: 16,
-    },
-    transactionItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.bgCard,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    transactionIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: colors.bgSecondary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-    transactionInfo: {
-      flex: 1,
-    },
-    transactionDesc: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: colors.textPrimary,
-    },
-    transactionCategory: {
-      fontSize: 13,
-      color: colors.textMuted,
-      marginTop: 2,
-    },
-    transactionAmount: {
-      fontSize: 16,
-      fontWeight: '600',
-    },
-    incomeAmount: {
-      color: colors.accentMint,
-    },
-    expenseAmount: {
-      color: colors.accentCoral,
-    },
-    emptyState: {
-      alignItems: 'center',
-      padding: 40,
-    },
-    emptyText: {
-      fontSize: 14,
-      color: colors.textMuted,
-      marginTop: 12,
-    },
     loadingContainer: {
       flex: 1,
       justifyContent: 'center',
@@ -357,7 +279,7 @@ export default function HomeScreen() {
     },
     // Summary cards carousel styles
     carouselContainer: {
-      marginBottom: 10,
+      marginBottom: 16,
     },
     carouselCard: {
       backgroundColor: colors.bgCard,
@@ -432,6 +354,266 @@ export default function HomeScreen() {
       backgroundColor: colors.accentMint,
       width: 24,
     },
+    // Cards section
+    cardsSection: {
+      paddingHorizontal: 20,
+      gap: 12,
+      marginBottom: 16,
+    },
+    // Today summary card
+    todayCard: {
+      backgroundColor: colors.bgCard,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    todayHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 12,
+    },
+    todayTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    todayRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+    },
+    todayRowLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    todayLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    todayAmount: {
+      fontSize: 16,
+      fontWeight: 'bold',
+    },
+    todayCount: {
+      fontSize: 11,
+      color: colors.textMuted,
+      marginLeft: 6,
+    },
+    todayEmpty: {
+      fontSize: 14,
+      color: colors.textMuted,
+    },
+    // Savings card
+    savingsCard: {
+      backgroundColor: colors.bgCard,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    savingsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    savingsHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    savingsTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    savingsViewAll: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    savingsGoalContainer: {
+      backgroundColor: colors.bgSecondary,
+      borderRadius: 12,
+      padding: 16,
+    },
+    savingsGoalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 12,
+    },
+    savingsGoalIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: 'rgba(251, 191, 36, 0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    },
+    savingsGoalStarBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: '#FBBF24',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    savingsGoalInfo: {
+      flex: 1,
+    },
+    savingsGoalNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    savingsGoalName: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textPrimary,
+    },
+    savingsGoalBadge: {
+      fontSize: 11,
+      color: '#FBBF24',
+      fontWeight: '500',
+    },
+    savingsGoalDate: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    savingsAmountContainer: {
+      alignItems: 'flex-end',
+      marginBottom: 12,
+    },
+    savingsCurrentAmount: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+    },
+    savingsTargetRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    savingsTargetAmount: {
+      fontSize: 12,
+      color: colors.textMuted,
+    },
+    savingsPercent: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.accentMint,
+      marginLeft: 4,
+    },
+    savingsProgressBar: {
+      height: 8,
+      backgroundColor: colors.bgCard,
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    savingsProgressFill: {
+      height: '100%',
+      borderRadius: 4,
+    },
+    savingsEmpty: {
+      backgroundColor: colors.bgSecondary,
+      borderRadius: 12,
+      padding: 20,
+      alignItems: 'center',
+    },
+    savingsEmptyText: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    // Recent transactions
+    section: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    sectionTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    sectionTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    sectionViewAll: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    transactionsCard: {
+      backgroundColor: colors.bgCard,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    transactionItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+    },
+    transactionIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: colors.bgSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    transactionInfo: {
+      flex: 1,
+    },
+    transactionDesc: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textPrimary,
+    },
+    transactionCategory: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    transactionAmount: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    incomeAmount: {
+      color: colors.accentMint,
+    },
+    expenseAmount: {
+      color: colors.accentCoral,
+    },
+    emptyState: {
+      alignItems: 'center',
+      padding: 32,
+    },
+    emptyText: {
+      fontSize: 13,
+      color: colors.textMuted,
+      marginTop: 8,
+    },
+    transactionDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+    },
   });
 
   if (isLoading) {
@@ -443,6 +625,11 @@ export default function HomeScreen() {
       </View>
     );
   }
+
+  const hasIncomeToday = MOCK_TODAY_SUMMARY.income.count > 0;
+  const hasExpenseToday = MOCK_TODAY_SUMMARY.expense.count > 0;
+  const hasSavingsToday = MOCK_TODAY_SUMMARY.savings.count > 0;
+  const hasAnyToday = hasIncomeToday || hasExpenseToday || hasSavingsToday;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -460,11 +647,6 @@ export default function HomeScreen() {
           <Text style={styles.userName}>{USE_MOCK_DATA ? MOCK_USER_NAME : (userName || '사용자')}님</Text>
         </View>
 
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>총 자산</Text>
-          <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
-        </View>
-
         {/* Summary Cards Carousel */}
         <View style={styles.carouselContainer}>
           <ScrollView
@@ -478,7 +660,7 @@ export default function HomeScreen() {
             snapToAlignment="start"
             contentContainerStyle={{ paddingLeft: CARD_PADDING, paddingRight: CARD_PADDING - CARD_GAP }}
           >
-            {summaryCards.map((card, index) => (
+            {summaryCards.map((card) => (
               <View key={card.type} style={styles.carouselCard}>
                 <View style={styles.carouselCardContent}>
                   <View style={[styles.carouselCardIcon, { backgroundColor: card.iconBg }]}>
@@ -515,48 +697,210 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>최근 거래</Text>
-
-          {(!transactions || transactions.length === 0) ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="receipt-outline"
-                size={48}
-                color={colors.textMuted}
-              />
-              <Text style={styles.emptyText}>아직 거래 내역이 없습니다</Text>
+        {/* Today Summary & Savings Cards */}
+        <View style={styles.cardsSection}>
+          {/* Today Summary Card */}
+          <View style={styles.todayCard}>
+            <View style={styles.todayHeader}>
+              <MaterialIcons name="today" size={20} color="#FBBF24" />
+              <Text style={styles.todayTitle}>
+                오늘 ({MOCK_TODAY_SUMMARY.month}월 {MOCK_TODAY_SUMMARY.day}일 {DAY_NAMES[MOCK_TODAY_SUMMARY.dayOfWeek]})
+              </Text>
             </View>
-          ) : (
-            transactions.map((tx) => (
-              <View key={tx.id} style={styles.transactionItem}>
-                <View style={styles.transactionIcon}>
-                  <Text style={{ fontSize: 20 }}>
-                    {tx.categoryIcon || (tx.type === 'INCOME' ? '💰' : '💸')}
-                  </Text>
+
+            {hasAnyToday ? (
+              <>
+                {/* Income */}
+                <View style={styles.todayRow}>
+                  <View style={styles.todayRowLeft}>
+                    <FontAwesome5 name="money-bill-wave" size={14} color={colors.accentMint} />
+                    <Text style={styles.todayLabel}>수입</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {hasIncomeToday ? (
+                      <>
+                        <Text style={[styles.todayAmount, { color: colors.accentMint }]}>
+                          ₩{formatNumber(MOCK_TODAY_SUMMARY.income.total)}
+                        </Text>
+                        <Text style={styles.todayCount}>({MOCK_TODAY_SUMMARY.income.count}건)</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.todayEmpty}>-</Text>
+                    )}
+                  </View>
                 </View>
-                <View style={styles.transactionInfo}>
-                  <Text style={styles.transactionDesc}>
-                    {tx.description || (tx.type === 'INCOME' ? '수입' : '지출')}
-                  </Text>
-                  <Text style={styles.transactionCategory}>
-                    {tx.categoryName || '미분류'}
-                  </Text>
+
+                {/* Expense */}
+                <View style={styles.todayRow}>
+                  <View style={styles.todayRowLeft}>
+                    <FontAwesome5 name="credit-card" size={14} color={colors.accentCoral} />
+                    <Text style={styles.todayLabel}>지출</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {hasExpenseToday ? (
+                      <>
+                        <Text style={[styles.todayAmount, { color: colors.accentCoral }]}>
+                          ₩{formatNumber(MOCK_TODAY_SUMMARY.expense.total)}
+                        </Text>
+                        <Text style={styles.todayCount}>({MOCK_TODAY_SUMMARY.expense.count}건)</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.todayEmpty}>-</Text>
+                    )}
+                  </View>
                 </View>
-                <Text
-                  style={[
-                    styles.transactionAmount,
-                    tx.type === 'INCOME'
-                      ? styles.incomeAmount
-                      : styles.expenseAmount,
-                  ]}
-                >
-                  {tx.type === 'INCOME' ? '+' : '-'}
-                  {formatCurrency(tx.amount)}
-                </Text>
+
+                {/* Savings */}
+                <View style={styles.todayRow}>
+                  <View style={styles.todayRowLeft}>
+                    <MaterialIcons name="savings" size={16} color="#3B82F6" />
+                    <Text style={styles.todayLabel}>저축</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {hasSavingsToday ? (
+                      <>
+                        <Text style={[styles.todayAmount, { color: '#3B82F6' }]}>
+                          ₩{formatNumber(MOCK_TODAY_SUMMARY.savings.total)}
+                        </Text>
+                        <Text style={styles.todayCount}>({MOCK_TODAY_SUMMARY.savings.count}건)</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.todayEmpty}>-</Text>
+                    )}
+                  </View>
+                </View>
+              </>
+            ) : (
+              <Text style={[styles.todayEmpty, { textAlign: 'center', paddingVertical: 8 }]}>
+                오늘 거래 내역이 없습니다
+              </Text>
+            )}
+          </View>
+
+          {/* Savings Card */}
+          <View style={styles.savingsCard}>
+            <View style={styles.savingsHeader}>
+              <View style={styles.savingsHeaderLeft}>
+                <FontAwesome5 name="chart-line" size={18} color="#06B6D4" />
+                <Text style={styles.savingsTitle}>저축</Text>
               </View>
-            ))
-          )}
+              <TouchableOpacity>
+                <Text style={styles.savingsViewAll}>전체보기 →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {MOCK_SAVINGS_GOAL ? (
+              <View style={styles.savingsGoalContainer}>
+                {/* Goal header */}
+                <View style={styles.savingsGoalHeader}>
+                  <View style={styles.savingsGoalIconContainer}>
+                    <MaterialIcons name="flight" size={20} color="#FBBF24" />
+                    <View style={styles.savingsGoalStarBadge}>
+                      <FontAwesome5 name="star" size={8} color="#fff" />
+                    </View>
+                  </View>
+                  <View style={styles.savingsGoalInfo}>
+                    <View style={styles.savingsGoalNameRow}>
+                      <Text style={styles.savingsGoalName}>{MOCK_SAVINGS_GOAL.name}</Text>
+                      <Text style={styles.savingsGoalBadge}>대표</Text>
+                    </View>
+                    <Text style={styles.savingsGoalDate}>{MOCK_SAVINGS_GOAL.targetDate}</Text>
+                  </View>
+                </View>
+
+                {/* Amount */}
+                <View style={styles.savingsAmountContainer}>
+                  <Text style={styles.savingsCurrentAmount}>
+                    ₩{formatNumber(MOCK_SAVINGS_GOAL.currentAmount)}
+                  </Text>
+                  <View style={styles.savingsTargetRow}>
+                    <Text style={styles.savingsTargetAmount}>
+                      / ₩{formatNumber(MOCK_SAVINGS_GOAL.targetAmount)}
+                    </Text>
+                    <Text style={styles.savingsPercent}>
+                      ({MOCK_SAVINGS_GOAL.progressPercent}%)
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Progress bar */}
+                <View style={styles.savingsProgressBar}>
+                  <View
+                    style={[
+                      styles.savingsProgressFill,
+                      {
+                        width: `${Math.min(MOCK_SAVINGS_GOAL.progressPercent, 100)}%`,
+                        backgroundColor: colors.accentMint,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.savingsEmpty}>
+                <Text style={styles.savingsEmptyText}>대표 저축 목표를 설정해주세요</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Recent Transactions */}
+        <View style={styles.section}>
+          <View style={styles.transactionsCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <MaterialIcons name="history" size={20} color={colors.accentMint} />
+                <Text style={styles.sectionTitle}>최근 내역</Text>
+              </View>
+              <TouchableOpacity>
+                <Text style={styles.sectionViewAll}>전체보기 →</Text>
+              </TouchableOpacity>
+            </View>
+            {(!transactions || transactions.length === 0) ? (
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="receipt-outline"
+                  size={40}
+                  color={colors.textMuted}
+                />
+                <Text style={styles.emptyText}>거래 내역이 없습니다</Text>
+              </View>
+            ) : (
+              transactions.map((tx, index) => (
+                <View key={tx.id}>
+                  <View style={styles.transactionItem}>
+                    <View style={styles.transactionIcon}>
+                      <Text style={{ fontSize: 18 }}>
+                        {tx.categoryIcon || (tx.type === 'INCOME' ? '💰' : '💸')}
+                      </Text>
+                    </View>
+                    <View style={styles.transactionInfo}>
+                      <Text style={styles.transactionDesc}>
+                        {tx.description || (tx.type === 'INCOME' ? '수입' : '지출')}
+                      </Text>
+                      <Text style={styles.transactionCategory}>
+                        {tx.categoryName || '미분류'}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        styles.transactionAmount,
+                        tx.type === 'INCOME'
+                          ? styles.incomeAmount
+                          : styles.expenseAmount,
+                      ]}
+                    >
+                      {tx.type === 'INCOME' ? '+' : '-'}
+                      {formatCurrency(tx.amount)}
+                    </Text>
+                  </View>
+                  {index < transactions.length - 1 && (
+                    <View style={styles.transactionDivider} />
+                  )}
+                </View>
+              ))
+            )}
+          </View>
         </View>
       </ScrollView>
     </View>
