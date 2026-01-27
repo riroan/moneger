@@ -107,6 +107,8 @@ model SavingsGoal {
   icon          String
   targetAmount  Float
   currentAmount Float     @default(0)
+  startYear     Int?
+  startMonth    Int?
   targetYear    Int
   targetMonth   Int
   isPrimary     Boolean   @default(false)

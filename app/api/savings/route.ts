@@ -65,12 +65,15 @@ export async function GET(request: NextRequest) {
 
     // 진행률 및 월별 필요 금액 계산
     const goalsWithProgress = activeGoals.map((goal) => {
-      // 총 개월 수 계산 (목표 생성일 ~ 목표일)
-      const createdAt = new Date(goal.createdAt);
+      // 총 개월 수 계산 (시작일 ~ 목표일)
+      // startYear/startMonth가 없으면 createdAt 사용 (하위 호환성)
+      const startYear = goal.startYear ?? new Date(goal.createdAt).getFullYear();
+      const startMonth = goal.startMonth ?? (new Date(goal.createdAt).getMonth() + 1);
       const targetDate = new Date(goal.targetYear, goal.targetMonth - 1, 1);
+      const startDate = new Date(startYear, startMonth - 1, 1);
       const totalMonths = Math.max(
         1,
-        (targetDate.getFullYear() - createdAt.getFullYear()) * 12 + (targetDate.getMonth() - createdAt.getMonth())
+        (targetDate.getFullYear() - startDate.getFullYear()) * 12 + (targetDate.getMonth() - startDate.getMonth())
       );
 
       // 월별 목표 저축액
@@ -97,6 +100,8 @@ export async function GET(request: NextRequest) {
         monthlyRequired,
         monthlyTarget,
         thisMonthSavings,
+        startYear,
+        startMonth,
         targetYear: goal.targetYear,
         targetMonth: goal.targetMonth,
         isPrimary: goal.isPrimary,
@@ -114,7 +119,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, name, icon, targetAmount, currentAmount, targetYear, targetMonth } = body;
+    const { userId, name, icon, targetAmount, currentAmount, startYear, startMonth, targetYear, targetMonth } = body;
 
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;
@@ -130,6 +135,8 @@ export async function POST(request: NextRequest) {
         icon,
         targetAmount,
         currentAmount: currentAmount || 0,
+        startYear: startYear || null,
+        startMonth: startMonth || null,
         targetYear,
         targetMonth,
       },

@@ -15,23 +15,42 @@ interface AddSavingsGoalModalProps {
     icon: string;
     targetAmount: number;
     currentAmount: number;
+    startYear: number;
+    startMonth: number;
     targetYear: number;
     targetMonth: number;
   }) => void;
 }
 
 export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavingsGoalModalProps) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('home');
   const [targetAmount, setTargetAmount] = useState('');
   const [currentAmount, setCurrentAmount] = useState('');
-  const [targetYear, setTargetYear] = useState(new Date().getFullYear() + 1);
+  const [startYear, setStartYear] = useState(currentYear);
+  const [startMonth, setStartMonth] = useState(currentMonth);
+  const [targetYear, setTargetYear] = useState(currentYear + 1);
   const [targetMonth, setTargetMonth] = useState(12);
   const [isSaving, setIsSaving] = useState(false);
 
   const [nameError, setNameError] = useState('');
   const [targetAmountError, setTargetAmountError] = useState('');
 
+  // 시작 날짜 드롭다운 상태
+  const [isStartYearOpen, setIsStartYearOpen] = useState(false);
+  const [isStartMonthOpen, setIsStartMonthOpen] = useState(false);
+  const [startYearDropdownPos, setStartYearDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const [startMonthDropdownPos, setStartMonthDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const startYearRef = useRef<HTMLDivElement>(null);
+  const startMonthRef = useRef<HTMLDivElement>(null);
+  const startYearButtonRef = useRef<HTMLButtonElement>(null);
+  const startMonthButtonRef = useRef<HTMLButtonElement>(null);
+
+  // 목표 날짜 드롭다운 상태
   const [isYearOpen, setIsYearOpen] = useState(false);
   const [isMonthOpen, setIsMonthOpen] = useState(false);
   const [yearDropdownPos, setYearDropdownPos] = useState({ top: 0, left: 0, width: 0 });
@@ -41,13 +60,24 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
   const yearButtonRef = useRef<HTMLButtonElement>(null);
   const monthButtonRef = useRef<HTMLButtonElement>(null);
 
-  const currentYear = new Date().getFullYear();
+  // 시작 날짜: 30년 전 ~ 이번 달
+  const startYears = Array.from({ length: 31 }, (_, i) => currentYear - 30 + i);
+  // 목표 날짜: 올해 ~ YEARS_RANGE년 후
   const years = Array.from({ length: SAVINGS_GOAL.YEARS_RANGE }, (_, i) => currentYear + i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
+  // 시작 월 필터: 시작 연도가 현재 연도면 현재 월까지만
+  const filteredStartMonths = startYear === currentYear
+    ? months.filter((m) => m <= currentMonth)
+    : months;
+
+  const closeStartYearDropdown = useCallback(() => setIsStartYearOpen(false), []);
+  const closeStartMonthDropdown = useCallback(() => setIsStartMonthOpen(false), []);
   const closeYearDropdown = useCallback(() => setIsYearOpen(false), []);
   const closeMonthDropdown = useCallback(() => setIsMonthOpen(false), []);
 
+  useOutsideClickWithRef(startYearRef, closeStartYearDropdown);
+  useOutsideClickWithRef(startMonthRef, closeStartMonthDropdown);
   useOutsideClickWithRef(yearRef, closeYearDropdown);
   useOutsideClickWithRef(monthRef, closeMonthDropdown);
 
@@ -78,6 +108,8 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
         icon: selectedIcon,
         targetAmount: targetNum,
         currentAmount: parseInt(currentAmount || '0', 10),
+        startYear,
+        startMonth,
         targetYear,
         targetMonth,
       });
@@ -93,10 +125,14 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
     setSelectedIcon('home');
     setTargetAmount('');
     setCurrentAmount('');
+    setStartYear(currentYear);
+    setStartMonth(currentMonth);
     setTargetYear(currentYear + 1);
     setTargetMonth(12);
     setNameError('');
     setTargetAmountError('');
+    setIsStartYearOpen(false);
+    setIsStartMonthOpen(false);
     setIsYearOpen(false);
     setIsMonthOpen(false);
   };
@@ -205,6 +241,128 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
           />
         </div>
 
+        {/* 시작 날짜 */}
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
+            시작 날짜
+          </label>
+          <div className="flex gap-3">
+            {/* 시작 연도 선택 */}
+            <div ref={startYearRef} className="flex-1 relative">
+              <button
+                ref={startYearButtonRef}
+                type="button"
+                onClick={() => {
+                  if (!isStartYearOpen && startYearButtonRef.current) {
+                    const rect = startYearButtonRef.current.getBoundingClientRect();
+                    setStartYearDropdownPos({
+                      top: rect.bottom + 8,
+                      left: rect.left,
+                      width: rect.width,
+                    });
+                  }
+                  setIsStartYearOpen(!isStartYearOpen);
+                  setIsStartMonthOpen(false);
+                  setIsYearOpen(false);
+                  setIsMonthOpen(false);
+                }}
+                className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer flex items-center justify-between py-3.5 px-4"
+              >
+                <span>{startYear}</span>
+                <span className="text-text-muted flex items-center">
+                  년
+                  <MdKeyboardArrowDown className={`text-lg transition-transform ml-1 ${isStartYearOpen ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+              {isStartYearOpen && (
+                <div
+                  className="fixed bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-[300] shadow-[0_8px_24px_rgba(0,0,0,0.3)] max-h-[200px]"
+                  style={{
+                    top: startYearDropdownPos.top,
+                    left: startYearDropdownPos.left,
+                    width: startYearDropdownPos.width,
+                  }}
+                >
+                  {startYears.map((year) => (
+                    <button
+                      key={year}
+                      type="button"
+                      onClick={() => {
+                        setStartYear(year);
+                        // 현재 연도 선택 시 현재 월 이후면 현재 월로 조정
+                        if (year === currentYear && startMonth > currentMonth) {
+                          setStartMonth(currentMonth);
+                        }
+                        setIsStartYearOpen(false);
+                      }}
+                      className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer py-3 px-4 ${
+                        startYear === year ? 'bg-bg-card-hover text-accent-mint' : 'text-text-primary'
+                      }`}
+                    >
+                      {year}년
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 시작 월 선택 */}
+            <div ref={startMonthRef} className="flex-1 relative">
+              <button
+                ref={startMonthButtonRef}
+                type="button"
+                onClick={() => {
+                  if (!isStartMonthOpen && startMonthButtonRef.current) {
+                    const rect = startMonthButtonRef.current.getBoundingClientRect();
+                    setStartMonthDropdownPos({
+                      top: rect.bottom + 8,
+                      left: rect.left,
+                      width: rect.width,
+                    });
+                  }
+                  setIsStartMonthOpen(!isStartMonthOpen);
+                  setIsStartYearOpen(false);
+                  setIsYearOpen(false);
+                  setIsMonthOpen(false);
+                }}
+                className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer flex items-center justify-between py-3.5 px-4"
+              >
+                <span>{startMonth}</span>
+                <span className="text-text-muted flex items-center">
+                  월
+                  <MdKeyboardArrowDown className={`text-lg transition-transform ml-1 ${isStartMonthOpen ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+              {isStartMonthOpen && (
+                <div
+                  className="fixed bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-[300] shadow-[0_8px_24px_rgba(0,0,0,0.3)] max-h-[200px]"
+                  style={{
+                    top: startMonthDropdownPos.top,
+                    left: startMonthDropdownPos.left,
+                    width: startMonthDropdownPos.width,
+                  }}
+                >
+                  {filteredStartMonths.map((month) => (
+                    <button
+                      key={month}
+                      type="button"
+                      onClick={() => {
+                        setStartMonth(month);
+                        setIsStartMonthOpen(false);
+                      }}
+                      className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer py-3 px-4 ${
+                        startMonth === month ? 'bg-bg-card-hover text-accent-mint' : 'text-text-primary'
+                      }`}
+                    >
+                      {month}월
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* 목표 날짜 */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-text-secondary mb-2">
@@ -227,6 +385,8 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
                   }
                   setIsYearOpen(!isYearOpen);
                   setIsMonthOpen(false);
+                  setIsStartYearOpen(false);
+                  setIsStartMonthOpen(false);
                 }}
                 className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer flex items-center justify-between py-3.5 px-4"
               >
@@ -280,6 +440,8 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
                   }
                   setIsMonthOpen(!isMonthOpen);
                   setIsYearOpen(false);
+                  setIsStartYearOpen(false);
+                  setIsStartMonthOpen(false);
                 }}
                 className="w-full bg-bg-secondary border border-[var(--border)] rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors cursor-pointer flex items-center justify-between py-3.5 px-4"
               >

@@ -82,6 +82,8 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
     icon: string;
     targetAmount: number;
     currentAmount: number;
+    startYear: number;
+    startMonth: number;
     targetYear: number;
     targetMonth: number;
   }) => {
