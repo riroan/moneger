@@ -20,145 +20,70 @@ const CARD_WIDTH = SCREEN_WIDTH - CARD_PADDING * 2;
 const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
-import { balanceApi, transactionApi, Transaction } from '../../lib/api';
-
-// Mock data for testing
-const USE_MOCK_DATA = true;
-
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: '1',
-    amount: 50000,
-    type: 'EXPENSE',
-    description: '점심 식사',
-    date: new Date().toISOString(),
-    categoryId: 'cat1',
-    categoryName: '식비',
-    categoryIcon: '🍔',
-    categoryColor: '#ff6b6b',
-  },
-  {
-    id: '2',
-    amount: 3500000,
-    type: 'INCOME',
-    description: '월급',
-    date: new Date().toISOString(),
-    categoryId: 'cat2',
-    categoryName: '급여',
-    categoryIcon: '💰',
-    categoryColor: '#4ade80',
-  },
-  {
-    id: '3',
-    amount: 15000,
-    type: 'EXPENSE',
-    description: '교통비',
-    date: new Date().toISOString(),
-    categoryId: 'cat3',
-    categoryName: '교통',
-    categoryIcon: '🚌',
-    categoryColor: '#60a5fa',
-  },
-  {
-    id: '4',
-    amount: 89000,
-    type: 'EXPENSE',
-    description: '마트 장보기',
-    date: new Date().toISOString(),
-    categoryId: 'cat4',
-    categoryName: '생활용품',
-    categoryIcon: '🛒',
-    categoryColor: '#a78bfa',
-  },
-  {
-    id: '5',
-    amount: 200000,
-    type: 'INCOME',
-    description: '부수입',
-    date: new Date().toISOString(),
-    categoryId: 'cat5',
-    categoryName: '기타수입',
-    categoryIcon: '✨',
-    categoryColor: '#fbbf24',
-  },
-];
-
-const MOCK_BALANCE = {
-  balance: 12500000,
-  totalIncome: 3700000,
-  totalExpense: 1200000,
-};
-
-const MOCK_USER_NAME = '테스트';
-
-// Mock summary cards data
-const MOCK_SUMMARY_CARDS = {
-  income: { amount: 15050000, count: 3 },
-  expense: { amount: 19595123, count: 14 },
-  savings: { amount: 2060000, count: 5 },
-  netBalance: { amount: -6605123, lastMonthDiff: -6605123 },
-};
-
-// Mock today summary data
-const MOCK_TODAY_SUMMARY = {
-  month: new Date().getMonth() + 1,
-  day: new Date().getDate(),
-  dayOfWeek: new Date().getDay(),
-  income: { total: 200000, count: 1 },
-  expense: { total: 154000, count: 3 },
-  savings: { total: 100000, count: 1 },
-};
-
-// Mock savings goal data
-const MOCK_SAVINGS_GOAL = {
-  id: '1',
-  name: '해외여행',
-  icon: 'travel',
-  currentAmount: 1250000,
-  targetAmount: 3000000,
-  targetDate: '2026-06-30',
-  progressPercent: 42,
-};
-
-// Mock category expense data
-const MOCK_CATEGORY_EXPENSES = [
-  { id: '1', name: '식비', icon: '🍔', color: '#ff6b6b', amount: 450000, count: 12, budget: 500000 },
-  { id: '2', name: '교통', icon: '🚌', color: '#60a5fa', amount: 120000, count: 8, budget: 150000 },
-  { id: '3', name: '생활용품', icon: '🛒', color: '#a78bfa', amount: 230000, count: 5, budget: 200000 },
-  { id: '4', name: '문화/여가', icon: '🎬', color: '#fbbf24', amount: 180000, count: 3, budget: 300000 },
-  { id: '5', name: '의료/건강', icon: '💊', color: '#34d399', amount: 85000, count: 2, budget: 100000 },
-];
+import { getIconName, UI_ICONS, MaterialIconName } from '../../constants/Icons';
+import {
+  transactionApi,
+  statsApi,
+  TransactionSummary,
+  TodaySummary,
+  TransactionWithCategory,
+  CategorySummary,
+} from '../../lib/api';
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
 // Donut Chart Component
 interface DonutChartProps {
-  data: { color: string; amount: number }[];
+  data: { color: string; amount: number; name: string }[];
   size: number;
   strokeWidth: number;
-  centerText: string;
-  centerSubtext: string;
+  totalAmount: number;
   textColor: string;
   mutedColor: string;
+  selectedIndex: number | null;
+  onSegmentPress: (index: number | null) => void;
+  formatNumber: (amount: number) => string;
 }
 
-function DonutChart({ data, size, strokeWidth, centerText, centerSubtext, textColor, mutedColor }: DonutChartProps) {
+function DonutChart({
+  data,
+  size,
+  strokeWidth,
+  totalAmount,
+  textColor,
+  mutedColor,
+  selectedIndex,
+  onSegmentPress,
+  formatNumber,
+}: DonutChartProps) {
   const total = data.reduce((sum, item) => sum + item.amount, 0);
   const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
   const center = size / 2;
 
-  let currentAngle = -90; // Start from top
+  // Calculate segment angles and midpoints for touch detection
+  const segments: { startAngle: number; endAngle: number; midX: number; midY: number }[] = [];
+  let currentAngle = -90;
 
   const paths = data.map((item, index) => {
     const percentage = total > 0 ? item.amount / total : 0;
     const angle = percentage * 360;
     const startAngle = currentAngle;
     const endAngle = currentAngle + angle;
+    const midAngle = (startAngle + endAngle) / 2;
+
+    // Store segment info
+    segments.push({
+      startAngle,
+      endAngle,
+      midX: center + radius * Math.cos((midAngle * Math.PI) / 180),
+      midY: center + radius * Math.sin((midAngle * Math.PI) / 180),
+    });
+
     currentAngle = endAngle;
 
     // Convert angles to radians
@@ -172,33 +97,131 @@ function DonutChart({ data, size, strokeWidth, centerText, centerSubtext, textCo
     const y2 = center + radius * Math.sin(endRad);
 
     const largeArcFlag = angle > 180 ? 1 : 0;
-
     const d = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
+
+    // Determine opacity based on selection
+    const isSelected = selectedIndex === index;
+    const opacity = selectedIndex === null ? 1 : isSelected ? 1 : 0.3;
 
     return (
       <Path
         key={index}
         d={d}
         stroke={item.color}
-        strokeWidth={strokeWidth}
+        strokeWidth={isSelected ? strokeWidth + 4 : strokeWidth}
         fill="none"
-        strokeLinecap="round"
+        strokeLinecap="butt"
+        opacity={opacity}
       />
     );
   });
 
+  // Handle touch on chart
+  const handleChartPress = (evt: { nativeEvent: { locationX: number; locationY: number } }) => {
+    const { locationX, locationY } = evt.nativeEvent;
+
+    // Calculate distance from center
+    const dx = locationX - center;
+    const dy = locationY - center;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check if touch is within the donut ring
+    const innerRadius = radius - strokeWidth / 2 - 10;
+    const outerRadius = radius + strokeWidth / 2 + 10;
+
+    if (distance < innerRadius) {
+      // Touched center - deselect
+      onSegmentPress(null);
+      return;
+    }
+
+    if (distance > outerRadius) {
+      // Touched outside - deselect
+      onSegmentPress(null);
+      return;
+    }
+
+    // Calculate angle of touch point
+    let touchAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    // Find which segment was touched
+    for (let i = 0; i < segments.length; i++) {
+      let { startAngle, endAngle } = segments[i];
+
+      // Normalize angles for comparison
+      const normalizedTouchAngle = touchAngle;
+      let normalizedStart = startAngle;
+      let normalizedEnd = endAngle;
+
+      // Handle angle wrapping
+      if (normalizedStart <= normalizedTouchAngle && normalizedTouchAngle <= normalizedEnd) {
+        onSegmentPress(selectedIndex === i ? null : i);
+        return;
+      }
+
+      // Handle case where segment crosses -180/180 boundary
+      if (normalizedEnd > 180) {
+        if (normalizedTouchAngle >= normalizedStart || normalizedTouchAngle <= normalizedEnd - 360) {
+          onSegmentPress(selectedIndex === i ? null : i);
+          return;
+        }
+      }
+      if (normalizedStart < -180) {
+        if (normalizedTouchAngle <= normalizedEnd || normalizedTouchAngle >= normalizedStart + 360) {
+          onSegmentPress(selectedIndex === i ? null : i);
+          return;
+        }
+      }
+    }
+  };
+
+  // Inner circle diameter for text container
+  const innerDiameter = size - strokeWidth * 2 - 16;
+
+  // Center text based on selection
+  const centerText = selectedIndex !== null && data[selectedIndex]
+    ? `₩${formatNumber(data[selectedIndex].amount)}`
+    : `₩${formatNumber(totalAmount)}`;
+  const centerSubtext = selectedIndex !== null && data[selectedIndex]
+    ? data[selectedIndex].name
+    : '총 지출';
+
+  // Add padding for selected stroke overflow
+  const padding = 8;
+  const containerSize = size + padding * 2;
+
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size}>
-        <G>
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={(evt) => {
+        // Adjust touch coordinates for padding
+        const adjustedEvt = {
+          nativeEvent: {
+            locationX: evt.nativeEvent.locationX - padding,
+            locationY: evt.nativeEvent.locationY - padding,
+          },
+        };
+        handleChartPress(adjustedEvt);
+      }}
+      style={{ width: containerSize, height: containerSize, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <Svg width={containerSize} height={containerSize} style={{ overflow: 'visible' }}>
+        <G transform={`translate(${padding}, ${padding})`}>
           {paths}
         </G>
       </Svg>
-      <View style={{ position: 'absolute', alignItems: 'center' }}>
-        <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>{centerText}</Text>
+      <View style={{ position: 'absolute', alignItems: 'center', width: innerDiameter, paddingHorizontal: 4 }}>
+        <Text
+          style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
+        >
+          {centerText}
+        </Text>
         <Text style={{ fontSize: 11, color: mutedColor, marginTop: 2 }}>{centerSubtext}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -207,102 +230,55 @@ export default function HomeScreen() {
   const { theme } = useThemeStore();
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
-  const [balance, setBalance] = useState(0);
-  const [totalIncome, setTotalIncome] = useState(0);
-  const [totalExpense, setTotalExpense] = useState(0);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Data states
+  const [summary, setSummary] = useState<TransactionSummary | null>(null);
+  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<TransactionWithCategory[]>([]);
+  const [lastMonthBalance, setLastMonthBalance] = useState<number>(0);
+
+  // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [selectedCategoryIndex, setSelectedCategoryIndex] = useState<number | null>(null);
   const carouselRef = useRef<ScrollView>(null);
-
-  // Summary cards data for carousel (matching web icons)
-  const summaryCards = [
-    {
-      type: 'income',
-      label: '이번 달 수입',
-      amount: MOCK_SUMMARY_CARDS.income.amount,
-      badge: `${MOCK_SUMMARY_CARDS.income.count}건의 수입`,
-      icon: 'money-bill-wave',
-      iconBg: '#10B981',
-      barColor: '#10B981',
-      badgeBg: 'rgba(34, 197, 94, 0.2)',
-      badgeText: '#4ade80',
-    },
-    {
-      type: 'expense',
-      label: '이번 달 지출',
-      amount: MOCK_SUMMARY_CARDS.expense.amount,
-      badge: `${MOCK_SUMMARY_CARDS.expense.count}건의 지출`,
-      icon: 'credit-card',
-      iconBg: '#B91C1C',
-      barColor: '#EF4444',
-      badgeBg: 'rgba(239, 68, 68, 0.2)',
-      badgeText: '#f87171',
-    },
-    {
-      type: 'savings',
-      label: '저축',
-      amount: MOCK_SUMMARY_CARDS.savings.amount,
-      badge: `${MOCK_SUMMARY_CARDS.savings.count}건의 저축`,
-      icon: 'chart-line',
-      iconBg: '#0891B2',
-      barColor: '#06B6D4',
-      badgeBg: 'rgba(6, 182, 212, 0.2)',
-      badgeText: '#22d3ee',
-    },
-    {
-      type: 'balance',
-      label: '잔액',
-      amount: MOCK_SUMMARY_CARDS.netBalance.amount,
-      badge: `지난달 대비 ${MOCK_SUMMARY_CARDS.netBalance.lastMonthDiff < 0 ? '-' : '+'}₩${Math.abs(MOCK_SUMMARY_CARDS.netBalance.lastMonthDiff).toLocaleString()}`,
-      icon: 'wallet',
-      iconBg: '#7C3AED',
-      barColor: '#8B5CF6',
-      badgeBg: 'rgba(168, 85, 247, 0.2)',
-      badgeText: '#c084fc',
-      isNegative: MOCK_SUMMARY_CARDS.netBalance.amount < 0,
-    },
-  ];
-
-  const handleCarouselScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffsetX / SNAP_INTERVAL);
-    setActiveCardIndex(Math.max(0, Math.min(index, summaryCards.length - 1)));
-  };
 
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
   const fetchData = useCallback(async () => {
-    if (USE_MOCK_DATA) {
-      setBalance(MOCK_BALANCE.balance);
-      setTotalIncome(MOCK_BALANCE.totalIncome);
-      setTotalExpense(MOCK_BALANCE.totalExpense);
-      setTransactions(MOCK_TRANSACTIONS.slice(0, 5));
+    if (!userId) {
       setIsLoading(false);
-      setRefreshing(false);
       return;
     }
 
-    if (!userId) return;
-
     try {
-      const [balanceRes, transactionsRes] = await Promise.all([
-        balanceApi.get(userId),
-        transactionApi.getAll(userId, year, month),
+      // Fetch all data in parallel
+      const [summaryRes, todayRes, recentRes, lastMonthRes] = await Promise.all([
+        transactionApi.getSummary(userId, year, month),
+        transactionApi.getToday(userId),
+        transactionApi.getRecent(userId, 5),
+        // Get last month stats for comparison
+        statsApi.get(userId, month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1),
       ]);
 
-      if (balanceRes.success && balanceRes.data) {
-        setBalance(balanceRes.data.balance);
-        setTotalIncome(balanceRes.data.totalIncome);
-        setTotalExpense(balanceRes.data.totalExpense);
+      if (summaryRes.success && summaryRes.data) {
+        setSummary(summaryRes.data);
       }
 
-      if (transactionsRes.success && transactionsRes.data) {
-        setTransactions(transactionsRes.data.slice(0, 5));
+      if (todayRes.success && todayRes.data) {
+        setTodaySummary(todayRes.data);
+      }
+
+      if (recentRes.success && recentRes.data) {
+        setRecentTransactions(recentRes.data);
+      }
+
+      if (lastMonthRes.success && lastMonthRes.data) {
+        setLastMonthBalance(lastMonthRes.data.summary.balance);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -321,14 +297,89 @@ export default function HomeScreen() {
     fetchData();
   }, [fetchData]);
 
-  const formatCurrency = (amount: number | undefined | null) => {
-    if (amount === undefined || amount === null) return '0원';
-    return amount.toLocaleString('ko-KR') + '원';
+  const handleCarouselScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const contentOffsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffsetX / SNAP_INTERVAL);
+    setActiveCardIndex(Math.max(0, Math.min(index, 3)));
   };
 
   const formatNumber = (amount: number) => {
     return amount.toLocaleString('ko-KR');
   };
+
+  const formatCurrency = (amount: number | undefined | null) => {
+    if (amount === undefined || amount === null) return '₩0';
+    return '₩' + amount.toLocaleString('ko-KR');
+  };
+
+  // Computed values from summary
+  const totalIncome = summary?.summary?.totalIncome || 0;
+  const totalExpense = summary?.summary?.totalExpense || 0;
+  const totalSavings = summary?.summary?.totalSavings || 0;
+  const balance = summary?.summary?.balance || 0;
+  const incomeCount = summary?.transactionCount?.income || 0;
+  const expenseCount = summary?.transactionCount?.expense || 0;
+  const savingsCount = summary?.savings?.count || 0;
+  const primaryGoal = summary?.savings?.primaryGoal;
+  const categories = summary?.categories || [];
+
+  // Calculate balance difference from last month
+  const balanceDiff = balance - lastMonthBalance;
+
+  // Summary cards data for carousel
+  const summaryCards = [
+    {
+      type: 'income',
+      label: '이번 달 수입',
+      amount: totalIncome,
+      badge: `${incomeCount}건의 수입`,
+      icon: UI_ICONS.income,
+      iconBg: '#10B981',
+      barColor: '#10B981',
+      badgeBg: 'rgba(34, 197, 94, 0.2)',
+      badgeText: '#4ade80',
+    },
+    {
+      type: 'expense',
+      label: '이번 달 지출',
+      amount: totalExpense,
+      badge: `${expenseCount}건의 지출`,
+      icon: UI_ICONS.expense,
+      iconBg: '#B91C1C',
+      barColor: '#EF4444',
+      badgeBg: 'rgba(239, 68, 68, 0.2)',
+      badgeText: '#f87171',
+    },
+    {
+      type: 'savings',
+      label: '저축',
+      amount: totalSavings,
+      badge: `${savingsCount}건의 저축`,
+      icon: UI_ICONS.savings,
+      iconBg: '#0891B2',
+      barColor: '#06B6D4',
+      badgeBg: 'rgba(6, 182, 212, 0.2)',
+      badgeText: '#22d3ee',
+    },
+    {
+      type: 'balance',
+      label: '잔액',
+      amount: balance,
+      badge: `지난달 대비 ${balanceDiff >= 0 ? '+' : '-'}₩${formatNumber(Math.abs(balanceDiff))}`,
+      icon: UI_ICONS.balance,
+      iconBg: '#7C3AED',
+      barColor: '#8B5CF6',
+      badgeBg: 'rgba(168, 85, 247, 0.2)',
+      badgeText: '#c084fc',
+      isNegative: balance < 0,
+    },
+  ];
+
+  // Today summary values
+  const hasIncomeToday = (todaySummary?.income?.count || 0) > 0;
+  const hasExpenseToday = (todaySummary?.expense?.count || 0) > 0;
+  const hasSavingsToday = (todaySummary?.savings?.count || 0) > 0;
+  const hasAnyToday = hasIncomeToday || hasExpenseToday || hasSavingsToday;
 
   const styles = StyleSheet.create({
     container: {
@@ -401,6 +452,7 @@ export default function HomeScreen() {
       paddingHorizontal: 14,
       paddingVertical: 6,
       borderRadius: 20,
+      maxWidth: '100%',
     },
     carouselCardBadgeText: {
       fontSize: 12,
@@ -725,9 +777,6 @@ export default function HomeScreen() {
       justifyContent: 'center',
       marginRight: 12,
     },
-    categoryIconText: {
-      fontSize: 18,
-    },
     categoryInfo: {
       flex: 1,
     },
@@ -741,18 +790,24 @@ export default function HomeScreen() {
       color: colors.textMuted,
       marginTop: 2,
     },
-    categoryAmountContainer: {
-      alignItems: 'flex-end',
-    },
     categoryAmount: {
       fontSize: 14,
       fontWeight: '600',
       color: colors.textPrimary,
     },
-    categoryBudget: {
-      fontSize: 11,
+    categoryBudgetRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    categoryBudgetText: {
+      fontSize: 12,
       color: colors.textMuted,
-      marginTop: 2,
+    },
+    categoryBudgetPercent: {
+      fontSize: 12,
+      fontWeight: '600',
     },
     categoryProgressContainer: {
       marginTop: 8,
@@ -779,11 +834,6 @@ export default function HomeScreen() {
     );
   }
 
-  const hasIncomeToday = MOCK_TODAY_SUMMARY.income.count > 0;
-  const hasExpenseToday = MOCK_TODAY_SUMMARY.expense.count > 0;
-  const hasSavingsToday = MOCK_TODAY_SUMMARY.savings.count > 0;
-  const hasAnyToday = hasIncomeToday || hasExpenseToday || hasSavingsToday;
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
@@ -797,7 +847,7 @@ export default function HomeScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.greeting}>안녕하세요,</Text>
-          <Text style={styles.userName}>{USE_MOCK_DATA ? MOCK_USER_NAME : (userName || '사용자')}님</Text>
+          <Text style={styles.userName}>{userName || '사용자'}님</Text>
         </View>
 
         {/* Summary Cards Carousel */}
@@ -817,15 +867,25 @@ export default function HomeScreen() {
               <View key={card.type} style={styles.carouselCard}>
                 <View style={styles.carouselCardContent}>
                   <View style={[styles.carouselCardIcon, { backgroundColor: card.iconBg }]}>
-                    <FontAwesome5 name={card.icon} size={24} color="#fff" />
+                    <MaterialIcons name={card.icon} size={24} color="#fff" />
                   </View>
                   <View style={styles.carouselCardInfo}>
                     <Text style={styles.carouselCardLabel}>{card.label}</Text>
-                    <Text style={styles.carouselCardAmount}>
-                      {card.isNegative ? '-' : ''}₩{Math.abs(card.amount).toLocaleString()}
+                    <Text
+                      style={styles.carouselCardAmount}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.6}
+                    >
+                      {card.isNegative ? '-' : ''}₩{formatNumber(Math.abs(card.amount))}
                     </Text>
                     <View style={[styles.carouselCardBadge, { backgroundColor: card.badgeBg }]}>
-                      <Text style={[styles.carouselCardBadgeText, { color: card.badgeText }]}>
+                      <Text
+                        style={[styles.carouselCardBadgeText, { color: card.badgeText }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                      >
                         {card.badge}
                       </Text>
                     </View>
@@ -857,7 +917,7 @@ export default function HomeScreen() {
             <View style={styles.todayHeader}>
               <MaterialIcons name="today" size={20} color="#FBBF24" />
               <Text style={styles.todayTitle}>
-                오늘 ({MOCK_TODAY_SUMMARY.month}월 {MOCK_TODAY_SUMMARY.day}일 {DAY_NAMES[MOCK_TODAY_SUMMARY.dayOfWeek]})
+                오늘 ({todaySummary?.month || month}월 {todaySummary?.day || now.getDate()}일 {DAY_NAMES[todaySummary?.dayOfWeek ?? now.getDay()]})
               </Text>
             </View>
 
@@ -866,16 +926,16 @@ export default function HomeScreen() {
                 {/* Income */}
                 <View style={styles.todayRow}>
                   <View style={styles.todayRowLeft}>
-                    <FontAwesome5 name="money-bill-wave" size={14} color={colors.accentMint} />
+                    <MaterialIcons name="trending-up" size={16} color={colors.accentMint} />
                     <Text style={styles.todayLabel}>수입</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     {hasIncomeToday ? (
                       <>
                         <Text style={[styles.todayAmount, { color: colors.accentMint }]}>
-                          ₩{formatNumber(MOCK_TODAY_SUMMARY.income.total)}
+                          ₩{formatNumber(todaySummary?.income?.total || 0)}
                         </Text>
-                        <Text style={styles.todayCount}>({MOCK_TODAY_SUMMARY.income.count}건)</Text>
+                        <Text style={styles.todayCount}>({todaySummary?.income?.count || 0}건)</Text>
                       </>
                     ) : (
                       <Text style={styles.todayEmpty}>-</Text>
@@ -886,16 +946,16 @@ export default function HomeScreen() {
                 {/* Expense */}
                 <View style={styles.todayRow}>
                   <View style={styles.todayRowLeft}>
-                    <FontAwesome5 name="credit-card" size={14} color={colors.accentCoral} />
+                    <MaterialIcons name="trending-down" size={16} color={colors.accentCoral} />
                     <Text style={styles.todayLabel}>지출</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     {hasExpenseToday ? (
                       <>
                         <Text style={[styles.todayAmount, { color: colors.accentCoral }]}>
-                          ₩{formatNumber(MOCK_TODAY_SUMMARY.expense.total)}
+                          ₩{formatNumber(todaySummary?.expense?.total || 0)}
                         </Text>
-                        <Text style={styles.todayCount}>({MOCK_TODAY_SUMMARY.expense.count}건)</Text>
+                        <Text style={styles.todayCount}>({todaySummary?.expense?.count || 0}건)</Text>
                       </>
                     ) : (
                       <Text style={styles.todayEmpty}>-</Text>
@@ -913,9 +973,9 @@ export default function HomeScreen() {
                     {hasSavingsToday ? (
                       <>
                         <Text style={[styles.todayAmount, { color: '#3B82F6' }]}>
-                          ₩{formatNumber(MOCK_TODAY_SUMMARY.savings.total)}
+                          ₩{formatNumber(todaySummary?.savings?.total || 0)}
                         </Text>
-                        <Text style={styles.todayCount}>({MOCK_TODAY_SUMMARY.savings.count}건)</Text>
+                        <Text style={styles.todayCount}>({todaySummary?.savings?.count || 0}건)</Text>
                       </>
                     ) : (
                       <Text style={styles.todayEmpty}>-</Text>
@@ -934,44 +994,44 @@ export default function HomeScreen() {
           <View style={styles.savingsCard}>
             <View style={styles.savingsHeader}>
               <View style={styles.savingsHeaderLeft}>
-                <FontAwesome5 name="chart-line" size={18} color="#06B6D4" />
+                <MaterialIcons name="savings" size={20} color="#06B6D4" />
                 <Text style={styles.savingsTitle}>저축</Text>
               </View>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/savings')}>
                 <Text style={styles.savingsViewAll}>전체보기 →</Text>
               </TouchableOpacity>
             </View>
 
-            {MOCK_SAVINGS_GOAL ? (
+            {primaryGoal ? (
               <View style={styles.savingsGoalContainer}>
                 {/* Goal header */}
                 <View style={styles.savingsGoalHeader}>
                   <View style={styles.savingsGoalIconContainer}>
-                    <MaterialIcons name="flight" size={20} color="#FBBF24" />
+                    <MaterialIcons name={getIconName(primaryGoal.icon)} size={20} color="#FBBF24" />
                     <View style={styles.savingsGoalStarBadge}>
-                      <FontAwesome5 name="star" size={8} color="#fff" />
+                      <MaterialIcons name="star" size={10} color="#fff" />
                     </View>
                   </View>
                   <View style={styles.savingsGoalInfo}>
                     <View style={styles.savingsGoalNameRow}>
-                      <Text style={styles.savingsGoalName}>{MOCK_SAVINGS_GOAL.name}</Text>
+                      <Text style={styles.savingsGoalName}>{primaryGoal.name}</Text>
                       <Text style={styles.savingsGoalBadge}>대표</Text>
                     </View>
-                    <Text style={styles.savingsGoalDate}>{MOCK_SAVINGS_GOAL.targetDate}</Text>
+                    <Text style={styles.savingsGoalDate}>{primaryGoal.targetDate}</Text>
                   </View>
                 </View>
 
                 {/* Amount */}
                 <View style={styles.savingsAmountContainer}>
                   <Text style={styles.savingsCurrentAmount}>
-                    ₩{formatNumber(MOCK_SAVINGS_GOAL.currentAmount)}
+                    ₩{formatNumber(primaryGoal.currentAmount)}
                   </Text>
                   <View style={styles.savingsTargetRow}>
                     <Text style={styles.savingsTargetAmount}>
-                      / ₩{formatNumber(MOCK_SAVINGS_GOAL.targetAmount)}
+                      / ₩{formatNumber(primaryGoal.targetAmount)}
                     </Text>
                     <Text style={styles.savingsPercent}>
-                      ({MOCK_SAVINGS_GOAL.progressPercent}%)
+                      ({primaryGoal.progressPercent}%)
                     </Text>
                   </View>
                 </View>
@@ -982,7 +1042,7 @@ export default function HomeScreen() {
                     style={[
                       styles.savingsProgressFill,
                       {
-                        width: `${Math.min(MOCK_SAVINGS_GOAL.progressPercent, 100)}%`,
+                        width: `${Math.min(primaryGoal.progressPercent, 100)}%`,
                         backgroundColor: colors.accentMint,
                       },
                     ]}
@@ -1005,34 +1065,36 @@ export default function HomeScreen() {
                 <MaterialIcons name="history" size={20} color={colors.accentMint} />
                 <Text style={styles.sectionTitle}>최근 내역</Text>
               </View>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/transactions')}>
                 <Text style={styles.sectionViewAll}>전체보기 →</Text>
               </TouchableOpacity>
             </View>
-            {(!transactions || transactions.length === 0) ? (
+            {(!recentTransactions || recentTransactions.length === 0) ? (
               <View style={styles.emptyState}>
-                <Ionicons
-                  name="receipt-outline"
+                <MaterialIcons
+                  name="receipt-long"
                   size={40}
                   color={colors.textMuted}
                 />
                 <Text style={styles.emptyText}>거래 내역이 없습니다</Text>
               </View>
             ) : (
-              transactions.map((tx, index) => (
+              recentTransactions.map((tx, index) => (
                 <View key={tx.id}>
                   <View style={styles.transactionItem}>
-                    <View style={styles.transactionIcon}>
-                      <Text style={{ fontSize: 18 }}>
-                        {tx.categoryIcon || (tx.type === 'INCOME' ? '💰' : '💸')}
-                      </Text>
+                    <View style={[styles.transactionIcon, { backgroundColor: `${tx.category?.color || '#6B7280'}20` }]}>
+                      <MaterialIcons
+                        name={getIconName(tx.category?.icon)}
+                        size={20}
+                        color={tx.category?.color || '#6B7280'}
+                      />
                     </View>
                     <View style={styles.transactionInfo}>
                       <Text style={styles.transactionDesc}>
                         {tx.description || (tx.type === 'INCOME' ? '수입' : '지출')}
                       </Text>
                       <Text style={styles.transactionCategory}>
-                        {tx.categoryName || '미분류'}
+                        {tx.category?.name || '미분류'}
                       </Text>
                     </View>
                     <Text
@@ -1047,7 +1109,7 @@ export default function HomeScreen() {
                       {formatCurrency(tx.amount)}
                     </Text>
                   </View>
-                  {index < transactions.length - 1 && (
+                  {index < recentTransactions.length - 1 && (
                     <View style={styles.transactionDivider} />
                   )}
                 </View>
@@ -1064,13 +1126,10 @@ export default function HomeScreen() {
                 <MaterialIcons name="pie-chart" size={20} color={colors.accentMint} />
                 <Text style={styles.sectionTitle}>카테고리별 지출</Text>
               </View>
-              <TouchableOpacity>
-                <Text style={styles.sectionViewAll}>전체보기 →</Text>
-              </TouchableOpacity>
             </View>
-            {MOCK_CATEGORY_EXPENSES.length === 0 ? (
+            {categories.length === 0 ? (
               <View style={styles.emptyState}>
-                <MaterialIcons name="pie-chart-outline" size={40} color={colors.textMuted} />
+                <MaterialIcons name="pie-chart" size={40} color={colors.textMuted} />
                 <Text style={styles.emptyText}>이번 달 지출 내역이 없습니다</Text>
               </View>
             ) : (
@@ -1078,82 +1137,107 @@ export default function HomeScreen() {
                 {/* Donut Chart */}
                 <View style={styles.chartContainer}>
                   <DonutChart
-                    data={MOCK_CATEGORY_EXPENSES.map(cat => ({ color: cat.color, amount: cat.amount }))}
+                    data={categories.map(cat => ({
+                      color: cat.color || '#6B7280',
+                      amount: cat.total,
+                      name: cat.name,
+                    }))}
                     size={160}
                     strokeWidth={20}
-                    centerText={`₩${formatNumber(MOCK_CATEGORY_EXPENSES.reduce((sum, cat) => sum + cat.amount, 0))}`}
-                    centerSubtext="총 지출"
+                    totalAmount={categories.reduce((sum, cat) => sum + cat.total, 0)}
                     textColor={colors.textPrimary}
                     mutedColor={colors.textMuted}
+                    selectedIndex={selectedCategoryIndex}
+                    onSegmentPress={setSelectedCategoryIndex}
+                    formatNumber={formatNumber}
                   />
                 </View>
 
                 {/* Category List */}
-                {MOCK_CATEGORY_EXPENSES.map((cat, index) => {
-                const usagePercent = cat.budget ? Math.round((cat.amount / cat.budget) * 100) : 0;
-                const progressColor = usagePercent >= 90
-                  ? colors.accentCoral
-                  : usagePercent >= 66
-                  ? colors.accentYellow
-                  : colors.accentMint;
+                {categories.slice(0, 5).map((cat, index) => {
+                  const usagePercent = cat.budget ? Math.round((cat.total / cat.budget) * 100) : 0;
+                  const progressColor = usagePercent >= 90
+                    ? colors.accentCoral
+                    : usagePercent >= 66
+                    ? colors.accentYellow
+                    : colors.accentMint;
+                  const isSelected = selectedCategoryIndex === index;
+                  const categoryColor = cat.color || '#6B7280';
 
-                return (
-                  <View
-                    key={cat.id}
-                    style={[
-                      styles.categoryItem,
-                      index === MOCK_CATEGORY_EXPENSES.length - 1 && styles.categoryItemLast,
-                    ]}
-                  >
-                    <View style={styles.categoryItemHeader}>
-                      <View
-                        style={[
-                          styles.categoryIconContainer,
-                          { backgroundColor: `${cat.color}20` },
-                        ]}
-                      >
-                        <Text style={styles.categoryIconText}>{cat.icon}</Text>
-                      </View>
-                      <View style={styles.categoryInfo}>
-                        <Text style={styles.categoryName}>{cat.name}</Text>
-                        <Text style={styles.categoryCount}>{cat.count}건</Text>
-                      </View>
-                      <View style={styles.categoryAmountContainer}>
-                        <Text style={styles.categoryAmount}>
-                          ₩{formatNumber(cat.amount)}
-                        </Text>
-                        {cat.budget && (
-                          <Text style={styles.categoryBudget}>
-                            / ₩{formatNumber(cat.budget)}{' '}
-                            <Text style={{ color: progressColor, fontWeight: '500' }}>
-                              ({usagePercent}%)
-                            </Text>
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                    {cat.budget && (
-                      <View style={styles.categoryProgressContainer}>
-                        <View style={styles.categoryProgressBar}>
-                          <View
-                            style={[
-                              styles.categoryProgressFill,
-                              {
-                                width: `${Math.min(usagePercent, 100)}%`,
-                                backgroundColor: progressColor,
-                              },
-                            ]}
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      activeOpacity={0.7}
+                      onPress={() => setSelectedCategoryIndex(isSelected ? null : index)}
+                      style={[
+                        styles.categoryItem,
+                        index === Math.min(categories.length - 1, 4) && styles.categoryItemLast,
+                        isSelected && {
+                          borderWidth: 2,
+                          borderColor: categoryColor,
+                          transform: [{ scale: 1.02 }],
+                        },
+                        selectedCategoryIndex !== null && !isSelected && {
+                          opacity: 0.5,
+                        },
+                      ]}
+                    >
+                      <View style={styles.categoryItemHeader}>
+                        <View
+                          style={[
+                            styles.categoryIconContainer,
+                            { backgroundColor: `${categoryColor}20` },
+                            isSelected && { transform: [{ scale: 1.1 }] },
+                          ]}
+                        >
+                          <MaterialIcons
+                            name={getIconName(cat.icon)}
+                            size={20}
+                            color={categoryColor}
                           />
                         </View>
+                        <View style={styles.categoryInfo}>
+                          <Text style={styles.categoryName}>{cat.name}</Text>
+                          <Text style={styles.categoryCount}>{cat.count}건</Text>
+                        </View>
+                        <Text style={styles.categoryAmount}>
+                          ₩{formatNumber(cat.total)}
+                        </Text>
                       </View>
-                    )}
-                  </View>
-                );
-              })}
+                      {cat.budget && (
+                        <View style={styles.categoryBudgetRow}>
+                          <Text style={styles.categoryBudgetText}>
+                            예산: ₩{formatNumber(cat.budget)}
+                          </Text>
+                          <Text style={[styles.categoryBudgetPercent, { color: progressColor }]}>
+                            {usagePercent}% 사용
+                          </Text>
+                        </View>
+                      )}
+                      {cat.budget && (
+                        <View style={styles.categoryProgressContainer}>
+                          <View style={styles.categoryProgressBar}>
+                            <View
+                              style={[
+                                styles.categoryProgressFill,
+                                {
+                                  width: `${Math.min(usagePercent, 100)}%`,
+                                  backgroundColor: progressColor,
+                                },
+                              ]}
+                            />
+                          </View>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </>
             )}
           </View>
         </View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );

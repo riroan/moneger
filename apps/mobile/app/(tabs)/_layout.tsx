@@ -1,35 +1,36 @@
 import { useState } from 'react';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { View, TouchableOpacity, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { getIconName, type MaterialIconName } from '../../constants/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
 
-const tabs = [
+const tabs: { name: string; path: string; title: string; icon: MaterialIconName }[] = [
   { name: 'index', path: '/(tabs)', title: '홈', icon: 'home' },
-  { name: 'transactions', path: '/(tabs)/transactions', title: '내역', icon: 'receipt' },
+  { name: 'transactions', path: '/(tabs)/transactions', title: '내역', icon: 'receipt-long' },
   { name: 'add', path: '', title: '', icon: 'add' }, // Center add button placeholder
-  { name: 'savings', path: '/(tabs)/savings', title: '저축', icon: 'trending-up' },
+  { name: 'savings', path: '/(tabs)/savings', title: '저축', icon: 'savings' },
   { name: 'settings', path: '/(tabs)/settings', title: '설정', icon: 'settings' },
-] as const;
+];
 
 // Mock categories for testing
 const MOCK_CATEGORIES = {
   EXPENSE: [
-    { id: '1', name: '식비', icon: '🍔', color: '#ff6b6b' },
-    { id: '2', name: '교통', icon: '🚌', color: '#60a5fa' },
-    { id: '3', name: '생활용품', icon: '🛒', color: '#a78bfa' },
-    { id: '4', name: '의료/건강', icon: '💊', color: '#34d399' },
-    { id: '5', name: '문화/여가', icon: '🎬', color: '#fbbf24' },
-    { id: '6', name: '기타', icon: '📦', color: '#9ca3af' },
+    { id: '1', name: '식비', icon: 'restaurant', color: '#ff6b6b' },
+    { id: '2', name: '교통', icon: 'car', color: '#60a5fa' },
+    { id: '3', name: '생활용품', icon: 'cart', color: '#a78bfa' },
+    { id: '4', name: '의료/건강', icon: 'hospital', color: '#34d399' },
+    { id: '5', name: '문화/여가', icon: 'movie', color: '#fbbf24' },
+    { id: '6', name: '기타', icon: 'box', color: '#9ca3af' },
   ],
   INCOME: [
-    { id: '7', name: '급여', icon: '💰', color: '#4ade80' },
-    { id: '8', name: '부수입', icon: '✨', color: '#fbbf24' },
-    { id: '9', name: '용돈', icon: '🎁', color: '#f472b6' },
-    { id: '10', name: '기타', icon: '📦', color: '#9ca3af' },
+    { id: '7', name: '급여', icon: 'money', color: '#4ade80' },
+    { id: '8', name: '부수입', icon: 'star', color: '#fbbf24' },
+    { id: '9', name: '용돈', icon: 'gift', color: '#f472b6' },
+    { id: '10', name: '기타', icon: 'box', color: '#9ca3af' },
   ],
 };
 
@@ -262,9 +263,6 @@ export default function TabsLayout() {
       alignItems: 'center',
       gap: 8,
     },
-    categoryDropdownSelectedIcon: {
-      fontSize: 18,
-    },
     categoryDropdownSelectedText: {
       fontSize: 15,
       color: colors.textPrimary,
@@ -285,9 +283,6 @@ export default function TabsLayout() {
     },
     categoryDropdownItemSelected: {
       backgroundColor: 'rgba(52, 211, 153, 0.1)',
-    },
-    categoryDropdownItemIcon: {
-      fontSize: 20,
     },
     categoryDropdownItemText: {
       fontSize: 15,
@@ -364,7 +359,7 @@ export default function TabsLayout() {
                     end={{ x: 1, y: 1 }}
                     style={styles.addButton}
                   >
-                    <Ionicons name="add" size={32} color="#fff" />
+                    <MaterialIcons name="add" size={32} color="#fff" />
                   </LinearGradient>
                 </View>
               </TouchableOpacity>
@@ -379,8 +374,8 @@ export default function TabsLayout() {
               style={styles.tabItem}
               onPress={() => router.push(tab.path as any)}
             >
-              <Ionicons
-                name={tab.icon as any}
+              <MaterialIcons
+                name={tab.icon}
                 size={24}
                 color={active ? activeColor : colors.textMuted}
               />
@@ -416,7 +411,7 @@ export default function TabsLayout() {
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>내역 추가</Text>
                   <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
-                    <Ionicons name="close" size={24} color={colors.textMuted} />
+                    <MaterialIcons name="close" size={24} color={colors.textMuted} />
                   </TouchableOpacity>
                 </View>
 
@@ -511,9 +506,11 @@ export default function TabsLayout() {
                       >
                         {selectedCategory ? (
                           <View style={styles.categoryDropdownSelected}>
-                            <Text style={styles.categoryDropdownSelectedIcon}>
-                              {categories.find(c => c.id === selectedCategory)?.icon}
-                            </Text>
+                            <MaterialIcons
+                              name={getIconName(categories.find(c => c.id === selectedCategory)?.icon)}
+                              size={18}
+                              color={categories.find(c => c.id === selectedCategory)?.color || colors.textPrimary}
+                            />
                             <Text style={styles.categoryDropdownSelectedText}>
                               {categories.find(c => c.id === selectedCategory)?.name}
                             </Text>
@@ -523,8 +520,8 @@ export default function TabsLayout() {
                             카테고리 선택
                           </Text>
                         )}
-                        <Ionicons
-                          name={isCategoryDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                        <MaterialIcons
+                          name={isCategoryDropdownOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
                           size={20}
                           color={colors.textMuted}
                         />
@@ -544,7 +541,7 @@ export default function TabsLayout() {
                                 setIsCategoryDropdownOpen(false);
                               }}
                             >
-                              <Text style={styles.categoryDropdownItemIcon}>{cat.icon}</Text>
+                              <MaterialIcons name={getIconName(cat.icon)} size={20} color={cat.color} />
                               <Text
                                 style={[
                                   styles.categoryDropdownItemText,

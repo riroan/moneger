@@ -12,7 +12,8 @@ import {
   Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { getIconName } from '../../constants/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
@@ -40,7 +41,7 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
     description: '점심 식사',
     date: '2026-01-28',
     categoryId: 'cat1',
-    category: { name: '식비', icon: '🍔', color: '#ff6b6b', type: 'EXPENSE' },
+    category: { name: '식비', icon: 'restaurant', color: '#ff6b6b', type: 'EXPENSE' },
   },
   {
     id: '2',
@@ -49,7 +50,7 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
     description: '지하철',
     date: '2026-01-28',
     categoryId: 'cat2',
-    category: { name: '교통', icon: '🚌', color: '#60a5fa', type: 'EXPENSE' },
+    category: { name: '교통', icon: 'car', color: '#60a5fa', type: 'EXPENSE' },
   },
   {
     id: '3',
@@ -58,7 +59,7 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
     description: '1월 급여',
     date: '2026-01-25',
     categoryId: 'cat7',
-    category: { name: '급여', icon: '💰', color: '#4ade80', type: 'INCOME' },
+    category: { name: '급여', icon: 'money', color: '#4ade80', type: 'INCOME' },
   },
   {
     id: '4',
@@ -67,7 +68,7 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
     description: '마트 장보기',
     date: '2026-01-24',
     categoryId: 'cat3',
-    category: { name: '생활용품', icon: '🛒', color: '#a78bfa', type: 'EXPENSE' },
+    category: { name: '생활용품', icon: 'cart', color: '#a78bfa', type: 'EXPENSE' },
   },
   {
     id: '5',
@@ -76,7 +77,7 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
     description: '영화 관람',
     date: '2026-01-23',
     categoryId: 'cat5',
-    category: { name: '문화/여가', icon: '🎬', color: '#fbbf24', type: 'EXPENSE' },
+    category: { name: '문화/여가', icon: 'movie', color: '#fbbf24', type: 'EXPENSE' },
   },
   {
     id: '6',
@@ -85,7 +86,7 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
     description: '저녁 식사',
     date: '2026-01-23',
     categoryId: 'cat1',
-    category: { name: '식비', icon: '🍔', color: '#ff6b6b', type: 'EXPENSE' },
+    category: { name: '식비', icon: 'restaurant', color: '#ff6b6b', type: 'EXPENSE' },
   },
   {
     id: '7',
@@ -94,7 +95,7 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
     description: '약국',
     date: '2026-01-22',
     categoryId: 'cat4',
-    category: { name: '의료/건강', icon: '💊', color: '#34d399', type: 'EXPENSE' },
+    category: { name: '의료/건강', icon: 'hospital', color: '#34d399', type: 'EXPENSE' },
   },
   {
     id: '8',
@@ -103,7 +104,7 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
     description: '용돈',
     date: '2026-01-20',
     categoryId: 'cat9',
-    category: { name: '용돈', icon: '🎁', color: '#f472b6', type: 'INCOME' },
+    category: { name: '용돈', icon: 'gift', color: '#f472b6', type: 'INCOME' },
   },
   {
     id: '9',
@@ -113,23 +114,23 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
     date: '2026-01-25',
     categoryId: 'cat10',
     savingsGoalId: 'savings1',
-    category: { name: '저축', icon: '🏦', color: '#60a5fa', type: 'EXPENSE' },
+    category: { name: '저축', icon: 'savings', color: '#60a5fa', type: 'EXPENSE' },
   },
 ];
 
 // Mock categories
 const MOCK_CATEGORIES = {
   EXPENSE: [
-    { id: 'cat1', name: '식비', icon: '🍔', color: '#ff6b6b' },
-    { id: 'cat2', name: '교통', icon: '🚌', color: '#60a5fa' },
-    { id: 'cat3', name: '생활용품', icon: '🛒', color: '#a78bfa' },
-    { id: 'cat4', name: '의료/건강', icon: '💊', color: '#34d399' },
-    { id: 'cat5', name: '문화/여가', icon: '🎬', color: '#fbbf24' },
+    { id: 'cat1', name: '식비', icon: 'restaurant', color: '#ff6b6b' },
+    { id: 'cat2', name: '교통', icon: 'car', color: '#60a5fa' },
+    { id: 'cat3', name: '생활용품', icon: 'cart', color: '#a78bfa' },
+    { id: 'cat4', name: '의료/건강', icon: 'hospital', color: '#34d399' },
+    { id: 'cat5', name: '문화/여가', icon: 'movie', color: '#fbbf24' },
   ],
   INCOME: [
-    { id: 'cat7', name: '급여', icon: '💰', color: '#4ade80' },
-    { id: 'cat8', name: '부수입', icon: '✨', color: '#fbbf24' },
-    { id: 'cat9', name: '용돈', icon: '🎁', color: '#f472b6' },
+    { id: 'cat7', name: '급여', icon: 'money', color: '#4ade80' },
+    { id: 'cat8', name: '부수입', icon: 'star', color: '#fbbf24' },
+    { id: 'cat9', name: '용돈', icon: 'gift', color: '#f472b6' },
   ],
 };
 
@@ -562,9 +563,6 @@ export default function TransactionsScreen() {
       justifyContent: 'center',
       marginRight: 12,
     },
-    transactionIconText: {
-      fontSize: 18,
-    },
     transactionInfo: {
       flex: 1,
     },
@@ -790,10 +788,6 @@ export default function TransactionsScreen() {
       backgroundColor: colors.accentMint,
       borderColor: colors.accentMint,
     },
-    categoryItemIcon: {
-      fontSize: 16,
-      marginRight: 8,
-    },
     categoryItemName: {
       fontSize: 14,
       color: colors.textPrimary,
@@ -864,7 +858,7 @@ export default function TransactionsScreen() {
         {/* Search Bar and Filter Button */}
         <View style={styles.searchFilterRow}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color={colors.textMuted} />
+            <MaterialIcons name="search" size={20} color={colors.textMuted} />
             <TextInput
               style={styles.searchInput}
               placeholder="내역 검색..."
@@ -874,7 +868,7 @@ export default function TransactionsScreen() {
             />
             {searchKeyword.length > 0 && (
               <TouchableOpacity onPress={() => setSearchKeyword('')}>
-                <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                <MaterialIcons name="cancel" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             )}
           </View>
@@ -882,8 +876,8 @@ export default function TransactionsScreen() {
             style={[styles.filterButton, hasActiveFilters && styles.filterButtonActive]}
             onPress={() => setIsFilterModalOpen(true)}
           >
-            <Ionicons
-              name="options-outline"
+            <MaterialIcons
+              name="tune"
               size={20}
               color={hasActiveFilters ? '#fff' : colors.textMuted}
             />
@@ -939,8 +933,8 @@ export default function TransactionsScreen() {
         <View style={styles.section}>
           {groupedTransactions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons
-                name="receipt-outline"
+              <MaterialIcons
+                name="receipt-long"
                 size={48}
                 color={colors.textMuted}
               />
@@ -964,9 +958,11 @@ export default function TransactionsScreen() {
                             { backgroundColor: (tx.category?.color || '#6B7280') + '20' },
                           ]}
                         >
-                          <Text style={styles.transactionIconText}>
-                            {tx.category?.icon || '📦'}
-                          </Text>
+                          <MaterialIcons
+                            name={getIconName(tx.category?.icon)}
+                            size={20}
+                            color={tx.category?.color || '#6B7280'}
+                          />
                         </View>
                         <View style={styles.transactionInfo}>
                           <Text style={styles.transactionDescription}>
@@ -1015,7 +1011,7 @@ export default function TransactionsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>필터</Text>
               <TouchableOpacity onPress={() => setIsFilterModalOpen(false)}>
-                <Ionicons name="close" size={24} color={colors.textMuted} />
+                <MaterialIcons name="close" size={24} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -1190,14 +1186,17 @@ export default function TransactionsScreen() {
                       style={styles.categoryAccordionHeader}
                       onPress={() => setIsIncomeCategoryOpen(!isIncomeCategoryOpen)}
                     >
-                      <Text style={[styles.categoryAccordionTitle, { color: colors.accentMint }]}>
-                        💰 수입{' '}
-                        <Text style={styles.categoryAccordionCount}>
-                          ({MOCK_CATEGORIES.INCOME.length})
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <MaterialIcons name="trending-up" size={16} color={colors.accentMint} style={{ marginRight: 6 }} />
+                        <Text style={[styles.categoryAccordionTitle, { color: colors.accentMint }]}>
+                          수입{' '}
+                          <Text style={styles.categoryAccordionCount}>
+                            ({MOCK_CATEGORIES.INCOME.length})
+                          </Text>
                         </Text>
-                      </Text>
-                      <Ionicons
-                        name={isIncomeCategoryOpen ? 'chevron-up' : 'chevron-down'}
+                      </View>
+                      <MaterialIcons
+                        name={isIncomeCategoryOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
                         size={18}
                         color={colors.textMuted}
                       />
@@ -1220,10 +1219,10 @@ export default function TransactionsScreen() {
                               ]}
                             >
                               {selectedCategories.includes(cat.id) && (
-                                <Ionicons name="checkmark" size={14} color="#fff" />
+                                <MaterialIcons name="check" size={14} color="#fff" />
                               )}
                             </View>
-                            <Text style={styles.categoryItemIcon}>{cat.icon}</Text>
+                            <MaterialIcons name={getIconName(cat.icon)} size={16} color={cat.color} style={{ marginRight: 8 }} />
                             <Text style={styles.categoryItemName}>{cat.name}</Text>
                           </TouchableOpacity>
                         ))}
@@ -1239,14 +1238,17 @@ export default function TransactionsScreen() {
                       style={styles.categoryAccordionHeader}
                       onPress={() => setIsExpenseCategoryOpen(!isExpenseCategoryOpen)}
                     >
-                      <Text style={[styles.categoryAccordionTitle, { color: colors.accentCoral }]}>
-                        💳 지출{' '}
-                        <Text style={styles.categoryAccordionCount}>
-                          ({MOCK_CATEGORIES.EXPENSE.length})
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <MaterialIcons name="trending-down" size={16} color={colors.accentCoral} style={{ marginRight: 6 }} />
+                        <Text style={[styles.categoryAccordionTitle, { color: colors.accentCoral }]}>
+                          지출{' '}
+                          <Text style={styles.categoryAccordionCount}>
+                            ({MOCK_CATEGORIES.EXPENSE.length})
+                          </Text>
                         </Text>
-                      </Text>
-                      <Ionicons
-                        name={isExpenseCategoryOpen ? 'chevron-up' : 'chevron-down'}
+                      </View>
+                      <MaterialIcons
+                        name={isExpenseCategoryOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
                         size={18}
                         color={colors.textMuted}
                       />
@@ -1269,10 +1271,10 @@ export default function TransactionsScreen() {
                               ]}
                             >
                               {selectedCategories.includes(cat.id) && (
-                                <Ionicons name="checkmark" size={14} color="#fff" />
+                                <MaterialIcons name="check" size={14} color="#fff" />
                               )}
                             </View>
-                            <Text style={styles.categoryItemIcon}>{cat.icon}</Text>
+                            <MaterialIcons name={getIconName(cat.icon)} size={16} color={cat.color} style={{ marginRight: 8 }} />
                             <Text style={styles.categoryItemName}>{cat.name}</Text>
                           </TouchableOpacity>
                         ))}

@@ -10,6 +10,9 @@ export const API_ENDPOINTS = {
 
   // Transactions
   TRANSACTIONS: '/api/transactions',
+  TRANSACTIONS_SUMMARY: '/api/transactions/summary',
+  TRANSACTIONS_TODAY: '/api/transactions/today',
+  TRANSACTIONS_RECENT: '/api/transactions/recent',
 
   // Categories
   CATEGORIES: '/api/categories',
@@ -24,6 +27,9 @@ export const API_ENDPOINTS = {
   BALANCE: '/api/balance',
   DAILY_BALANCE: '/api/daily-balance',
 
-  // Summary
+  // Stats
+  STATS: '/api/stats',
+
+  // Summary (legacy)
   SUMMARY: '/api/summary',
 };

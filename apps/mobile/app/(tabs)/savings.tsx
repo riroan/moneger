@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import type { MaterialIconName } from '../../constants/Icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
@@ -75,15 +76,15 @@ const MOCK_SAVINGS_GOALS: SavingsGoal[] = [
 const MAX_GOALS = 10;
 
 // Icon mapping for savings goals
-const GOAL_ICONS: Record<string, { name: string; type: 'material' | 'fontawesome5' }> = {
-  home: { name: 'home', type: 'material' },
-  car: { name: 'directions-car', type: 'material' },
-  school: { name: 'school', type: 'material' },
-  travel: { name: 'flight', type: 'material' },
-  device: { name: 'devices', type: 'material' },
-  gift: { name: 'gift', type: 'fontawesome5' },
-  health: { name: 'heartbeat', type: 'fontawesome5' },
-  savings: { name: 'savings', type: 'material' },
+const GOAL_ICONS: Record<string, MaterialIconName> = {
+  home: 'home',
+  car: 'directions-car',
+  school: 'school',
+  travel: 'flight',
+  device: 'devices',
+  gift: 'card-giftcard',
+  health: 'favorite',
+  savings: 'savings',
 };
 
 export default function SavingsScreen() {
@@ -142,11 +143,8 @@ export default function SavingsScreen() {
   const overallProgress = totalTarget > 0 ? Math.round((totalSavings / totalTarget) * 100) : 0;
 
   const renderGoalIcon = (iconName: string, size: number = 20, color: string = '#FBBF24') => {
-    const iconConfig = GOAL_ICONS[iconName] || GOAL_ICONS.savings;
-    if (iconConfig.type === 'material') {
-      return <MaterialIcons name={iconConfig.name as any} size={size} color={color} />;
-    }
-    return <FontAwesome5 name={iconConfig.name} size={size} color={color} />;
+    const iconKey = GOAL_ICONS[iconName] || GOAL_ICONS.savings;
+    return <MaterialIcons name={iconKey} size={size} color={color} />;
   };
 
   const styles = StyleSheet.create({
@@ -481,7 +479,7 @@ export default function SavingsScreen() {
               </View>
               {goals.length < MAX_GOALS && (
                 <TouchableOpacity style={styles.addButton}>
-                  <FontAwesome5 name="plus" size={10} color={colors.textMuted} />
+                  <MaterialIcons name="add" size={14} color={colors.textMuted} />
                   <Text style={styles.addButtonText}>목표 추가</Text>
                 </TouchableOpacity>
               )}
@@ -489,7 +487,7 @@ export default function SavingsScreen() {
 
             {goals.length === 0 ? (
               <View style={styles.emptyState}>
-                <Ionicons name="trending-up-outline" size={40} color={colors.textMuted} />
+                <MaterialIcons name="savings" size={40} color={colors.textMuted} />
                 <Text style={styles.emptyText}>저축 목표가 없습니다</Text>
               </View>
             ) : (
@@ -505,11 +503,11 @@ export default function SavingsScreen() {
                           { backgroundColor: goal.isPrimary ? '#FBBF24' : 'rgba(156, 163, 175, 0.5)' },
                         ]}
                       >
-                        {goal.isPrimary ? (
-                          <FontAwesome5 name="star" size={8} color="#fff" solid />
-                        ) : (
-                          <FontAwesome5 name="star" size={8} color="rgba(255,255,255,0.7)" />
-                        )}
+                        <MaterialIcons
+                          name="star"
+                          size={10}
+                          color={goal.isPrimary ? '#fff' : 'rgba(255,255,255,0.7)'}
+                        />
                       </View>
                     </TouchableOpacity>
                     <View style={styles.goalInfo}>
@@ -543,7 +541,7 @@ export default function SavingsScreen() {
                   {/* Footer */}
                   <View style={styles.goalFooter}>
                     <TouchableOpacity style={styles.depositButton} activeOpacity={0.7}>
-                      <FontAwesome5 name="plus" size={10} color={colors.accentMint} />
+                      <MaterialIcons name="add" size={16} color={colors.accentMint} />
                       <Text style={styles.depositButtonText}>저축하기</Text>
                     </TouchableOpacity>
                     <View style={styles.goalMonthlyStatus}>

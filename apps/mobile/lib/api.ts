@@ -69,10 +69,133 @@ export interface Transaction {
   categoryColor?: string;
 }
 
+// Transaction with category (for recent transactions)
+export interface TransactionWithCategory {
+  id: string;
+  amount: number;
+  type: TransactionType;
+  description: string | null;
+  date: string;
+  categoryId: string | null;
+  savingsGoalId?: string | null;
+  category?: {
+    id: string;
+    name: string;
+    type: TransactionType;
+    color: string | null;
+    icon: string | null;
+  } | null;
+}
+
+// Transaction Summary Types
+export interface CategorySummary {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  count: number;
+  total: number;
+  budget?: number;
+  budgetUsagePercent?: number;
+}
+
+export interface PrimaryGoal {
+  id: string;
+  name: string;
+  icon: string;
+  currentAmount: number;
+  targetAmount: number;
+  targetDate: string;
+  progressPercent: number;
+}
+
+export interface TransactionSummary {
+  period: { year: number; month: number };
+  summary: {
+    totalIncome: number;
+    totalExpense: number;
+    totalSavings: number;
+    netAmount: number;
+    balance: number;
+  };
+  budget: {
+    amount: number;
+    used: number;
+    remaining: number;
+    usagePercent: number;
+  };
+  categories: CategorySummary[];
+  transactionCount: {
+    income: number;
+    expense: number;
+    total: number;
+  };
+  savings: {
+    totalAmount: number;
+    targetAmount: number;
+    count: number;
+    primaryGoal: PrimaryGoal | null;
+  };
+}
+
+// Today Summary Types
+export interface TodaySummary {
+  date: string;
+  year: number;
+  month: number;
+  day: number;
+  dayOfWeek: number;
+  expense: { total: number; count: number };
+  income: { total: number; count: number };
+  savings: { total: number; count: number };
+}
+
+// Stats Types
+export interface MonthlyStats {
+  summary: {
+    totalIncome: number;
+    totalExpense: number;
+    balance: number;
+    incomeCount: number;
+    expenseCount: number;
+    transactionCount: number;
+  };
+  budget: {
+    amount: number;
+    used: number;
+    remaining: number;
+    usagePercent: number;
+  };
+  categoryBreakdown: Array<{
+    categoryId: string;
+    categoryName: string;
+    color: string | null;
+    icon: string | null;
+    count: number;
+    total: number;
+  }>;
+  last7Days: Array<{ date: string; amount: number }>;
+}
+
 export const transactionApi = {
   getAll: (userId: string, year: number, month: number) =>
     request<Transaction[]>(
       `${API_ENDPOINTS.TRANSACTIONS}?userId=${userId}&year=${year}&month=${month}`
+    ),
+
+  getRecent: (userId: string, limit: number = 10) =>
+    request<TransactionWithCategory[]>(
+      `${API_ENDPOINTS.TRANSACTIONS_RECENT}?userId=${userId}&limit=${limit}`
+    ),
+
+  getSummary: (userId: string, year: number, month: number) =>
+    request<TransactionSummary>(
+      `${API_ENDPOINTS.TRANSACTIONS_SUMMARY}?userId=${userId}&year=${year}&month=${month}`
+    ),
+
+  getToday: (userId: string) =>
+    request<TodaySummary>(
+      `${API_ENDPOINTS.TRANSACTIONS_TODAY}?userId=${userId}`
     ),
 
   create: (data: {
@@ -226,5 +349,13 @@ export const summaryApi = {
   get: (userId: string, year: number, month: number) =>
     request<MonthlySummary>(
       `${API_ENDPOINTS.SUMMARY}?userId=${userId}&year=${year}&month=${month}`
+    ),
+};
+
+// Stats API
+export const statsApi = {
+  get: (userId: string, year: number, month: number) =>
+    request<MonthlyStats>(
+      `${API_ENDPOINTS.STATS}?userId=${userId}&year=${year}&month=${month}`
     ),
 };

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
@@ -184,8 +184,8 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <View style={[styles.menuItem, styles.menuItemFirst]}>
               <View style={styles.menuIcon}>
-                <Ionicons
-                  name={theme === 'dark' ? 'moon' : 'sunny'}
+                <MaterialIcons
+                  name={theme === 'dark' ? 'dark-mode' : 'light-mode'}
                   size={20}
                   color={colors.accentMint}
                 />
@@ -204,15 +204,15 @@ export default function SettingsScreen() {
 
             <TouchableOpacity style={styles.menuItem}>
               <View style={styles.menuIcon}>
-                <Ionicons
-                  name="notifications-outline"
+                <MaterialIcons
+                  name="notifications"
                   size={20}
                   color={colors.accentBlue}
                 />
               </View>
               <Text style={styles.menuText}>알림 설정</Text>
-              <Ionicons
-                name="chevron-forward"
+              <MaterialIcons
+                name="chevron-right"
                 size={20}
                 color={colors.textMuted}
               />
@@ -225,15 +225,15 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <TouchableOpacity style={[styles.menuItem, styles.menuItemFirst]}>
               <View style={styles.menuIcon}>
-                <Ionicons
-                  name="document-text-outline"
+                <MaterialIcons
+                  name="description"
                   size={20}
                   color={colors.accentPurple}
                 />
               </View>
               <Text style={styles.menuText}>이용약관</Text>
-              <Ionicons
-                name="chevron-forward"
+              <MaterialIcons
+                name="chevron-right"
                 size={20}
                 color={colors.textMuted}
               />
@@ -241,15 +241,15 @@ export default function SettingsScreen() {
 
             <TouchableOpacity style={styles.menuItem}>
               <View style={styles.menuIcon}>
-                <Ionicons
-                  name="shield-checkmark-outline"
+                <MaterialIcons
+                  name="security"
                   size={20}
                   color={colors.accentPurple}
                 />
               </View>
               <Text style={styles.menuText}>개인정보 처리방침</Text>
-              <Ionicons
-                name="chevron-forward"
+              <MaterialIcons
+                name="chevron-right"
                 size={20}
                 color={colors.textMuted}
               />
@@ -257,8 +257,8 @@ export default function SettingsScreen() {
 
             <View style={styles.menuItem}>
               <View style={styles.menuIcon}>
-                <Ionicons
-                  name="information-circle-outline"
+                <MaterialIcons
+                  name="info"
                   size={20}
                   color={colors.textMuted}
                 />
