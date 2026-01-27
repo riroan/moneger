@@ -1,12 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  // 로그인 상태면 메인 페이지로 리다이렉트
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      router.replace('/');
+    } else {
+      setIsAuthChecked(true);
+    }
+  }, [router]);
+
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -208,6 +220,11 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // 인증 확인 중에는 아무것도 표시하지 않음
+  if (!isAuthChecked) {
+    return <div className="min-h-screen bg-bg-primary" />;
+  }
 
   return (
     <div className="min-h-screen bg-bg-primary flex items-center justify-center px-3 sm:px-4 py-4 sm:py-8 overflow-x-hidden">
