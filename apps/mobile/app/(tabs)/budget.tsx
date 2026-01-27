@@ -7,17 +7,72 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
 import { budgetApi, Budget } from '../../lib/api';
 
+// Mock data for testing
+const USE_MOCK_DATA = true;
+
+const MOCK_BUDGETS: Budget[] = [
+  {
+    id: '1',
+    amount: 500000,
+    spent: 320000,
+    categoryId: 'cat1',
+    categoryName: '식비',
+    categoryIcon: '🍔',
+    categoryColor: '#ff6b6b',
+  },
+  {
+    id: '2',
+    amount: 200000,
+    spent: 150000,
+    categoryId: 'cat2',
+    categoryName: '교통',
+    categoryIcon: '🚌',
+    categoryColor: '#60a5fa',
+  },
+  {
+    id: '3',
+    amount: 300000,
+    spent: 89000,
+    categoryId: 'cat3',
+    categoryName: '생활용품',
+    categoryIcon: '🛒',
+    categoryColor: '#a78bfa',
+  },
+  {
+    id: '4',
+    amount: 150000,
+    spent: 180000,
+    categoryId: 'cat4',
+    categoryName: '문화생활',
+    categoryIcon: '🎬',
+    categoryColor: '#fbbf24',
+  },
+  {
+    id: '5',
+    amount: 100000,
+    spent: 45000,
+    categoryId: 'cat5',
+    categoryName: '의료',
+    categoryIcon: '💊',
+    categoryColor: '#4ade80',
+  },
+];
+
+const MOCK_TOTAL_BUDGET = 1250000;
+const MOCK_TOTAL_SPENT = 784000;
+
 export default function BudgetScreen() {
   const { userId } = useAuthStore();
   const { theme } = useThemeStore();
   const colors = Colors[theme];
+  const insets = useSafeAreaInsets();
 
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [totalBudget, setTotalBudget] = useState(0);
@@ -30,6 +85,16 @@ export default function BudgetScreen() {
   const month = now.getMonth() + 1;
 
   const fetchData = useCallback(async () => {
+    if (USE_MOCK_DATA) {
+      // Use mock data for testing
+      setBudgets(MOCK_BUDGETS);
+      setTotalBudget(MOCK_TOTAL_BUDGET);
+      setTotalSpent(MOCK_TOTAL_SPENT);
+      setIsLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     if (!userId) return;
 
     try {
@@ -56,7 +121,8 @@ export default function BudgetScreen() {
     fetchData();
   }, [fetchData]);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | undefined | null) => {
+    if (amount === undefined || amount === null) return '0원';
     return amount.toLocaleString('ko-KR') + '원';
   };
 
@@ -195,11 +261,11 @@ export default function BudgetScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accentMint} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -207,7 +273,7 @@ export default function BudgetScreen() {
   const isOverBudget = totalSpent > totalBudget;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         refreshControl={
           <RefreshControl
@@ -270,7 +336,7 @@ export default function BudgetScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>카테고리별 예산</Text>
 
-          {budgets.length === 0 ? (
+          {(!budgets || budgets.length === 0) ? (
             <View style={styles.emptyState}>
               <Ionicons
                 name="wallet-outline"
@@ -319,6 +385,6 @@ export default function BudgetScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -7,23 +7,89 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
 import { savingsApi, SavingsGoal } from '../../lib/api';
 
+// Mock data for testing
+const USE_MOCK_DATA = true;
+
+const MOCK_SAVINGS_GOALS: SavingsGoal[] = [
+  {
+    id: '1',
+    name: '여행 자금',
+    icon: '✈️',
+    targetAmount: 3000000,
+    currentAmount: 1500000,
+    progressPercent: 50,
+    monthlyRequired: 250000,
+    monthlyTarget: 300000,
+    thisMonthSavings: 200000,
+    targetDate: '2026년 6월',
+    startYear: 2026,
+    startMonth: 1,
+    targetYear: 2026,
+    targetMonth: 6,
+    isPrimary: true,
+  },
+  {
+    id: '2',
+    name: '비상금',
+    icon: '🏦',
+    targetAmount: 10000000,
+    currentAmount: 4500000,
+    progressPercent: 45,
+    monthlyRequired: 458333,
+    monthlyTarget: 500000,
+    thisMonthSavings: 350000,
+    targetDate: '2026년 12월',
+    startYear: 2026,
+    startMonth: 1,
+    targetYear: 2026,
+    targetMonth: 12,
+    isPrimary: false,
+  },
+  {
+    id: '3',
+    name: '새 노트북',
+    icon: '💻',
+    targetAmount: 2000000,
+    currentAmount: 1800000,
+    progressPercent: 90,
+    monthlyRequired: 100000,
+    monthlyTarget: 200000,
+    thisMonthSavings: 150000,
+    targetDate: '2026년 3월',
+    startYear: 2026,
+    startMonth: 1,
+    targetYear: 2026,
+    targetMonth: 3,
+    isPrimary: false,
+  },
+];
+
 export default function SavingsScreen() {
   const { userId } = useAuthStore();
   const { theme } = useThemeStore();
   const colors = Colors[theme];
+  const insets = useSafeAreaInsets();
 
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = useCallback(async () => {
+    if (USE_MOCK_DATA) {
+      // Use mock data for testing
+      setGoals(MOCK_SAVINGS_GOALS);
+      setIsLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     if (!userId) return;
 
     try {
@@ -48,7 +114,8 @@ export default function SavingsScreen() {
     fetchData();
   }, [fetchData]);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | undefined | null) => {
+    if (amount === undefined || amount === null) return '0원';
     return amount.toLocaleString('ko-KR') + '원';
   };
 
@@ -180,16 +247,16 @@ export default function SavingsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accentMint} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         refreshControl={
           <RefreshControl
@@ -205,7 +272,7 @@ export default function SavingsScreen() {
         </View>
 
         <View style={styles.section}>
-          {goals.length === 0 ? (
+          {(!goals || goals.length === 0) ? (
             <View style={styles.emptyState}>
               <Ionicons
                 name="trending-up-outline"
@@ -225,7 +292,7 @@ export default function SavingsScreen() {
                     <Text style={styles.goalName}>{goal.name}</Text>
                     <Text style={styles.goalTarget}>{goal.targetDate}</Text>
                   </View>
-                  <Text style={styles.goalPercent}>{goal.progressPercent}%</Text>
+                  <Text style={styles.goalPercent}>{goal.progressPercent ?? 0}%</Text>
                 </View>
 
                 <View style={styles.progressContainer}>
@@ -233,7 +300,7 @@ export default function SavingsScreen() {
                     <View
                       style={[
                         styles.progressFill,
-                        { width: `${Math.min(goal.progressPercent, 100)}%` },
+                        { width: `${Math.min(goal.progressPercent ?? 0, 100)}%` },
                       ]}
                     />
                   </View>
@@ -266,6 +333,6 @@ export default function SavingsScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

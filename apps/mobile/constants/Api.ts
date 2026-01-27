@@ -1,5 +1,6 @@
-// API Base URL - Vercel 배포된 웹 서버
-export const API_BASE_URL = 'https://moneger.vercel.app';
+// API Base URL - 개발 시 로컬 서버 사용
+// 실기기에서는 컴퓨터 IP 주소 사용 (예: http://192.168.0.9:3000)
+export const API_BASE_URL = 'http://192.168.0.9:3000';
 
 // API Endpoints
 export const API_ENDPOINTS = {

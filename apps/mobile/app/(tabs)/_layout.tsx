@@ -1,68 +1,84 @@
-import { Tabs } from 'expo-router';
+import { Slot, usePathname, useRouter } from 'expo-router';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
 
+const tabs = [
+  { name: 'index', path: '/(tabs)', title: '홈', icon: 'home' },
+  { name: 'budget', path: '/(tabs)/budget', title: '예산', icon: 'wallet' },
+  { name: 'savings', path: '/(tabs)/savings', title: '저축', icon: 'trending-up' },
+  { name: 'settings', path: '/(tabs)/settings', title: '설정', icon: 'settings' },
+] as const;
+
 export default function TabsLayout() {
   const { theme } = useThemeStore();
   const colors = Colors[theme];
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bgPrimary,
+    },
+    tabBar: {
+      flexDirection: 'row',
+      backgroundColor: colors.bgCard,
+      borderTopColor: colors.border,
+      borderTopWidth: 1,
+      height: 85,
+      paddingTop: 10,
+      paddingBottom: 25,
+    },
+    tabItem: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tabLabel: {
+      fontSize: 12,
+      fontWeight: '500',
+      marginTop: 4,
+    },
+  });
+
+  const isActive = (path: string) => {
+    if (path === '/(tabs)') {
+      return pathname === '/' || pathname === '/(tabs)';
+    }
+    return pathname === path || pathname === path.replace('/(tabs)', '');
+  };
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.bgCard,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 85,
-          paddingTop: 10,
-          paddingBottom: 25,
-        },
-        tabBarActiveTintColor: colors.accentMint,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: '홈',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="budget"
-        options={{
-          title: '예산',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="wallet" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="savings"
-        options={{
-          title: '저축',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="trending-up" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: '설정',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+    <View style={styles.container}>
+      <Slot />
+      <View style={styles.tabBar}>
+        {tabs.map((tab) => {
+          const active = isActive(tab.path);
+          return (
+            <TouchableOpacity
+              key={tab.name}
+              style={styles.tabItem}
+              onPress={() => router.push(tab.path as any)}
+            >
+              <Ionicons
+                name={tab.icon as any}
+                size={24}
+                color={active ? colors.accentMint : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color: active ? colors.accentMint : colors.textMuted },
+                ]}
+              >
+                {tab.title}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
   );
 }

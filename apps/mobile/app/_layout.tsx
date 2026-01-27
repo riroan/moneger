@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Slot } from 'expo-router';
+import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
@@ -16,18 +17,9 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.bgPrimary },
-          animation: 'fade',
-        }}
-      >
-        <Stack.Screen name="login" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-    </>
+      <Slot />
+    </View>
   );
 }

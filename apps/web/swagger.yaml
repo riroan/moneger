@@ -1,0 +1,1092 @@
+openapi: 3.0.3
+info:
+  title: Moneger API
+  description: 가계부 서비스 Moneger의 REST API 문서
+  version: 1.0.0
+  contact:
+    name: Moneger Team
+
+servers:
+  - url: http://localhost:3000
+    description: 로컬 개발 서버
+  - url: https://moneger.vercel.app
+    description: 프로덕션 서버
+
+tags:
+  - name: Auth
+    description: 인증 관련 API
+  - name: Transactions
+    description: 거래 관련 API
+  - name: Categories
+    description: 카테고리 관련 API
+  - name: Budgets
+    description: 예산 관련 API
+  - name: Savings
+    description: 저축 목표 관련 API
+  - name: Stats
+    description: 통계 관련 API
+
+paths:
+  # ==================== Auth ====================
+  /api/auth/signup:
+    post:
+      tags: [Auth]
+      summary: 회원가입
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  example: password123
+                name:
+                  type: string
+                  example: 홍길동
+      responses:
+        '201':
+          description: 회원가입 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: 이미 존재하는 이메일
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: 로그인
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: 로그인 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: 인증 실패
+
+  /api/auth/password:
+    post:
+      tags: [Auth]
+      summary: 비밀번호 변경
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, currentPassword, newPassword]
+              properties:
+                userId:
+                  type: string
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 6
+      responses:
+        '200':
+          description: 비밀번호 변경 성공
+        '401':
+          description: 현재 비밀번호 불일치
+
+  /api/auth/delete:
+    delete:
+      tags: [Auth]
+      summary: 회원 탈퇴
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 회원 탈퇴 성공
+
+  # ==================== Transactions ====================
+  /api/transactions:
+    get:
+      tags: [Transactions]
+      summary: 거래 목록 조회
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: year
+          in: query
+          schema:
+            type: integer
+          example: 2026
+        - name: month
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          example: 1
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/TransactionType'
+        - name: categoryId
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: 설명 검색어
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [recent, oldest, expensive, cheapest]
+            default: recent
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: 페이지네이션 커서
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: startYear
+          in: query
+          schema:
+            type: integer
+        - name: startMonth
+          in: query
+          schema:
+            type: integer
+        - name: endYear
+          in: query
+          schema:
+            type: integer
+        - name: endMonth
+          in: query
+          schema:
+            type: integer
+        - name: minAmount
+          in: query
+          schema:
+            type: integer
+        - name: maxAmount
+          in: query
+          schema:
+            type: integer
+        - name: savingsOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: 거래 목록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTransactions'
+
+    post:
+      tags: [Transactions]
+      summary: 거래 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, type, amount]
+              properties:
+                userId:
+                  type: string
+                type:
+                  $ref: '#/components/schemas/TransactionType'
+                amount:
+                  type: number
+                  minimum: 0
+                  example: 50000
+                description:
+                  type: string
+                  example: 점심 식사
+                categoryId:
+                  type: string
+                date:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: 거래 생성 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+
+  /api/transactions/{id}:
+    get:
+      tags: [Transactions]
+      summary: 거래 상세 조회
+      parameters:
+        - $ref: '#/components/parameters/transactionId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 거래 상세
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Transactions]
+      summary: 거래 수정
+      parameters:
+        - $ref: '#/components/parameters/transactionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+                amount:
+                  type: number
+                description:
+                  type: string
+                categoryId:
+                  type: string
+                date:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: 거래 수정 성공
+
+    delete:
+      tags: [Transactions]
+      summary: 거래 삭제
+      parameters:
+        - $ref: '#/components/parameters/transactionId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 거래 삭제 성공
+
+  /api/transactions/summary:
+    get:
+      tags: [Transactions]
+      summary: 월별 거래 요약 통계
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 거래 요약
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionSummary'
+
+  /api/transactions/recent:
+    get:
+      tags: [Transactions]
+      summary: 최근 거래 조회
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: 최근 거래 목록
+
+  /api/transactions/today:
+    get:
+      tags: [Transactions]
+      summary: 오늘 거래 요약
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 오늘 거래 요약
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodaySummary'
+
+  /api/transactions/oldest-date:
+    get:
+      tags: [Transactions]
+      summary: 가장 오래된 거래 날짜 조회
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 가장 오래된 거래 날짜
+
+  # ==================== Categories ====================
+  /api/categories:
+    get:
+      tags: [Categories]
+      summary: 카테고리 목록 조회
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/TransactionType'
+      responses:
+        '200':
+          description: 카테고리 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  count:
+                    type: integer
+
+    post:
+      tags: [Categories]
+      summary: 카테고리 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, name, type]
+              properties:
+                userId:
+                  type: string
+                name:
+                  type: string
+                  example: 식비
+                type:
+                  $ref: '#/components/schemas/TransactionType'
+                color:
+                  type: string
+                  example: '#10B981'
+                icon:
+                  type: string
+                  example: 🍔
+                defaultBudget:
+                  type: number
+                  example: 500000
+      responses:
+        '201':
+          description: 카테고리 생성 성공
+        '409':
+          description: 이미 존재하는 카테고리
+
+  /api/categories/{id}:
+    get:
+      tags: [Categories]
+      summary: 카테고리 상세 조회
+      parameters:
+        - $ref: '#/components/parameters/categoryId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 카테고리 상세
+
+    put:
+      tags: [Categories]
+      summary: 카테고리 수정
+      parameters:
+        - $ref: '#/components/parameters/categoryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+                name:
+                  type: string
+                color:
+                  type: string
+                icon:
+                  type: string
+                defaultBudget:
+                  type: number
+      responses:
+        '200':
+          description: 카테고리 수정 성공
+
+    delete:
+      tags: [Categories]
+      summary: 카테고리 삭제
+      parameters:
+        - $ref: '#/components/parameters/categoryId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 카테고리 삭제 성공
+
+  /api/categories/seed:
+    post:
+      tags: [Categories]
+      summary: 기본 카테고리 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+      responses:
+        '201':
+          description: 기본 카테고리 생성 성공
+
+  # ==================== Budgets ====================
+  /api/budgets:
+    get:
+      tags: [Budgets]
+      summary: 예산 목록 조회
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 예산 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Budget'
+
+    post:
+      tags: [Budgets]
+      summary: 예산 생성/수정
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, categoryId, amount, year, month]
+              properties:
+                userId:
+                  type: string
+                categoryId:
+                  type: string
+                amount:
+                  type: number
+                  minimum: 0
+                  example: 500000
+                year:
+                  type: integer
+                  example: 2026
+                month:
+                  type: integer
+                  minimum: 1
+                  maximum: 12
+                  example: 1
+      responses:
+        '201':
+          description: 예산 저장 성공
+
+    delete:
+      tags: [Budgets]
+      summary: 예산 삭제
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: categoryId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 예산 삭제 성공
+
+  # ==================== Savings ====================
+  /api/savings:
+    get:
+      tags: [Savings]
+      summary: 저축 목표 목록 조회
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 저축 목표 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SavingsGoal'
+
+    post:
+      tags: [Savings]
+      summary: 저축 목표 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, name, icon, targetAmount, targetYear, targetMonth]
+              properties:
+                userId:
+                  type: string
+                name:
+                  type: string
+                  example: 여행 자금
+                icon:
+                  type: string
+                  example: ✈️
+                targetAmount:
+                  type: number
+                  example: 3000000
+                currentAmount:
+                  type: number
+                  default: 0
+                startYear:
+                  type: integer
+                startMonth:
+                  type: integer
+                targetYear:
+                  type: integer
+                  example: 2026
+                targetMonth:
+                  type: integer
+                  example: 12
+      responses:
+        '201':
+          description: 저축 목표 생성 성공
+
+  /api/savings/{id}:
+    get:
+      tags: [Savings]
+      summary: 저축 목표 상세 조회
+      parameters:
+        - $ref: '#/components/parameters/savingsId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 저축 목표 상세
+
+    put:
+      tags: [Savings]
+      summary: 저축 목표 수정
+      parameters:
+        - $ref: '#/components/parameters/savingsId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+                name:
+                  type: string
+                icon:
+                  type: string
+                targetAmount:
+                  type: number
+                targetYear:
+                  type: integer
+                targetMonth:
+                  type: integer
+      responses:
+        '200':
+          description: 저축 목표 수정 성공
+
+    delete:
+      tags: [Savings]
+      summary: 저축 목표 삭제
+      parameters:
+        - $ref: '#/components/parameters/savingsId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 저축 목표 삭제 성공
+
+  /api/savings/{id}/deposit:
+    post:
+      tags: [Savings]
+      summary: 저축 입금
+      parameters:
+        - $ref: '#/components/parameters/savingsId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, amount]
+              properties:
+                userId:
+                  type: string
+                amount:
+                  type: number
+                  minimum: 0
+                  example: 100000
+      responses:
+        '200':
+          description: 입금 성공
+
+  /api/savings/summary:
+    get:
+      tags: [Savings]
+      summary: 저축 요약 조회
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 저축 요약
+
+  # ==================== Stats ====================
+  /api/stats:
+    get:
+      tags: [Stats]
+      summary: 전체 통계 조회
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: 전체 통계
+
+  /api/daily-balance:
+    get:
+      tags: [Stats]
+      summary: 일별 잔액 조회
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 일별 잔액 목록
+
+  /api/health:
+    get:
+      tags: [Stats]
+      summary: 서버 상태 확인
+      responses:
+        '200':
+          description: 서버 정상
+
+components:
+  parameters:
+    userId:
+      name: userId
+      in: query
+      required: true
+      schema:
+        type: string
+      description: 사용자 ID
+
+    transactionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: 거래 ID
+
+    categoryId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: 카테고리 ID
+
+    savingsId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: 저축 목표 ID
+
+  schemas:
+    TransactionType:
+      type: string
+      enum: [INCOME, EXPENSE]
+      description: 거래 유형 (수입/지출)
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: number
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        description:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date-time
+        categoryId:
+          type: string
+          nullable: true
+        category:
+          $ref: '#/components/schemas/CategorySummary'
+        userId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        color:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        defaultBudget:
+          type: number
+          nullable: true
+        userId:
+          type: string
+
+    CategorySummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        color:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+
+    Budget:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: number
+        categoryId:
+          type: string
+          nullable: true
+        month:
+          type: string
+          format: date-time
+        category:
+          $ref: '#/components/schemas/CategorySummary'
+
+    SavingsGoal:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        icon:
+          type: string
+        targetAmount:
+          type: number
+        currentAmount:
+          type: number
+        progressPercent:
+          type: number
+        monthlyRequired:
+          type: number
+        monthlyTarget:
+          type: number
+        thisMonthSavings:
+          type: number
+        targetDate:
+          type: string
+        startYear:
+          type: integer
+        startMonth:
+          type: integer
+        targetYear:
+          type: integer
+        targetMonth:
+          type: integer
+        isPrimary:
+          type: boolean
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+        message:
+          type: string
+
+    TransactionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Transaction'
+        message:
+          type: string
+
+    PaginatedTransactions:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        count:
+          type: integer
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+
+    TransactionSummary:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            summary:
+              type: object
+              properties:
+                totalIncome:
+                  type: number
+                totalExpense:
+                  type: number
+                totalSavings:
+                  type: number
+                netAmount:
+                  type: number
+                balance:
+                  type: number
+            categories:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  icon:
+                    type: string
+                  total:
+                    type: number
+                  count:
+                    type: integer
+                  budget:
+                    type: number
+                  budgetUsagePercent:
+                    type: number
+            transactionCount:
+              type: object
+              properties:
+                income:
+                  type: integer
+                expense:
+                  type: integer
+
+    TodaySummary:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            date:
+              type: string
+            year:
+              type: integer
+            month:
+              type: integer
+            day:
+              type: integer
+            dayOfWeek:
+              type: integer
+            expense:
+              type: object
+              properties:
+                total:
+                  type: number
+                count:
+                  type: integer
+            income:
+              type: object
+              properties:
+                total:
+                  type: number
+                count:
+                  type: integer
+            savings:
+              type: object
+              properties:
+                total:
+                  type: number
+                count:
+                  type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: 잘못된 요청
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: 리소스를 찾을 수 없음
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: 인증 필요
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
