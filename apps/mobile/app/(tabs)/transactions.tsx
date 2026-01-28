@@ -27,6 +27,12 @@ import { transactionApi, categoryApi, Transaction, Category } from '../../lib/ap
 import { useToast } from '../../contexts/ToastContext';
 import { useRefreshStore } from '../../stores/refreshStore';
 
+// Amount limits (same as web)
+const AMOUNT_LIMITS = {
+  MAX: 100_000_000_000_000, // 100조 (general)
+  TRANSACTION_MAX: 100_000_000_000, // 1000억 (individual transactions)
+};
+
 // Mock data for testing
 const USE_MOCK_DATA = true;
 
@@ -187,6 +193,7 @@ export default function TransactionsScreen() {
   const [editType, setEditType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
+  const [editAmountExceeded, setEditAmountExceeded] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
   const [isEditCategoryDropdownOpen, setIsEditCategoryDropdownOpen] = useState(false);
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
@@ -511,6 +518,7 @@ export default function TransactionsScreen() {
     setEditType(tx.type);
     setEditDescription(tx.description || '');
     setEditAmount(tx.amount.toLocaleString('ko-KR'));
+    setEditAmountExceeded(false);
     setEditCategoryId(tx.categoryId || null);
     setIsEditCategoryDropdownOpen(false);
     setShowDeleteConfirm(false);
@@ -523,18 +531,25 @@ export default function TransactionsScreen() {
     setIsEditModalOpen(false);
     setEditingTransaction(null);
     setShowDeleteConfirm(false);
+    setEditAmountExceeded(false);
     editModalTranslateY.setValue(0);
   };
 
-  // Format amount for edit
-  const formatEditAmount = (value: string) => {
+  // Format amount for edit with max limit (returns { value, exceeded })
+  const formatEditAmountWithCheck = (value: string): { value: string; exceeded: boolean } => {
     const numericValue = value.replace(/[^0-9]/g, '');
-    if (!numericValue) return '';
-    return Number(numericValue).toLocaleString('ko-KR');
+    if (!numericValue) return { value: '', exceeded: false };
+    const num = Number(numericValue);
+    if (num > AMOUNT_LIMITS.TRANSACTION_MAX) {
+      return { value: AMOUNT_LIMITS.TRANSACTION_MAX.toLocaleString('ko-KR'), exceeded: true };
+    }
+    return { value: num.toLocaleString('ko-KR'), exceeded: false };
   };
 
   const handleEditAmountChange = (text: string) => {
-    setEditAmount(formatEditAmount(text));
+    const result = formatEditAmountWithCheck(text);
+    setEditAmount(result.value);
+    setEditAmountExceeded(result.exceeded);
   };
 
   // Submit edit
@@ -892,6 +907,10 @@ export default function TransactionsScreen() {
       borderColor: colors.border,
       paddingHorizontal: 12,
     },
+    amountInputExceeded: {
+      borderColor: '#F87171',
+      borderWidth: 2,
+    },
     amountPrefix: {
       fontSize: 14,
       color: colors.textMuted,
@@ -1072,6 +1091,15 @@ export default function TransactionsScreen() {
       paddingHorizontal: 16,
       borderWidth: 1,
       borderColor: colors.border,
+    },
+    editAmountContainerExceeded: {
+      borderColor: '#F87171',
+      borderWidth: 2,
+    },
+    amountExceededText: {
+      fontSize: 12,
+      color: '#F87171',
+      marginTop: 6,
     },
     editCurrencySymbol: {
       fontSize: 18,
@@ -1782,7 +1810,7 @@ export default function TransactionsScreen() {
                   {/* Amount */}
                   <View style={styles.editFieldContainer}>
                     <Text style={styles.editFieldLabel}>금액</Text>
-                    <View style={styles.editAmountContainer}>
+                    <View style={[styles.editAmountContainer, editAmountExceeded && styles.editAmountContainerExceeded]}>
                       <Text style={styles.editCurrencySymbol}>₩</Text>
                       <TextInput
                         style={styles.editAmountInput}
@@ -1793,6 +1821,11 @@ export default function TransactionsScreen() {
                         keyboardType="numeric"
                       />
                     </View>
+                    {editAmountExceeded && (
+                      <Text style={styles.amountExceededText}>
+                        1000억 원을 초과할 수 없습니다.
+                      </Text>
+                    )}
                   </View>
 
                   {/* Category Dropdown */}

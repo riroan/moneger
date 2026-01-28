@@ -337,6 +337,28 @@ export const savingsApi = {
     request(`${API_ENDPOINTS.SAVINGS}/${id}?userId=${userId}`, {
       method: 'DELETE',
     }),
+
+  togglePrimary: (id: string, userId: string, isPrimary: boolean) =>
+    request(`${API_ENDPOINTS.SAVINGS}/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ userId, isPrimary }),
+    }),
+
+  update: (
+    id: string,
+    data: {
+      userId: string;
+      name: string;
+      icon: string;
+      targetAmount: number;
+      targetYear: number;
+      targetMonth: number;
+    }
+  ) =>
+    request<SavingsGoal>(`${API_ENDPOINTS.SAVINGS}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };
 
 // Balance API

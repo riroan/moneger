@@ -12,6 +12,11 @@ import { transactionApi, categoryApi, Category } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useRefreshStore } from '../../stores/refreshStore';
 
+// Amount limits (same as web)
+const AMOUNT_LIMITS = {
+  TRANSACTION_MAX: 100_000_000_000, // 1000억 (individual transactions)
+};
+
 const tabs: { name: string; path: string; title: string; icon: MaterialIconName }[] = [
   { name: 'index', path: '/(tabs)', title: '홈', icon: 'home' },
   { name: 'transactions', path: '/(tabs)/transactions', title: '내역', icon: 'receipt-long' },
@@ -56,6 +61,7 @@ export default function TabsLayout() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [amountExceeded, setAmountExceeded] = useState(false);
 
   // Categories from API
   const [allCategories, setAllCategories] = useState<Category[]>([]);
@@ -124,6 +130,7 @@ export default function TabsLayout() {
     setAmount('');
     setSelectedCategory(null);
     setIsCategoryDropdownOpen(false);
+    setAmountExceeded(false);
   };
 
   const handleOpenModal = () => {
@@ -178,17 +185,20 @@ export default function TabsLayout() {
     }
   };
 
-  const formatAmount = (value: string) => {
-    // Remove non-numeric characters
+  const formatAmountWithCheck = (value: string): { value: string; exceeded: boolean } => {
     const numericValue = value.replace(/[^0-9]/g, '');
-    if (!numericValue) return '';
-    // Format with commas
-    return Number(numericValue).toLocaleString('ko-KR');
+    if (!numericValue) return { value: '', exceeded: false };
+    const num = Number(numericValue);
+    if (num > AMOUNT_LIMITS.TRANSACTION_MAX) {
+      return { value: AMOUNT_LIMITS.TRANSACTION_MAX.toLocaleString('ko-KR'), exceeded: true };
+    }
+    return { value: num.toLocaleString('ko-KR'), exceeded: false };
   };
 
   const handleAmountChange = (text: string) => {
-    const formatted = formatAmount(text);
-    setAmount(formatted);
+    const result = formatAmountWithCheck(text);
+    setAmount(result.value);
+    setAmountExceeded(result.exceeded);
   };
 
   // Use API categories if available, otherwise fallback to mock
@@ -361,6 +371,15 @@ export default function TabsLayout() {
       fontSize: 18,
       fontWeight: '600',
       color: colors.textPrimary,
+    },
+    amountInputContainerExceeded: {
+      borderColor: '#F87171',
+      borderWidth: 2,
+    },
+    amountExceededText: {
+      fontSize: 12,
+      color: '#F87171',
+      marginTop: 6,
     },
     // Category Dropdown
     categoryDropdown: {
@@ -624,7 +643,7 @@ export default function TabsLayout() {
                   {/* Amount */}
                   <View style={styles.fieldContainer}>
                     <Text style={styles.fieldLabel}>금액</Text>
-                    <View style={styles.amountInputContainer}>
+                    <View style={[styles.amountInputContainer, amountExceeded && styles.amountInputContainerExceeded]}>
                       <Text style={styles.currencySymbol}>₩</Text>
                       <TextInput
                         style={styles.amountInput}
@@ -635,6 +654,11 @@ export default function TabsLayout() {
                         keyboardType="numeric"
                       />
                     </View>
+                    {amountExceeded && (
+                      <Text style={styles.amountExceededText}>
+                        1000억 원을 초과할 수 없습니다.
+                      </Text>
+                    )}
                   </View>
 
                   {/* Category Dropdown */}
