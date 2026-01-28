@@ -211,6 +211,21 @@ export const transactionApi = {
       body: JSON.stringify(data),
     }),
 
+  update: (
+    id: string,
+    data: {
+      userId: string;
+      amount: number;
+      type: 'INCOME' | 'EXPENSE';
+      description?: string;
+      categoryId?: string;
+    }
+  ) =>
+    request<Transaction>(`${API_ENDPOINTS.TRANSACTIONS}/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
   delete: (id: string, userId: string) =>
     request(`${API_ENDPOINTS.TRANSACTIONS}/${id}?userId=${userId}`, {
       method: 'DELETE',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,11 @@ import {
   TextInput,
   Modal,
   Switch,
+  Platform,
+  KeyboardAvoidingView,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -18,7 +23,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
-import { transactionApi, Transaction } from '../../lib/api';
+import { transactionApi, categoryApi, Transaction, Category } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
+import { useRefreshStore } from '../../stores/refreshStore';
 
 // Mock data for testing
 const USE_MOCK_DATA = true;
@@ -121,16 +128,16 @@ const MOCK_TRANSACTIONS: TransactionWithCategory[] = [
 // Mock categories
 const MOCK_CATEGORIES = {
   EXPENSE: [
-    { id: 'cat1', name: '식비', icon: 'restaurant', color: '#ff6b6b' },
-    { id: 'cat2', name: '교통', icon: 'car', color: '#60a5fa' },
-    { id: 'cat3', name: '생활용품', icon: 'cart', color: '#a78bfa' },
-    { id: 'cat4', name: '의료/건강', icon: 'hospital', color: '#34d399' },
-    { id: 'cat5', name: '문화/여가', icon: 'movie', color: '#fbbf24' },
+    { id: 'cat1', name: '식비', icon: 'restaurant', color: '#ff6b6b', type: 'EXPENSE' as const },
+    { id: 'cat2', name: '교통', icon: 'car', color: '#60a5fa', type: 'EXPENSE' as const },
+    { id: 'cat3', name: '생활용품', icon: 'cart', color: '#a78bfa', type: 'EXPENSE' as const },
+    { id: 'cat4', name: '의료/건강', icon: 'hospital', color: '#34d399', type: 'EXPENSE' as const },
+    { id: 'cat5', name: '문화/여가', icon: 'movie', color: '#fbbf24', type: 'EXPENSE' as const },
   ],
   INCOME: [
-    { id: 'cat7', name: '급여', icon: 'money', color: '#4ade80' },
-    { id: 'cat8', name: '부수입', icon: 'star', color: '#fbbf24' },
-    { id: 'cat9', name: '용돈', icon: 'gift', color: '#f472b6' },
+    { id: 'cat7', name: '급여', icon: 'money', color: '#4ade80', type: 'INCOME' as const },
+    { id: 'cat8', name: '부수입', icon: 'star', color: '#fbbf24', type: 'INCOME' as const },
+    { id: 'cat9', name: '용돈', icon: 'gift', color: '#f472b6', type: 'INCOME' as const },
   ],
 };
 
@@ -165,12 +172,69 @@ interface AmountRange {
 export default function TransactionsScreen() {
   const { userId } = useAuthStore();
   const { theme } = useThemeStore();
+  const { showToast } = useToast();
+  const { triggerRefresh } = useRefreshStore();
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
 
   const [transactions, setTransactions] = useState<TransactionWithCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Edit modal states
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
+  const [editType, setEditType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
+  const [editDescription, setEditDescription] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
+  const [isEditCategoryDropdownOpen, setIsEditCategoryDropdownOpen] = useState(false);
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Edit modal drag-to-dismiss
+  const screenHeight = Dimensions.get('window').height;
+  const editModalTranslateY = useRef(new Animated.Value(0)).current;
+  const DISMISS_THRESHOLD = 120;
+
+  const editModalPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // 아래로 드래그할 때만 반응
+        return gestureState.dy > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // 아래로만 드래그 가능
+        if (gestureState.dy > 0) {
+          editModalTranslateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > DISMISS_THRESHOLD) {
+          // 임계값 이상이면 모달 닫기
+          Animated.timing(editModalTranslateY, {
+            toValue: screenHeight,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            handleCloseEditModal();
+            editModalTranslateY.setValue(0);
+          });
+        } else {
+          // 임계값 미만이면 원래 위치로
+          Animated.spring(editModalTranslateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 100,
+            friction: 10,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   // Filter states
   const [filterType, setFilterType] = useState<FilterType>('ALL');
@@ -424,6 +488,114 @@ export default function TransactionsScreen() {
     setMaxAmountInput('');
     setSelectedCategories([]);
   };
+
+  // Fetch categories for edit modal
+  const fetchCategories = useCallback(async () => {
+    if (!userId) return;
+    setIsCategoriesLoading(true);
+    const result = await categoryApi.getAll(userId);
+    if (result.success && result.data) {
+      setAllCategories(result.data);
+    }
+    setIsCategoriesLoading(false);
+  }, [userId]);
+
+  // Open edit modal
+  const handleOpenEditModal = (tx: TransactionWithCategory) => {
+    // 저축 거래는 수정 불가
+    if (tx.savingsGoalId) {
+      showToast('저축 거래는 저축 탭에서 관리해주세요.', 'info');
+      return;
+    }
+    setEditingTransaction(tx);
+    setEditType(tx.type);
+    setEditDescription(tx.description || '');
+    setEditAmount(tx.amount.toLocaleString('ko-KR'));
+    setEditCategoryId(tx.categoryId || null);
+    setIsEditCategoryDropdownOpen(false);
+    setShowDeleteConfirm(false);
+    setIsEditModalOpen(true);
+    fetchCategories();
+  };
+
+  // Close edit modal
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingTransaction(null);
+    setShowDeleteConfirm(false);
+    editModalTranslateY.setValue(0);
+  };
+
+  // Format amount for edit
+  const formatEditAmount = (value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    if (!numericValue) return '';
+    return Number(numericValue).toLocaleString('ko-KR');
+  };
+
+  const handleEditAmountChange = (text: string) => {
+    setEditAmount(formatEditAmount(text));
+  };
+
+  // Submit edit
+  const handleEditSubmit = async () => {
+    if (!userId || !editingTransaction) return;
+
+    const numericAmount = parseInt(editAmount.replace(/,/g, ''), 10);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      showToast('올바른 금액을 입력해주세요.', 'error');
+      return;
+    }
+
+    setIsEditSubmitting(true);
+
+    const result = await transactionApi.update(editingTransaction.id, {
+      userId,
+      type: editType,
+      amount: numericAmount,
+      description: editDescription.trim() || undefined,
+      categoryId: editCategoryId || undefined,
+    });
+
+    setIsEditSubmitting(false);
+
+    if (result.success) {
+      handleCloseEditModal();
+      showToast('내역이 수정되었습니다.', 'success');
+      triggerRefresh();
+      fetchData();
+    } else {
+      showToast(result.error || '내역 수정에 실패했습니다.', 'error');
+    }
+  };
+
+  // Delete transaction
+  const handleDeleteTransaction = async () => {
+    if (!userId || !editingTransaction) return;
+
+    setIsEditSubmitting(true);
+
+    const result = await transactionApi.delete(editingTransaction.id, userId);
+
+    setIsEditSubmitting(false);
+
+    if (result.success) {
+      handleCloseEditModal();
+      showToast('내역이 삭제되었습니다.', 'success');
+      triggerRefresh();
+      fetchData();
+    } else {
+      showToast(result.error || '내역 삭제에 실패했습니다.', 'error');
+    }
+  };
+
+  // Get categories for edit modal
+  const editCategories = useMemo(() => {
+    const filtered = allCategories.filter(c => c.type === editType);
+    if (filtered.length > 0) return filtered;
+    // Fallback
+    return editType === 'EXPENSE' ? MOCK_CATEGORIES.EXPENSE : MOCK_CATEGORIES.INCOME;
+  }, [allCategories, editType]);
 
   // Year/Month options
   const yearOptions = [];
@@ -825,6 +997,234 @@ export default function TransactionsScreen() {
       fontWeight: '600',
       color: '#fff',
     },
+    // Edit Modal Styles
+    editModalContent: {
+      backgroundColor: colors.bgCard,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingBottom: insets.bottom + 20,
+      width: '100%',
+    },
+    editModalHandleContainer: {
+      width: '100%',
+      alignItems: 'center',
+      paddingVertical: 12,
+    },
+    editModalHandle: {
+      width: 40,
+      height: 4,
+      backgroundColor: colors.border,
+      borderRadius: 2,
+    },
+    editModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      marginBottom: 20,
+    },
+    editModalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    editModalBody: {
+      paddingHorizontal: 20,
+    },
+    editTypeIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      borderRadius: 12,
+      marginBottom: 20,
+    },
+    editTypeText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#fff',
+      marginLeft: 8,
+    },
+    editFieldContainer: {
+      marginBottom: 16,
+    },
+    editFieldLabel: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    editTextInput: {
+      backgroundColor: colors.bgSecondary,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      fontSize: 15,
+      color: colors.textPrimary,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    editAmountContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.bgSecondary,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    editCurrencySymbol: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textMuted,
+      marginRight: 8,
+    },
+    editAmountInput: {
+      flex: 1,
+      paddingVertical: 14,
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    editCategoryDropdown: {
+      backgroundColor: colors.bgSecondary,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    editCategoryTrigger: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+    },
+    editCategorySelected: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    editCategoryTriggerText: {
+      fontSize: 15,
+      color: colors.textMuted,
+    },
+    editCategorySelectedText: {
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+    editCategoryList: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      maxHeight: 200,
+    },
+    editCategoryItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    editCategoryItemSelected: {
+      backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    },
+    editCategoryItemText: {
+      fontSize: 15,
+      color: colors.textPrimary,
+    },
+    editCategoryItemTextSelected: {
+      color: colors.accentMint,
+      fontWeight: '500',
+    },
+    editActionButtons: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 24,
+    },
+    editCancelButton: {
+      flex: 1,
+      paddingVertical: 16,
+      borderRadius: 12,
+      backgroundColor: colors.bgSecondary,
+      alignItems: 'center',
+    },
+    editCancelButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    editSubmitButton: {
+      flex: 1,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    editSubmitButtonGradient: {
+      paddingVertical: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    editSubmitButtonDisabled: {
+      opacity: 0.5,
+    },
+    editSubmitButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    deleteButton: {
+      paddingVertical: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.accentCoral,
+      alignItems: 'center',
+      marginTop: 12,
+    },
+    deleteButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.accentCoral,
+    },
+    deleteConfirmContainer: {
+      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+      borderRadius: 12,
+      padding: 16,
+      marginTop: 12,
+    },
+    deleteConfirmText: {
+      fontSize: 14,
+      color: colors.accentCoral,
+      textAlign: 'center',
+      marginBottom: 12,
+    },
+    deleteConfirmButtons: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    deleteConfirmCancel: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      backgroundColor: colors.bgSecondary,
+      alignItems: 'center',
+    },
+    deleteConfirmCancelText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    deleteConfirmDelete: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      backgroundColor: colors.accentCoral,
+      alignItems: 'center',
+    },
+    deleteConfirmDeleteText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#fff',
+    },
   });
 
   if (isLoading) {
@@ -951,7 +1351,10 @@ export default function TransactionsScreen() {
                 <View style={styles.transactionCard}>
                   {txs.map((tx, index) => (
                     <View key={tx.id}>
-                      <TouchableOpacity style={styles.transactionItem}>
+                      <TouchableOpacity
+                        style={styles.transactionItem}
+                        onPress={() => handleOpenEditModal(tx)}
+                      >
                         <View
                           style={[
                             styles.transactionIcon,
@@ -1307,6 +1710,249 @@ export default function TransactionsScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Edit Transaction Modal */}
+      <Modal
+        visible={isEditModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={handleCloseEditModal}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={handleCloseEditModal}
+          >
+            <Animated.View
+              style={[
+                styles.editModalContent,
+                { transform: [{ translateY: editModalTranslateY }] },
+              ]}
+            >
+              {/* 드래그 핸들 영역 */}
+              <View
+                {...editModalPanResponder.panHandlers}
+                style={styles.editModalHandleContainer}
+              >
+                <View style={styles.editModalHandle} />
+              </View>
+
+                <View style={styles.editModalHeader}>
+                  <Text style={styles.editModalTitle}>내역 수정</Text>
+                  <TouchableOpacity onPress={handleCloseEditModal}>
+                    <MaterialIcons name="close" size={24} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.editModalBody}>
+                  {/* Type Indicator (Read-only) */}
+                  <LinearGradient
+                    colors={editType === 'EXPENSE' ? ['#F87171', '#FBBF24'] : ['#34D399', '#60A5FA']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.editTypeIndicator}
+                  >
+                    <MaterialIcons
+                      name={editType === 'EXPENSE' ? 'trending-down' : 'trending-up'}
+                      size={20}
+                      color="#fff"
+                    />
+                    <Text style={styles.editTypeText}>
+                      {editType === 'EXPENSE' ? '지출' : '수입'}
+                    </Text>
+                  </LinearGradient>
+
+                  {/* Description */}
+                  <View style={styles.editFieldContainer}>
+                    <Text style={styles.editFieldLabel}>내용</Text>
+                    <TextInput
+                      style={styles.editTextInput}
+                      placeholder="예: 점심 식사, 월급 등"
+                      placeholderTextColor={colors.textMuted}
+                      value={editDescription}
+                      onChangeText={setEditDescription}
+                    />
+                  </View>
+
+                  {/* Amount */}
+                  <View style={styles.editFieldContainer}>
+                    <Text style={styles.editFieldLabel}>금액</Text>
+                    <View style={styles.editAmountContainer}>
+                      <Text style={styles.editCurrencySymbol}>₩</Text>
+                      <TextInput
+                        style={styles.editAmountInput}
+                        placeholder="0"
+                        placeholderTextColor={colors.textMuted}
+                        value={editAmount}
+                        onChangeText={handleEditAmountChange}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+
+                  {/* Category Dropdown */}
+                  <View style={styles.editFieldContainer}>
+                    <Text style={styles.editFieldLabel}>카테고리</Text>
+                    <View style={styles.editCategoryDropdown}>
+                      <TouchableOpacity
+                        style={styles.editCategoryTrigger}
+                        onPress={() => setIsEditCategoryDropdownOpen(!isEditCategoryDropdownOpen)}
+                        disabled={isCategoriesLoading}
+                      >
+                        {(() => {
+                          if (isCategoriesLoading) {
+                            return (
+                              <View style={styles.editCategorySelected}>
+                                <ActivityIndicator size="small" color={colors.textMuted} />
+                                <Text style={[styles.editCategoryTriggerText, { marginLeft: 8 }]}>
+                                  로딩 중...
+                                </Text>
+                              </View>
+                            );
+                          }
+
+                          if (editCategoryId) {
+                            // 먼저 editCategories에서 찾고, 없으면 editingTransaction의 카테고리 정보 사용
+                            const foundCategory = editCategories.find(c => c.id === editCategoryId);
+                            const categoryInfo = foundCategory || editingTransaction?.category;
+
+                            if (categoryInfo) {
+                              return (
+                                <View style={styles.editCategorySelected}>
+                                  <MaterialIcons
+                                    name={getIconName(categoryInfo.icon)}
+                                    size={18}
+                                    color={categoryInfo.color || colors.textPrimary}
+                                  />
+                                  <Text style={styles.editCategorySelectedText}>
+                                    {categoryInfo.name}
+                                  </Text>
+                                </View>
+                              );
+                            }
+                          }
+
+                          return (
+                            <Text style={styles.editCategoryTriggerText}>
+                              카테고리 선택
+                            </Text>
+                          );
+                        })()}
+                        <MaterialIcons
+                          name={isEditCategoryDropdownOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                          size={20}
+                          color={colors.textMuted}
+                        />
+                      </TouchableOpacity>
+                      {isEditCategoryDropdownOpen && !isCategoriesLoading && (
+                        <ScrollView style={styles.editCategoryList} nestedScrollEnabled>
+                          {editCategories.map((cat, index) => (
+                            <TouchableOpacity
+                              key={cat.id}
+                              style={[
+                                styles.editCategoryItem,
+                                editCategoryId === cat.id && styles.editCategoryItemSelected,
+                                index === editCategories.length - 1 && { borderBottomWidth: 0 },
+                              ]}
+                              onPress={() => {
+                                setEditCategoryId(cat.id);
+                                setIsEditCategoryDropdownOpen(false);
+                              }}
+                            >
+                              <MaterialIcons name={getIconName(cat.icon)} size={20} color={cat.color} />
+                              <Text
+                                style={[
+                                  styles.editCategoryItemText,
+                                  editCategoryId === cat.id && styles.editCategoryItemTextSelected,
+                                ]}
+                              >
+                                {cat.name}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Action Buttons */}
+                  <View style={styles.editActionButtons}>
+                    <TouchableOpacity
+                      style={styles.editCancelButton}
+                      onPress={handleCloseEditModal}
+                      disabled={isEditSubmitting}
+                    >
+                      <Text style={styles.editCancelButtonText}>취소</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.editSubmitButton,
+                        isEditSubmitting && styles.editSubmitButtonDisabled,
+                      ]}
+                      onPress={handleEditSubmit}
+                      disabled={isEditSubmitting}
+                    >
+                      <LinearGradient
+                        colors={editType === 'EXPENSE' ? ['#F87171', '#FBBF24'] : ['#34D399', '#60A5FA']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.editSubmitButtonGradient}
+                      >
+                        {isEditSubmitting ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={styles.editSubmitButtonText}>수정</Text>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Delete Button */}
+                  {!showDeleteConfirm ? (
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => setShowDeleteConfirm(true)}
+                      disabled={isEditSubmitting}
+                    >
+                      <Text style={styles.deleteButtonText}>삭제</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.deleteConfirmContainer}>
+                      <Text style={styles.deleteConfirmText}>
+                        정말로 이 내역을 삭제하시겠습니까?
+                      </Text>
+                      <View style={styles.deleteConfirmButtons}>
+                        <TouchableOpacity
+                          style={styles.deleteConfirmCancel}
+                          onPress={() => setShowDeleteConfirm(false)}
+                          disabled={isEditSubmitting}
+                        >
+                          <Text style={styles.deleteConfirmCancelText}>취소</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deleteConfirmDelete}
+                          onPress={handleDeleteTransaction}
+                          disabled={isEditSubmitting}
+                        >
+                          {isEditSubmitting ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <Text style={styles.deleteConfirmDeleteText}>삭제</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                </View>
+            </Animated.View>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

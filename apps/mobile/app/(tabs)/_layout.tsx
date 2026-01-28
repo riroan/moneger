@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Slot, usePathname, useRouter } from 'expo-router';
-import { View, TouchableOpacity, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Animated, PanResponder, Dimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { getIconName, type MaterialIconName } from '../../constants/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,6 +61,44 @@ export default function TabsLayout() {
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
 
+  // Modal drag-to-dismiss
+  const screenHeight = Dimensions.get('window').height;
+  const modalTranslateY = useRef(new Animated.Value(0)).current;
+  const DISMISS_THRESHOLD = 120;
+
+  const modalPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          modalTranslateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > DISMISS_THRESHOLD) {
+          Animated.timing(modalTranslateY, {
+            toValue: screenHeight,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            handleCloseModal();
+            modalTranslateY.setValue(0);
+          });
+        } else {
+          Animated.spring(modalTranslateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 100,
+            friction: 10,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   // Fetch categories from API
   const fetchCategories = useCallback(async () => {
     if (!userId) return;
@@ -96,6 +134,7 @@ export default function TabsLayout() {
   const handleCloseModal = () => {
     setIsModalVisible(false);
     resetForm();
+    modalTranslateY.setValue(0);
   };
 
   const handleSubmit = async () => {
@@ -126,22 +165,15 @@ export default function TabsLayout() {
       categoryId: selectedCategory || undefined,
     };
 
-    console.log('Creating transaction:', requestData);
-
     const result = await transactionApi.create(requestData);
-
-    console.log('Transaction result:', result);
 
     setIsSubmitting(false);
 
     if (result.success) {
-      console.log('Transaction created successfully, triggering refresh');
       handleCloseModal();
       showToast('내역이 추가되었습니다.', 'success');
       triggerRefresh();
-      console.log('triggerRefresh called');
     } else {
-      console.error('Transaction error:', result.error);
       showToast(result.error || '내역 추가에 실패했습니다.', 'error');
     }
   };
@@ -220,13 +252,16 @@ export default function TabsLayout() {
       paddingBottom: insets.bottom + 20,
       maxHeight: '90%',
     },
+    modalHandleContainer: {
+      width: '100%',
+      alignItems: 'center',
+      paddingVertical: 12,
+    },
     modalHandle: {
       width: 40,
       height: 4,
       backgroundColor: colors.border,
       borderRadius: 2,
-      alignSelf: 'center',
-      marginBottom: 16,
     },
     modalHeader: {
       flexDirection: 'row',
@@ -258,15 +293,24 @@ export default function TabsLayout() {
       overflow: 'hidden',
     },
     typeButtonInner: {
+      flexDirection: 'row',
       paddingVertical: 14,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.bgSecondary,
+      borderRadius: 12,
+      gap: 6,
     },
     typeButtonGradient: {
       paddingVertical: 14,
       alignItems: 'center',
       justifyContent: 'center',
+      borderRadius: 12,
+    },
+    typeButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
     typeButtonText: {
       fontSize: 15,
@@ -483,8 +527,19 @@ export default function TabsLayout() {
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={{ flex: 1, justifyContent: 'flex-end' }}
             >
-              <View style={styles.modalContent}>
-                <View style={styles.modalHandle} />
+              <Animated.View
+                style={[
+                  styles.modalContent,
+                  { transform: [{ translateY: modalTranslateY }] },
+                ]}
+              >
+                {/* 드래그 핸들 영역 */}
+                <View
+                  {...modalPanResponder.panHandlers}
+                  style={styles.modalHandleContainer}
+                >
+                  <View style={styles.modalHandle} />
+                </View>
 
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>내역 추가</Text>
@@ -493,7 +548,7 @@ export default function TabsLayout() {
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                <View style={styles.modalBody}>
                   {/* Type Toggle */}
                   <View style={styles.typeToggle}>
                     <TouchableOpacity
@@ -510,13 +565,17 @@ export default function TabsLayout() {
                           end={{ x: 1, y: 1 }}
                           style={styles.typeButtonGradient}
                         >
-                          <Text style={[styles.typeButtonText, styles.typeButtonTextActive]}>
-                            💳 지출
-                          </Text>
+                          <View style={styles.typeButtonContent}>
+                            <MaterialIcons name="trending-down" size={18} color="#fff" />
+                            <Text style={[styles.typeButtonText, styles.typeButtonTextActive]}>
+                              지출
+                            </Text>
+                          </View>
                         </LinearGradient>
                       ) : (
                         <View style={styles.typeButtonInner}>
-                          <Text style={styles.typeButtonText}>💳 지출</Text>
+                          <MaterialIcons name="trending-down" size={18} color={colors.textSecondary} />
+                          <Text style={styles.typeButtonText}>지출</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -534,13 +593,17 @@ export default function TabsLayout() {
                           end={{ x: 1, y: 1 }}
                           style={styles.typeButtonGradient}
                         >
-                          <Text style={[styles.typeButtonText, styles.typeButtonTextActive]}>
-                            💼 수입
-                          </Text>
+                          <View style={styles.typeButtonContent}>
+                            <MaterialIcons name="trending-up" size={18} color="#fff" />
+                            <Text style={[styles.typeButtonText, styles.typeButtonTextActive]}>
+                              수입
+                            </Text>
+                          </View>
                         </LinearGradient>
                       ) : (
                         <View style={styles.typeButtonInner}>
-                          <Text style={styles.typeButtonText}>💼 수입</Text>
+                          <MaterialIcons name="trending-up" size={18} color={colors.textSecondary} />
+                          <Text style={styles.typeButtonText}>수입</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -676,8 +739,8 @@ export default function TabsLayout() {
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
-                </ScrollView>
-              </View>
+                </View>
+              </Animated.View>
             </KeyboardAvoidingView>
           </View>
         </TouchableWithoutFeedback>

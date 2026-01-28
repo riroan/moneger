@@ -252,7 +252,6 @@ export default function HomeScreen() {
   const month = now.getMonth() + 1;
 
   const fetchData = useCallback(async () => {
-    console.log('fetchData called, userId:', userId);
     if (!userId) {
       setIsLoading(false);
       return;
@@ -267,9 +266,6 @@ export default function HomeScreen() {
         // Get last month stats for comparison
         statsApi.get(userId, month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1),
       ]);
-
-      console.log('todayRes:', JSON.stringify(todayRes, null, 2));
-      console.log('recentRes:', JSON.stringify(recentRes, null, 2));
 
       if (summaryRes.success && summaryRes.data) {
         setSummary(summaryRes.data);
@@ -301,7 +297,6 @@ export default function HomeScreen() {
   // Refresh when transaction is added
   useEffect(() => {
     if (lastTransactionUpdate > 0) {
-      console.log('Refresh triggered, lastTransactionUpdate:', lastTransactionUpdate);
       fetchData();
     }
   }, [lastTransactionUpdate, fetchData]);
