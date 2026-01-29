@@ -35,6 +35,7 @@ import {
   CategorySummary,
 } from '../../lib/api';
 import { useRefreshStore } from '../../stores/refreshStore';
+import { formatNumber, formatCurrency, formatTime } from '@moneger/shared';
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -310,22 +311,6 @@ export default function HomeScreen() {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffsetX / SNAP_INTERVAL);
     setActiveCardIndex(Math.max(0, Math.min(index, 3)));
-  };
-
-  const formatNumber = (amount: number) => {
-    return amount.toLocaleString('ko-KR');
-  };
-
-  const formatCurrency = (amount: number | undefined | null) => {
-    if (amount === undefined || amount === null) return '₩0';
-    return '₩' + amount.toLocaleString('ko-KR');
-  };
-
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
   };
 
   // Computed values from summary

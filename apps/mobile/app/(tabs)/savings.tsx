@@ -22,14 +22,9 @@ import { useRefreshStore } from '../../stores/refreshStore';
 import { useToast } from '../../contexts/ToastContext';
 import { Colors } from '../../constants/Colors';
 import { savingsApi, SavingsGoal } from '../../lib/api';
+import { AMOUNT_LIMITS, SAVINGS_GOAL, formatNumber, formatAmountInput } from '@moneger/shared';
 
-const MAX_GOALS = 10;
-
-// Amount limits (same as web)
-const AMOUNT_LIMITS = {
-  MAX: 100_000_000_000_000, // 100조 (general)
-  TRANSACTION_MAX: 100_000_000_000, // 1000억 (individual transactions)
-};
+const MAX_GOALS = SAVINGS_GOAL.MAX_COUNT;
 
 // Icon mapping for savings goals
 const GOAL_ICONS: Record<string, MaterialIconName> = {
@@ -125,10 +120,6 @@ export default function SavingsScreen() {
     setRefreshing(true);
     fetchData();
   }, [fetchData]);
-
-  const formatNumber = (amount: number) => {
-    return amount.toLocaleString('ko-KR');
-  };
 
   // 큰 숫자를 간결하게 표시 (억, 조 단위)
   const formatCompactNumber = (amount: number) => {
@@ -311,16 +302,9 @@ export default function SavingsScreen() {
     }
   };
 
-  // Format input as currency with max limit (returns { value, exceeded })
-  const formatInputAmountWithCheck = (text: string, maxAmount: number = AMOUNT_LIMITS.MAX): { value: string; exceeded: boolean } => {
-    const num = text.replace(/[^0-9]/g, '');
-    if (!num) return { value: '', exceeded: false };
-    const value = parseInt(num, 10);
-    if (value > maxAmount) {
-      return { value: formatNumber(maxAmount), exceeded: true };
-    }
-    return { value: value.toLocaleString('ko-KR'), exceeded: false };
-  };
+  // Format input as currency with max limit (using shared formatAmountInput)
+  const formatInputAmountWithCheck = (text: string, maxAmount: number = AMOUNT_LIMITS.MAX) =>
+    formatAmountInput(text, maxAmount);
 
   // Handle toggle primary goal (same as web implementation)
   const handleTogglePrimary = async (goal: SavingsGoal) => {

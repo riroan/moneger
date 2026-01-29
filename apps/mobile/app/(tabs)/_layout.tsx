@@ -11,11 +11,7 @@ import { Colors } from '../../constants/Colors';
 import { transactionApi, categoryApi, Category } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useRefreshStore } from '../../stores/refreshStore';
-
-// Amount limits (same as web)
-const AMOUNT_LIMITS = {
-  TRANSACTION_MAX: 100_000_000_000, // 1000억 (individual transactions)
-};
+import { AMOUNT_LIMITS, formatAmountInput } from '@moneger/shared';
 
 const tabs: { name: string; path: string; title: string; icon: MaterialIconName }[] = [
   { name: 'index', path: '/(tabs)', title: '홈', icon: 'home' },
@@ -184,18 +180,8 @@ export default function TabsLayout() {
     }
   };
 
-  const formatAmountWithCheck = (value: string): { value: string; exceeded: boolean } => {
-    const numericValue = value.replace(/[^0-9]/g, '');
-    if (!numericValue) return { value: '', exceeded: false };
-    const num = Number(numericValue);
-    if (num > AMOUNT_LIMITS.TRANSACTION_MAX) {
-      return { value: AMOUNT_LIMITS.TRANSACTION_MAX.toLocaleString('ko-KR'), exceeded: true };
-    }
-    return { value: num.toLocaleString('ko-KR'), exceeded: false };
-  };
-
   const handleAmountChange = (text: string) => {
-    const result = formatAmountWithCheck(text);
+    const result = formatAmountInput(text, AMOUNT_LIMITS.TRANSACTION_MAX);
     setAmount(result.value);
     setAmountExceeded(result.exceeded);
   };

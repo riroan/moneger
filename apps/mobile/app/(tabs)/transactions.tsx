@@ -27,12 +27,7 @@ import { Colors } from '../../constants/Colors';
 import { transactionApi, categoryApi, Transaction, Category, TransactionWithCategory as ApiTransactionWithCategory, PaginatedTransactionsResponse } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useRefreshStore } from '../../stores/refreshStore';
-
-// Amount limits (same as web)
-const AMOUNT_LIMITS = {
-  MAX: 100_000_000_000_000, // 100조 (general)
-  TRANSACTION_MAX: 100_000_000_000, // 1000억 (individual transactions)
-};
+import { AMOUNT_LIMITS, formatNumber, formatAmountInput, formatDateWithDay, formatTime } from '@moneger/shared';
 
 // Pagination settings
 const INITIAL_LOAD_LIMIT = 50; // 처음 로드할 개수
@@ -152,25 +147,8 @@ const MOCK_CATEGORIES = {
   ],
 };
 
-const formatNumber = (num: number) => {
-  return num.toLocaleString('ko-KR');
-};
-
-const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-  const dayName = dayNames[date.getDay()];
-  return `${month}월 ${day}일 (${dayName})`;
-};
-
-const formatTime = (dateStr: string) => {
-  const date = new Date(dateStr);
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
-};
+// formatDate를 formatDateWithDay로 대체 (shared에서 import)
+const formatDate = formatDateWithDay;
 
 type FilterType = 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
 type SortOrder = 'recent' | 'oldest' | 'expensive' | 'cheapest';

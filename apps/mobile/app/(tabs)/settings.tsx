@@ -24,7 +24,7 @@ import { useThemeStore } from '../../stores/themeStore';
 import { useToast } from '../../contexts/ToastContext';
 import { Colors } from '../../constants/Colors';
 import { authApi, categoryApi, budgetApi, transactionApi, CategoryWithBudget, BudgetItem } from '../../lib/api';
-import { getHolidayDaysInMonth } from '../../lib/korean-holidays';
+import { getHolidayDaysInMonth, formatNumber } from '@moneger/shared';
 
 type SettingTab = 'account' | 'category' | 'budget';
 type SettingsModal = 'none' | 'category' | 'budget' | 'password' | 'account' | 'calendar';
@@ -458,8 +458,6 @@ export default function SettingsScreen() {
       setIsBudgetSubmitting(false);
     }
   };
-
-  const formatNumber = (num: number) => num.toLocaleString('ko-KR');
 
   const formatBudgetInput = (text: string) => {
     const num = text.replace(/[^0-9]/g, '');
