@@ -12,6 +12,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -24,7 +26,7 @@ import { Colors } from '../../constants/Colors';
 import { authApi, categoryApi, budgetApi, transactionApi, CategoryWithBudget, BudgetItem } from '../../lib/api';
 
 type SettingTab = 'account' | 'category' | 'budget';
-type SettingsModal = 'none' | 'category' | 'budget' | 'password';
+type SettingsModal = 'none' | 'category' | 'budget' | 'password' | 'account';
 
 // Icon mapping for categories
 const CATEGORY_ICONS: Record<string, MaterialIconName> = {
@@ -144,8 +146,7 @@ export default function SettingsScreen() {
       const res = await budgetApi.getAll(userId, year, month);
       if (res.success && res.data) {
         // Convert budget response to BudgetItem array
-        const budgetsArray = res.data.budgets || [];
-        const budgetItems: BudgetItem[] = budgetsArray.map(b => ({
+        const budgetItems: BudgetItem[] = res.data.map(b => ({
           id: b.id,
           amount: b.amount,
           categoryId: b.categoryId,
@@ -178,11 +179,11 @@ export default function SettingsScreen() {
   }, [fetchCategories]);
 
   useEffect(() => {
-    if (activeTab === 'budget') {
+    if (activeModal === 'budget') {
       fetchBudgets();
       fetchOldestDate();
     }
-  }, [activeTab, fetchBudgets, fetchOldestDate]);
+  }, [activeModal, fetchBudgets, fetchOldestDate]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -397,6 +398,7 @@ export default function SettingsScreen() {
         showToast(res.error || '예산 저장에 실패했습니다', 'error');
       }
     } catch (error) {
+      console.error('Failed to save budget:', error);
       showToast('예산 저장에 실패했습니다', 'error');
     } finally {
       setIsBudgetSubmitting(false);
@@ -516,6 +518,37 @@ export default function SettingsScreen() {
       fontSize: 12,
       color: colors.textSecondary,
       textAlign: 'center',
+    },
+    // Menu List (single-line layout)
+    menuListCard: {
+      backgroundColor: colors.bgCard,
+      borderRadius: 16,
+      marginHorizontal: 16,
+      marginTop: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    menuListItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    menuListIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+    },
+    menuListText: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textPrimary,
     },
     bottomSpacer: {
       height: 100,
@@ -900,6 +933,10 @@ export default function SettingsScreen() {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0, 0, 0, 0.7)',
     },
+    budgetModalContainer: {
+      width: '100%',
+      alignItems: 'center',
+    },
     modalContent: {
       width: '90%',
       maxWidth: 400,
@@ -1064,12 +1101,27 @@ export default function SettingsScreen() {
       padding: 32,
       alignItems: 'center',
     },
+    budgetEditModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    budgetEditModalContent: {
+      width: '90%',
+      maxWidth: 400,
+      backgroundColor: colors.bgCard,
+      borderRadius: 24,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
   });
 
   const renderAccountTab = () => (
     <ScrollView>
       {/* Profile */}
-      <View style={styles.section}>
+      <View style={[styles.section, { paddingTop: 16 }]}>
         <Text style={styles.sectionTitle}>프로필</Text>
         <View style={styles.card}>
           <View style={styles.profileCard}>
@@ -1092,7 +1144,7 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>앱 설정</Text>
         <View style={styles.card}>
-          <View style={[styles.menuItem, styles.menuItemFirst]}>
+          <View style={[styles.menuItemOld, styles.menuItemFirst]}>
             <View style={styles.menuIcon}>
               <MaterialIcons
                 name={theme === 'dark' ? 'dark-mode' : 'light-mode'}
@@ -1189,7 +1241,7 @@ export default function SettingsScreen() {
   const renderCategoryTab = () => (
     <ScrollView>
       {/* Income Categories */}
-      <View style={styles.section}>
+      <View style={[styles.section, { paddingTop: 16 }]}>
         <View style={styles.card}>
           <View style={styles.categoryHeader}>
             <Text style={styles.categoryTitle}>
@@ -1287,7 +1339,7 @@ export default function SettingsScreen() {
   const renderBudgetTab = () => (
     <ScrollView>
       {/* Month Selector */}
-      <View style={styles.budgetMonthSelector}>
+      <View style={[styles.budgetMonthSelector, { marginTop: 16 }]}>
         <TouchableOpacity
           style={[styles.budgetMonthButton, isBudgetPreviousMonthDisabled() && styles.budgetMonthButtonDisabled]}
           onPress={handleBudgetPreviousMonth}
@@ -1371,14 +1423,16 @@ export default function SettingsScreen() {
     </ScrollView>
   );
 
-  // Grid menu items
-  const menuItems = [
-    { id: 'category', icon: 'category' as MaterialIconName, label: '카테고리', color: '#6366F1', onPress: () => setActiveModal('category') },
-    { id: 'budget', icon: 'account-balance-wallet' as MaterialIconName, label: '예산', color: '#10B981', onPress: () => setActiveModal('budget') },
-    { id: 'darkmode', icon: theme === 'dark' ? 'light-mode' : 'dark-mode' as MaterialIconName, label: theme === 'dark' ? '라이트 모드' : '다크 모드', color: '#F59E0B', onPress: toggleTheme },
-    { id: 'password', icon: 'lock' as MaterialIconName, label: '비밀번호 변경', color: '#3B82F6', onPress: () => setActiveModal('password') },
-    { id: 'delete', icon: 'person-remove' as MaterialIconName, label: '계정 삭제', color: '#EF4444', onPress: () => setIsDeleteAccountModalOpen(true) },
-    { id: 'logout', icon: 'logout' as MaterialIconName, label: '로그아웃', color: '#6B7280', onPress: handleLogout },
+  // Navigation menu items
+  const navigationMenuItems = [
+    { id: 'transactions', icon: 'receipt-long' as MaterialIconName, label: '거래 내역', color: '#3B82F6', onPress: () => router.push('/(tabs)/transactions') },
+    { id: 'savings', icon: 'savings' as MaterialIconName, label: '저축 목표', color: '#F59E0B', onPress: () => router.push('/(tabs)/savings') },
+  ];
+
+  // Settings menu items
+  const settingsMenuItems = [
+    { id: 'category', icon: 'category' as MaterialIconName, label: '카테고리 관리', color: '#6366F1', onPress: () => setActiveModal('category') },
+    { id: 'budget', icon: 'account-balance-wallet' as MaterialIconName, label: '월별 예산 관리', color: '#10B981', onPress: () => setActiveModal('budget') },
   ];
 
   return (
@@ -1386,30 +1440,50 @@ export default function SettingsScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Profile Section */}
         <View style={styles.profileSection}>
-          <View style={styles.profileAvatar}>
-            <MaterialIcons name="person" size={40} color={colors.textMuted} />
+          <View style={[styles.profileAvatar, { backgroundColor: colors.accentMint }]}>
+            <Text style={styles.avatarText}>
+              {(userName || userEmail || '?').charAt(0).toUpperCase()}
+            </Text>
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{userName || '사용자'}</Text>
             <Text style={styles.profileEmail}>{userEmail || ''}</Text>
           </View>
-          <TouchableOpacity style={styles.profileSettingsButton}>
+          <TouchableOpacity style={styles.profileSettingsButton} onPress={() => setActiveModal('account')}>
             <MaterialIcons name="settings" size={24} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
-        {/* Menu Grid */}
-        <View style={styles.menuGrid}>
-          {menuItems.map((item) => (
+        {/* Navigation Menu */}
+        <View style={styles.menuListCard}>
+          {navigationMenuItems.map((item, index) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.menuItem}
+              style={[styles.menuListItem, index === 0 && styles.menuItemFirst]}
               onPress={item.onPress}
             >
-              <View style={[styles.menuIconContainer, { backgroundColor: item.color + '20' }]}>
-                <MaterialIcons name={item.icon} size={28} color={item.color} />
+              <View style={[styles.menuListIcon, { backgroundColor: item.color + '20' }]}>
+                <MaterialIcons name={item.icon} size={20} color={item.color} />
               </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
+              <Text style={styles.menuListText}>{item.label}</Text>
+              <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Settings Menu */}
+        <View style={[styles.menuListCard, { marginTop: 16 }]}>
+          {settingsMenuItems.map((item, index) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.menuListItem, index === 0 && styles.menuItemFirst]}
+              onPress={item.onPress}
+            >
+              <View style={[styles.menuListIcon, { backgroundColor: item.color + '20' }]}>
+                <MaterialIcons name={item.icon} size={20} color={item.color} />
+              </View>
+              <Text style={styles.menuListText}>{item.label}</Text>
+              <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
@@ -1424,7 +1498,7 @@ export default function SettingsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setActiveModal('none')}
       >
-        <View style={[styles.fullScreenModal, { paddingTop: insets.top }]}>
+        <View style={styles.fullScreenModal}>
           <View style={styles.fullModalHeader}>
             <TouchableOpacity onPress={() => setActiveModal('none')}>
               <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -1443,16 +1517,120 @@ export default function SettingsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setActiveModal('none')}
       >
-        <View style={[styles.fullScreenModal, { paddingTop: insets.top }]}>
+        <View style={styles.fullScreenModal}>
           <View style={styles.fullModalHeader}>
             <TouchableOpacity onPress={() => setActiveModal('none')}>
               <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.fullModalTitle}>예산 관리</Text>
+            <Text style={styles.fullModalTitle}>월별 예산 관리</Text>
             <View style={{ width: 24 }} />
           </View>
           {renderBudgetTab()}
         </View>
+
+        {/* Budget Edit Modal (nested inside Budget Management Modal) */}
+        <Modal
+          visible={isBudgetModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsBudgetModalOpen(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+          >
+            <TouchableWithoutFeedback onPress={() => {
+              Keyboard.dismiss();
+              setIsBudgetModalOpen(false);
+            }}>
+              <View style={styles.budgetEditModalOverlay}>
+                <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+                  <View style={styles.budgetEditModalContent}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>예산 설정</Text>
+                    <TouchableOpacity
+                      onPress={() => setIsBudgetModalOpen(false)}
+                      style={styles.modalCloseButton}
+                    >
+                      <MaterialIcons name="close" size={24} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {editingBudgetCategory && (
+                    <View style={styles.modalBody}>
+                      <View style={[styles.budgetItem, { marginHorizontal: 0 }]}>
+                        <View style={styles.budgetItemHeader}>
+                          <View
+                            style={[
+                              styles.budgetItemIcon,
+                              { backgroundColor: `${editingBudgetCategory.color || '#888'}20` },
+                            ]}
+                          >
+                            {renderCategoryIcon(
+                              editingBudgetCategory.icon || 'money',
+                              20,
+                              editingBudgetCategory.color || '#888'
+                            )}
+                          </View>
+                          <View style={styles.budgetItemInfo}>
+                            <Text style={styles.budgetItemName}>{editingBudgetCategory.name}</Text>
+                            <Text style={styles.budgetItemDefault}>
+                              {budgetDate.getFullYear()}년 {budgetDate.getMonth() + 1}월 예산
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      <Text style={[styles.inputLabel, { marginTop: 16 }]}>예산 금액</Text>
+                      <View style={styles.amountInputContainer}>
+                        <Text style={styles.currencySymbol}>₩</Text>
+                        <TextInput
+                          style={styles.amountInput}
+                          value={budgetAmount}
+                          onChangeText={(text) => setBudgetAmount(formatBudgetInput(text))}
+                          placeholder="0"
+                          placeholderTextColor={colors.textMuted}
+                          keyboardType="number-pad"
+                        />
+                      </View>
+
+                      {editingBudgetCategory.defaultBudget && editingBudgetCategory.defaultBudget > 0 && (
+                        <TouchableOpacity
+                          style={[styles.addCategoryButton, { alignSelf: 'flex-start', marginTop: 8 }]}
+                          onPress={() => setBudgetAmount(formatNumber(editingBudgetCategory.defaultBudget || 0))}
+                        >
+                          <Text style={styles.addCategoryButtonText}>
+                            기본 예산 적용 (₩{formatNumber(editingBudgetCategory.defaultBudget)})
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={() => setIsBudgetModalOpen(false)}
+                      disabled={isBudgetSubmitting}
+                    >
+                      <Text style={styles.cancelButtonText}>취소</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.saveButton, isBudgetSubmitting && styles.saveButtonDisabled]}
+                      onPress={handleSaveBudget}
+                      disabled={isBudgetSubmitting}
+                    >
+                      <Text style={styles.saveButtonText}>
+                        {isBudgetSubmitting ? '저장 중...' : '저장'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
+        </Modal>
       </Modal>
 
       {/* Password Change Modal */}
@@ -1462,7 +1640,7 @@ export default function SettingsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setActiveModal('none')}
       >
-        <View style={[styles.fullScreenModal, { paddingTop: insets.top }]}>
+        <View style={styles.fullScreenModal}>
           <View style={styles.fullModalHeader}>
             <TouchableOpacity onPress={() => setActiveModal('none')}>
               <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -1513,6 +1691,25 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Account Settings Modal */}
+      <Modal
+        visible={activeModal === 'account'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal('none')}
+      >
+        <View style={styles.fullScreenModal}>
+          <View style={styles.fullModalHeader}>
+            <TouchableOpacity onPress={() => setActiveModal('none')}>
+              <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.fullModalTitle}>계정 설정</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          {renderAccountTab()}
         </View>
       </Modal>
 
@@ -1667,107 +1864,6 @@ export default function SettingsScreen() {
               >
                 <Text style={styles.saveButtonText}>
                   {isCategorySubmitting ? '저장 중...' : '저장'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Budget Modal */}
-      <Modal
-        visible={isBudgetModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsBudgetModalOpen(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setIsBudgetModalOpen(false)}
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>예산 설정</Text>
-              <TouchableOpacity
-                onPress={() => setIsBudgetModalOpen(false)}
-                style={styles.modalCloseButton}
-              >
-                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            {editingBudgetCategory && (
-              <View style={styles.modalBody}>
-                <View style={[styles.budgetItem, { marginHorizontal: 0 }]}>
-                  <View style={styles.budgetItemHeader}>
-                    <View
-                      style={[
-                        styles.budgetItemIcon,
-                        { backgroundColor: `${editingBudgetCategory.color || '#888'}20` },
-                      ]}
-                    >
-                      {renderCategoryIcon(
-                        editingBudgetCategory.icon || 'money',
-                        20,
-                        editingBudgetCategory.color || '#888'
-                      )}
-                    </View>
-                    <View style={styles.budgetItemInfo}>
-                      <Text style={styles.budgetItemName}>{editingBudgetCategory.name}</Text>
-                      <Text style={styles.budgetItemDefault}>
-                        {budgetDate.getFullYear()}년 {budgetDate.getMonth() + 1}월 예산
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <Text style={[styles.inputLabel, { marginTop: 16 }]}>예산 금액</Text>
-                <View style={styles.amountInputContainer}>
-                  <Text style={styles.currencySymbol}>₩</Text>
-                  <TextInput
-                    style={styles.amountInput}
-                    value={budgetAmount}
-                    onChangeText={(text) => setBudgetAmount(formatBudgetInput(text))}
-                    placeholder="0"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="number-pad"
-                    autoFocus
-                  />
-                </View>
-
-                {editingBudgetCategory.defaultBudget && editingBudgetCategory.defaultBudget > 0 && (
-                  <TouchableOpacity
-                    style={[styles.addCategoryButton, { alignSelf: 'flex-start', marginTop: 8 }]}
-                    onPress={() => setBudgetAmount(formatNumber(editingBudgetCategory.defaultBudget || 0))}
-                  >
-                    <Text style={styles.addCategoryButtonText}>
-                      기본 예산 적용 (₩{formatNumber(editingBudgetCategory.defaultBudget)})
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setIsBudgetModalOpen(false)}
-                disabled={isBudgetSubmitting}
-              >
-                <Text style={styles.cancelButtonText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.saveButton, isBudgetSubmitting && styles.saveButtonDisabled]}
-                onPress={handleSaveBudget}
-                disabled={isBudgetSubmitting}
-              >
-                <Text style={styles.saveButtonText}>
-                  {isBudgetSubmitting ? '저장 중...' : '저장'}
                 </Text>
               </TouchableOpacity>
             </View>

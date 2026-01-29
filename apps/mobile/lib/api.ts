@@ -302,14 +302,17 @@ export const categoryApi = {
 };
 
 // Budget API
-export interface Budget {
+export interface BudgetResponse {
   id: string;
   amount: number;
-  spent: number;
   categoryId: string;
-  categoryName: string;
-  categoryIcon: string;
-  categoryColor: string;
+  month: string;
+  category: {
+    id: string;
+    name: string;
+    icon: string | null;
+    color: string | null;
+  };
 }
 
 export interface BudgetItem {
@@ -322,12 +325,7 @@ export interface BudgetItem {
 
 export const budgetApi = {
   getAll: (userId: string, year: number, month: number) =>
-    request<{ budgets: Budget[]; totalBudget: number; totalSpent: number }>(
-      `${API_ENDPOINTS.BUDGETS}?userId=${userId}&year=${year}&month=${month}`
-    ),
-
-  getForSettings: (userId: string, year: number, month: number) =>
-    request<BudgetItem[]>(
+    request<BudgetResponse[]>(
       `${API_ENDPOINTS.BUDGETS}?userId=${userId}&year=${year}&month=${month}`
     ),
 

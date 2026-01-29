@@ -22,7 +22,7 @@ const tabs: { name: string; path: string; title: string; icon: MaterialIconName 
   { name: 'transactions', path: '/(tabs)/transactions', title: '내역', icon: 'receipt-long' },
   { name: 'add', path: '', title: '', icon: 'add' }, // Center add button placeholder
   { name: 'savings', path: '/(tabs)/savings', title: '저축', icon: 'savings' },
-  { name: 'settings', path: '/(tabs)/settings', title: '설정', icon: 'settings' },
+  { name: 'settings', path: '/(tabs)/settings', title: '전체', icon: 'menu' },
 ];
 
 // Fallback mock categories (used when API fails or user is not logged in)
