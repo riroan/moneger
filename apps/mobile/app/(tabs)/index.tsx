@@ -1006,6 +1006,22 @@ export default function HomeScreen() {
                     )}
                   </View>
                 </View>
+
+                {/* Balance */}
+                <View style={[styles.todayRow, { borderTopWidth: 1, borderTopColor: colors.border, marginTop: 8, paddingTop: 8 }]}>
+                  <View style={styles.todayRowLeft}>
+                    <MaterialIcons name="account-balance-wallet" size={16} color="#A78BFA" />
+                    <Text style={[styles.todayLabel, { fontWeight: '600' }]}>잔액</Text>
+                  </View>
+                  <Text style={[styles.todayAmount, {
+                    color: (todaySummary?.income?.total || 0) - (todaySummary?.expense?.total || 0) >= 0
+                      ? colors.accentMint
+                      : colors.accentCoral,
+                    fontWeight: '600',
+                  }]}>
+                    ₩{formatNumber((todaySummary?.income?.total || 0) - (todaySummary?.expense?.total || 0))}
+                  </Text>
+                </View>
               </>
             ) : (
               <Text style={[styles.todayEmpty, { textAlign: 'center', paddingVertical: 8 }]}>
@@ -1183,7 +1199,7 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Category List */}
-                {categories.slice(0, 5).map((cat, index) => {
+                {categories.map((cat, index) => {
                   const usagePercent = cat.budget ? Math.round((cat.total / cat.budget) * 100) : 0;
                   const progressColor = usagePercent >= 90
                     ? colors.accentCoral
@@ -1200,7 +1216,7 @@ export default function HomeScreen() {
                       onPress={() => setSelectedCategoryIndex(isSelected ? null : index)}
                       style={[
                         styles.categoryItem,
-                        index === Math.min(categories.length - 1, 4) && styles.categoryItemLast,
+                        index === categories.length - 1 && styles.categoryItemLast,
                         isSelected && {
                           borderWidth: 2,
                           borderColor: categoryColor,
