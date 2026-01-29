@@ -24,6 +24,7 @@ import { Colors } from '../../constants/Colors';
 import { authApi, categoryApi, budgetApi, transactionApi, CategoryWithBudget, BudgetItem } from '../../lib/api';
 
 type SettingTab = 'account' | 'category' | 'budget';
+type SettingsModal = 'none' | 'category' | 'budget' | 'password';
 
 // Icon mapping for categories
 const CATEGORY_ICONS: Record<string, MaterialIconName> = {
@@ -79,6 +80,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState<SettingTab>('account');
+  const [activeModal, setActiveModal] = useState<SettingsModal>('none');
 
   // Category state
   const [categories, setCategories] = useState<CategoryWithBudget[]>([]);
@@ -450,6 +452,96 @@ export default function SettingsScreen() {
       flex: 1,
       backgroundColor: colors.bgPrimary,
     },
+    // Profile Section
+    profileSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 20,
+      paddingTop: 10,
+    },
+    profileAvatar: {
+      width: 60,
+      height: 60,
+      borderRadius: 20,
+      backgroundColor: colors.bgSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    profileInfo: {
+      flex: 1,
+      marginLeft: 16,
+    },
+    profileName: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+    },
+    profileEmail: {
+      fontSize: 14,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    profileSettingsButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.bgSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Menu Grid
+    menuGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      padding: 12,
+      backgroundColor: colors.bgCard,
+      borderRadius: 24,
+      marginHorizontal: 16,
+      marginTop: 8,
+    },
+    menuItem: {
+      width: '25%',
+      alignItems: 'center',
+      paddingVertical: 16,
+    },
+    menuIconContainer: {
+      width: 56,
+      height: 56,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
+    menuLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    bottomSpacer: {
+      height: 100,
+    },
+    // Full Screen Modal
+    fullScreenModal: {
+      flex: 1,
+      backgroundColor: colors.bgPrimary,
+    },
+    fullModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    fullModalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    passwordModalContent: {
+      flex: 1,
+      padding: 16,
+    },
     header: {
       padding: 20,
       paddingTop: 10,
@@ -464,7 +556,7 @@ export default function SettingsScreen() {
       color: colors.textSecondary,
       marginTop: 4,
     },
-    // Tab navigation
+    // Tab navigation (kept for backwards compatibility)
     tabContainer: {
       flexDirection: 'row',
       paddingHorizontal: 20,
@@ -533,19 +625,6 @@ export default function SettingsScreen() {
       fontWeight: 'bold',
       color: colors.bgPrimary,
     },
-    profileInfo: {
-      flex: 1,
-    },
-    profileName: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.textPrimary,
-    },
-    profileEmail: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
     // Form styles
     formContainer: {
       padding: 16,
@@ -581,6 +660,17 @@ export default function SettingsScreen() {
       fontWeight: '600',
       color: colors.bgPrimary,
     },
+    primaryButton: {
+      backgroundColor: colors.accentMint,
+      borderRadius: 12,
+      padding: 14,
+      alignItems: 'center',
+    },
+    primaryButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.bgPrimary,
+    },
     // Danger zone
     dangerCard: {
       backgroundColor: colors.bgCard,
@@ -611,8 +701,8 @@ export default function SettingsScreen() {
       fontWeight: '600',
       color: '#fff',
     },
-    // Menu item
-    menuItem: {
+    // Old Menu item (kept for backwards compat)
+    menuItemOld: {
       flexDirection: 'row',
       alignItems: 'center',
       padding: 16,
@@ -1281,45 +1371,150 @@ export default function SettingsScreen() {
     </ScrollView>
   );
 
+  // Grid menu items
+  const menuItems = [
+    { id: 'category', icon: 'category' as MaterialIconName, label: '카테고리', color: '#6366F1', onPress: () => setActiveModal('category') },
+    { id: 'budget', icon: 'account-balance-wallet' as MaterialIconName, label: '예산', color: '#10B981', onPress: () => setActiveModal('budget') },
+    { id: 'darkmode', icon: theme === 'dark' ? 'light-mode' : 'dark-mode' as MaterialIconName, label: theme === 'dark' ? '라이트 모드' : '다크 모드', color: '#F59E0B', onPress: toggleTheme },
+    { id: 'password', icon: 'lock' as MaterialIconName, label: '비밀번호 변경', color: '#3B82F6', onPress: () => setActiveModal('password') },
+    { id: 'delete', icon: 'person-remove' as MaterialIconName, label: '계정 삭제', color: '#EF4444', onPress: () => setIsDeleteAccountModalOpen(true) },
+    { id: 'logout', icon: 'logout' as MaterialIconName, label: '로그아웃', color: '#6B7280', onPress: handleLogout },
+  ];
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>설정</Text>
-        <Text style={styles.subtitle}>계정, 카테고리, 예산을 관리합니다</Text>
-      </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
+          <View style={styles.profileAvatar}>
+            <MaterialIcons name="person" size={40} color={colors.textMuted} />
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{userName || '사용자'}</Text>
+            <Text style={styles.profileEmail}>{userEmail || ''}</Text>
+          </View>
+          <TouchableOpacity style={styles.profileSettingsButton}>
+            <MaterialIcons name="settings" size={24} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
 
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'account' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('account')}
-        >
-          <Text style={[styles.tabText, activeTab === 'account' && styles.tabTextActive]}>
-            계정
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'category' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('category')}
-        >
-          <Text style={[styles.tabText, activeTab === 'category' && styles.tabTextActive]}>
-            카테고리
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'budget' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('budget')}
-        >
-          <Text style={[styles.tabText, activeTab === 'budget' && styles.tabTextActive]}>
-            예산
-          </Text>
-        </TouchableOpacity>
-      </View>
+        {/* Menu Grid */}
+        <View style={styles.menuGrid}>
+          {menuItems.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.menuItem}
+              onPress={item.onPress}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: item.color + '20' }]}>
+                <MaterialIcons name={item.icon} size={28} color={item.color} />
+              </View>
+              <Text style={styles.menuLabel}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      {/* Tab Content */}
-      {activeTab === 'account' && renderAccountTab()}
-      {activeTab === 'category' && renderCategoryTab()}
-      {activeTab === 'budget' && renderBudgetTab()}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+
+      {/* Category Management Modal */}
+      <Modal
+        visible={activeModal === 'category'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal('none')}
+      >
+        <View style={[styles.fullScreenModal, { paddingTop: insets.top }]}>
+          <View style={styles.fullModalHeader}>
+            <TouchableOpacity onPress={() => setActiveModal('none')}>
+              <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.fullModalTitle}>카테고리 관리</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          {renderCategoryTab()}
+        </View>
+      </Modal>
+
+      {/* Budget Management Modal */}
+      <Modal
+        visible={activeModal === 'budget'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal('none')}
+      >
+        <View style={[styles.fullScreenModal, { paddingTop: insets.top }]}>
+          <View style={styles.fullModalHeader}>
+            <TouchableOpacity onPress={() => setActiveModal('none')}>
+              <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.fullModalTitle}>예산 관리</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          {renderBudgetTab()}
+        </View>
+      </Modal>
+
+      {/* Password Change Modal */}
+      <Modal
+        visible={activeModal === 'password'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal('none')}
+      >
+        <View style={[styles.fullScreenModal, { paddingTop: insets.top }]}>
+          <View style={styles.fullModalHeader}>
+            <TouchableOpacity onPress={() => setActiveModal('none')}>
+              <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.fullModalTitle}>비밀번호 변경</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <ScrollView style={styles.passwordModalContent}>
+            <View style={styles.card}>
+              <Text style={styles.inputLabel}>현재 비밀번호</Text>
+              <TextInput
+                style={styles.textInput}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="현재 비밀번호 입력"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+              />
+
+              <Text style={[styles.inputLabel, { marginTop: 16 }]}>새 비밀번호</Text>
+              <TextInput
+                style={styles.textInput}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="새 비밀번호 입력 (6자 이상)"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+              />
+
+              <Text style={[styles.inputLabel, { marginTop: 16 }]}>새 비밀번호 확인</Text>
+              <TextInput
+                style={styles.textInput}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="새 비밀번호 다시 입력"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+              />
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { marginTop: 24 }]}
+                onPress={handleChangePassword}
+                disabled={isChangingPassword}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Category Modal */}
       <Modal
