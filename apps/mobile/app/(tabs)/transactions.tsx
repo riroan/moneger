@@ -160,6 +160,13 @@ const formatDate = (dateStr: string) => {
   return `${month}월 ${day}일 (${dayName})`;
 };
 
+const formatTime = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
 type FilterType = 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
 type SortOrder = 'recent' | 'oldest' | 'expensive' | 'cheapest';
 
@@ -758,10 +765,19 @@ export default function TransactionsScreen() {
       fontWeight: '500',
       color: colors.textPrimary,
     },
+    transactionMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 2,
+      gap: 8,
+    },
+    transactionTime: {
+      fontSize: 12,
+      color: colors.textMuted,
+    },
     transactionCategory: {
       fontSize: 12,
       color: colors.textMuted,
-      marginTop: 2,
     },
     transactionAmount: {
       fontSize: 15,
@@ -1399,9 +1415,14 @@ export default function TransactionsScreen() {
                           <Text style={styles.transactionDescription}>
                             {tx.description || '내역 없음'}
                           </Text>
-                          <Text style={styles.transactionCategory}>
-                            {tx.category?.name || '미분류'}
-                          </Text>
+                          <View style={styles.transactionMeta}>
+                            <Text style={styles.transactionTime}>
+                              {formatTime(tx.date)}
+                            </Text>
+                            <Text style={styles.transactionCategory}>
+                              {tx.category?.name || '미분류'}
+                            </Text>
+                          </View>
                         </View>
                         <Text
                           style={[

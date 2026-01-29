@@ -321,6 +321,13 @@ export default function HomeScreen() {
     return '₩' + amount.toLocaleString('ko-KR');
   };
 
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   // Computed values from summary
   const totalIncome = summary?.summary?.totalIncome || 0;
   const totalExpense = summary?.summary?.totalExpense || 0;
@@ -724,10 +731,19 @@ export default function HomeScreen() {
       fontWeight: '500',
       color: colors.textPrimary,
     },
+    transactionMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 2,
+      gap: 8,
+    },
+    transactionTime: {
+      fontSize: 12,
+      color: colors.textMuted,
+    },
     transactionCategory: {
       fontSize: 12,
       color: colors.textMuted,
-      marginTop: 2,
     },
     transactionAmount: {
       fontSize: 15,
@@ -1102,9 +1118,14 @@ export default function HomeScreen() {
                       <Text style={styles.transactionDesc}>
                         {tx.description || (tx.type === 'INCOME' ? '수입' : '지출')}
                       </Text>
-                      <Text style={styles.transactionCategory}>
-                        {tx.category?.name || '미분류'}
-                      </Text>
+                      <View style={styles.transactionMeta}>
+                        <Text style={styles.transactionTime}>
+                          {formatTime(tx.date)}
+                        </Text>
+                        <Text style={styles.transactionCategory}>
+                          {tx.category?.name || '미분류'}
+                        </Text>
+                      </View>
                     </View>
                     <Text
                       style={[

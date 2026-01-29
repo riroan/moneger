@@ -159,16 +159,15 @@ export default function TabsLayout() {
 
     setIsSubmitting(true);
 
-    // 로컬 시간 기준 날짜 (YYYY-MM-DD 형식)
+    // 현재 시간을 ISO 형식으로 (날짜 + 시간 포함)
     const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     const requestData = {
       userId,
       amount: numericAmount,
       type: transactionType,
       description: description.trim() || undefined,
-      date: today,
+      date: now.toISOString(),
       categoryId: selectedCategory || undefined,
     };
 
