@@ -7,12 +7,15 @@ export const API_ENDPOINTS = {
   // Auth
   LOGIN: '/api/auth/login',
   SIGNUP: '/api/auth/signup',
+  PASSWORD: '/api/auth/password',
+  DELETE_ACCOUNT: '/api/auth/delete',
 
   // Transactions
   TRANSACTIONS: '/api/transactions',
   TRANSACTIONS_SUMMARY: '/api/transactions/summary',
   TRANSACTIONS_TODAY: '/api/transactions/today',
   TRANSACTIONS_RECENT: '/api/transactions/recent',
+  TRANSACTIONS_OLDEST_DATE: '/api/transactions/oldest-date',
 
   // Categories
   CATEGORIES: '/api/categories',

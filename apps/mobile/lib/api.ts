@@ -54,6 +54,18 @@ export const authApi = {
         body: JSON.stringify({ email, password, name }),
       }
     ),
+
+  changePassword: (userId: string, currentPassword: string, newPassword: string) =>
+    request(API_ENDPOINTS.PASSWORD, {
+      method: 'PATCH',
+      body: JSON.stringify({ userId, currentPassword, newPassword }),
+    }),
+
+  deleteAccount: (userId: string, password: string) =>
+    request(API_ENDPOINTS.DELETE_ACCOUNT, {
+      method: 'POST',
+      body: JSON.stringify({ userId, password }),
+    }),
 };
 
 // Transaction API
@@ -230,6 +242,11 @@ export const transactionApi = {
     request(`${API_ENDPOINTS.TRANSACTIONS}/${id}?userId=${userId}`, {
       method: 'DELETE',
     }),
+
+  getOldestDate: (userId: string) =>
+    request<{ year: number; month: number } | null>(
+      `${API_ENDPOINTS.TRANSACTIONS_OLDEST_DATE}?userId=${userId}`
+    ),
 };
 
 // Category API
@@ -241,9 +258,13 @@ export interface Category {
   icon: string;
 }
 
+export interface CategoryWithBudget extends Category {
+  defaultBudget?: number | null;
+}
+
 export const categoryApi = {
   getAll: (userId: string) =>
-    request<Category[]>(`${API_ENDPOINTS.CATEGORIES}?userId=${userId}`),
+    request<CategoryWithBudget[]>(`${API_ENDPOINTS.CATEGORIES}?userId=${userId}`),
 
   create: (data: {
     userId: string;
@@ -251,10 +272,32 @@ export const categoryApi = {
     type: 'INCOME' | 'EXPENSE';
     color: string;
     icon: string;
+    defaultBudget?: number | null;
   }) =>
     request<Category>(API_ENDPOINTS.CATEGORIES, {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  update: (
+    id: string,
+    data: {
+      userId: string;
+      name: string;
+      icon: string;
+      color: string;
+      defaultBudget?: number | null;
+    }
+  ) =>
+    request<Category>(`${API_ENDPOINTS.CATEGORIES}/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string, userId: string) =>
+    request(`${API_ENDPOINTS.CATEGORIES}/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ userId }),
     }),
 };
 
@@ -269,9 +312,22 @@ export interface Budget {
   categoryColor: string;
 }
 
+export interface BudgetItem {
+  id: string;
+  amount: number;
+  categoryId: string;
+  year: number;
+  month: number;
+}
+
 export const budgetApi = {
   getAll: (userId: string, year: number, month: number) =>
     request<{ budgets: Budget[]; totalBudget: number; totalSpent: number }>(
+      `${API_ENDPOINTS.BUDGETS}?userId=${userId}&year=${year}&month=${month}`
+    ),
+
+  getForSettings: (userId: string, year: number, month: number) =>
+    request<BudgetItem[]>(
       `${API_ENDPOINTS.BUDGETS}?userId=${userId}&year=${year}&month=${month}`
     ),
 
@@ -282,7 +338,7 @@ export const budgetApi = {
     year: number;
     month: number;
   }) =>
-    request(API_ENDPOINTS.BUDGETS, {
+    request<BudgetItem>(API_ENDPOINTS.BUDGETS, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
