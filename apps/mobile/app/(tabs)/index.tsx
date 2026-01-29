@@ -35,7 +35,8 @@ import {
   CategorySummary,
 } from '../../lib/api';
 import { useRefreshStore } from '../../stores/refreshStore';
-import { formatNumber, formatCurrency, formatTime } from '@moneger/shared';
+import { formatNumber } from '@moneger/shared';
+import TransactionItem from '../../components/TransactionItem';
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -694,51 +695,6 @@ export default function HomeScreen() {
       borderWidth: 1,
       borderColor: colors.border,
     },
-    transactionItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 10,
-    },
-    transactionIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 10,
-      backgroundColor: colors.bgSecondary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-    transactionInfo: {
-      flex: 1,
-    },
-    transactionDesc: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.textPrimary,
-    },
-    transactionCategory: {
-      fontSize: 12,
-      color: colors.textMuted,
-      marginTop: 2,
-    },
-    transactionRight: {
-      alignItems: 'flex-end',
-    },
-    transactionTime: {
-      fontSize: 11,
-      color: colors.textMuted,
-      marginTop: 2,
-    },
-    transactionAmount: {
-      fontSize: 15,
-      fontWeight: '600',
-    },
-    incomeAmount: {
-      color: colors.accentMint,
-    },
-    expenseAmount: {
-      color: colors.accentCoral,
-    },
     emptyState: {
       alignItems: 'center',
       padding: 32,
@@ -747,10 +703,6 @@ export default function HomeScreen() {
       fontSize: 13,
       color: colors.textMuted,
       marginTop: 8,
-    },
-    transactionDivider: {
-      height: 1,
-      backgroundColor: colors.border,
     },
     // Category expense styles
     categoryCard: {
@@ -1105,44 +1057,11 @@ export default function HomeScreen() {
               </View>
             ) : (
               recentTransactions.map((tx, index) => (
-                <View key={tx.id}>
-                  <View style={styles.transactionItem}>
-                    <View style={[styles.transactionIcon, { backgroundColor: `${tx.category?.color || '#6B7280'}20` }]}>
-                      <MaterialIcons
-                        name={getIconName(tx.category?.icon)}
-                        size={20}
-                        color={tx.category?.color || '#6B7280'}
-                      />
-                    </View>
-                    <View style={styles.transactionInfo}>
-                      <Text style={styles.transactionDesc}>
-                        {tx.description || (tx.type === 'INCOME' ? '수입' : '지출')}
-                      </Text>
-                      <Text style={styles.transactionCategory}>
-                        {tx.category?.name || '미분류'}
-                      </Text>
-                    </View>
-                    <View style={styles.transactionRight}>
-                      <Text
-                        style={[
-                          styles.transactionAmount,
-                          tx.type === 'INCOME'
-                            ? styles.incomeAmount
-                            : styles.expenseAmount,
-                        ]}
-                      >
-                        {tx.type === 'INCOME' ? '+' : '-'}
-                        {formatCurrency(tx.amount)}
-                      </Text>
-                      <Text style={styles.transactionTime}>
-                        {formatTime(tx.date)}
-                      </Text>
-                    </View>
-                  </View>
-                  {index < recentTransactions.length - 1 && (
-                    <View style={styles.transactionDivider} />
-                  )}
-                </View>
+                <TransactionItem
+                  key={tx.id}
+                  transaction={tx}
+                  showDivider={index < recentTransactions.length - 1}
+                />
               ))
             )}
           </View>
