@@ -24,9 +24,26 @@ import { useThemeStore } from '../../stores/themeStore';
 import { useToast } from '../../contexts/ToastContext';
 import { Colors } from '../../constants/Colors';
 import { authApi, categoryApi, budgetApi, transactionApi, CategoryWithBudget, BudgetItem } from '../../lib/api';
+import { getHolidayDaysInMonth } from '../../lib/korean-holidays';
 
 type SettingTab = 'account' | 'category' | 'budget';
-type SettingsModal = 'none' | 'category' | 'budget' | 'password' | 'account';
+type SettingsModal = 'none' | 'category' | 'budget' | 'password' | 'account' | 'calendar';
+
+// Transaction type for calendar
+interface CalendarTransaction {
+  id: string;
+  amount: number;
+  type: 'INCOME' | 'EXPENSE';
+  description?: string;
+  date: string;
+  categoryId?: string;
+  savingsGoalId?: string | null;
+  category?: {
+    name: string;
+    icon: string | null;
+    color: string | null;
+  };
+}
 
 // Icon mapping for categories
 const CATEGORY_ICONS: Record<string, MaterialIconName> = {
@@ -122,6 +139,12 @@ export default function SettingsScreen() {
   const [deletePassword, setDeletePassword] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
+  // Calendar state
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
+  const [calendarTransactions, setCalendarTransactions] = useState<CalendarTransaction[]>([]);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
+
   const fetchCategories = useCallback(async () => {
     if (!userId) return;
     setIsLoadingCategories(true);
@@ -174,6 +197,23 @@ export default function SettingsScreen() {
     }
   }, [userId]);
 
+  const fetchCalendarTransactions = useCallback(async () => {
+    if (!userId) return;
+    setIsLoadingCalendar(true);
+    try {
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth() + 1;
+      const res = await transactionApi.getAll(userId, year, month);
+      if (res.success && res.data) {
+        setCalendarTransactions(res.data as CalendarTransaction[]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch calendar transactions:', error);
+    } finally {
+      setIsLoadingCalendar(false);
+    }
+  }, [userId, calendarDate]);
+
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
@@ -184,6 +224,20 @@ export default function SettingsScreen() {
       fetchOldestDate();
     }
   }, [activeModal, fetchBudgets, fetchOldestDate]);
+
+  useEffect(() => {
+    if (activeModal === 'calendar') {
+      fetchCalendarTransactions();
+      fetchOldestDate();
+      // Set today as default selected date if in current month
+      const now = new Date();
+      if (calendarDate.getFullYear() === now.getFullYear() && calendarDate.getMonth() === now.getMonth()) {
+        setSelectedCalendarDate(now);
+      } else {
+        setSelectedCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1));
+      }
+    }
+  }, [activeModal, fetchCalendarTransactions, fetchOldestDate, calendarDate]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -447,6 +501,107 @@ export default function SettingsScreen() {
   const renderCategoryIcon = (iconId: string, size: number = 20, color: string = '#fff') => {
     const iconName = CATEGORY_ICONS[iconId] || CATEGORY_ICONS.money;
     return <MaterialIcons name={iconName} size={size} color={color} />;
+  };
+
+  // Calendar helper functions
+  const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+  const getCalendarDays = () => {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDay = firstDay.getDay();
+
+    const days: (number | null)[] = [];
+
+    // Add empty cells for days before the first day of month
+    for (let i = 0; i < startingDay; i++) {
+      days.push(null);
+    }
+
+    // Add days of the month
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i);
+    }
+
+    return days;
+  };
+
+  const getTransactionsForDay = (day: number) => {
+    return calendarTransactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      return txDate.getDate() === day;
+    });
+  };
+
+  const getDayIndicators = (day: number) => {
+    const txs = getTransactionsForDay(day);
+    const hasIncome = txs.some(tx => tx.type === 'INCOME' && !tx.savingsGoalId);
+    const hasExpense = txs.some(tx => tx.type === 'EXPENSE' && !tx.savingsGoalId);
+    const hasSavings = txs.some(tx => tx.savingsGoalId);
+    return { hasIncome, hasExpense, hasSavings };
+  };
+
+  const getSelectedDateTransactions = () => {
+    if (!selectedCalendarDate) return [];
+    return calendarTransactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      return txDate.getDate() === selectedCalendarDate.getDate();
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
+  const getSelectedDateSummary = () => {
+    const txs = getSelectedDateTransactions();
+    const income = txs.filter(tx => tx.type === 'INCOME' && !tx.savingsGoalId).reduce((sum, tx) => sum + tx.amount, 0);
+    const expense = txs.filter(tx => tx.type === 'EXPENSE' && !tx.savingsGoalId).reduce((sum, tx) => sum + tx.amount, 0);
+    const savings = txs.filter(tx => tx.savingsGoalId).reduce((sum, tx) => sum + tx.amount, 0);
+    return { income, expense, savings };
+  };
+
+  const isCalendarPrevMonthDisabled = () => {
+    if (!oldestTransactionDate) return false;
+    const oldestMonth = oldestTransactionDate.month - 1; // Convert to 0-indexed
+    return calendarDate.getFullYear() === oldestTransactionDate.year && calendarDate.getMonth() === oldestMonth;
+  };
+
+  const handleCalendarPrevMonth = () => {
+    if (!isCalendarPrevMonthDisabled()) {
+      setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1));
+    }
+  };
+
+  const handleCalendarNextMonth = () => {
+    const nextMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1);
+    const now = new Date();
+    if (nextMonth <= new Date(now.getFullYear(), now.getMonth(), 1)) {
+      setCalendarDate(nextMonth);
+    }
+  };
+
+  const isCalendarNextMonthDisabled = () => {
+    const nextMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1);
+    const now = new Date();
+    return nextMonth > new Date(now.getFullYear(), now.getMonth(), 1);
+  };
+
+  const isToday = (day: number) => {
+    const now = new Date();
+    return (
+      calendarDate.getFullYear() === now.getFullYear() &&
+      calendarDate.getMonth() === now.getMonth() &&
+      day === now.getDate()
+    );
+  };
+
+  const isSelectedDay = (day: number) => {
+    if (!selectedCalendarDate) return false;
+    return (
+      calendarDate.getFullYear() === selectedCalendarDate.getFullYear() &&
+      calendarDate.getMonth() === selectedCalendarDate.getMonth() &&
+      day === selectedCalendarDate.getDate()
+    );
   };
 
   const styles = StyleSheet.create({
@@ -1116,6 +1271,175 @@ export default function SettingsScreen() {
       borderWidth: 1,
       borderColor: colors.border,
     },
+    // Calendar styles
+    calendarContainer: {
+      flex: 1,
+      backgroundColor: colors.bgPrimary,
+    },
+    calendarHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    calendarTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    calendarMonthNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+    },
+    calendarMonthText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      minWidth: 100,
+      textAlign: 'center',
+    },
+    calendarNavButton: {
+      padding: 8,
+    },
+    calendarNavButtonDisabled: {
+      opacity: 0.3,
+    },
+    calendarGrid: {
+      paddingHorizontal: 12,
+      paddingTop: 12,
+    },
+    calendarDayNames: {
+      flexDirection: 'row',
+      marginBottom: 8,
+    },
+    calendarDayName: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: 12,
+      fontWeight: '600',
+      paddingVertical: 8,
+    },
+    calendarWeekRow: {
+      flexDirection: 'row',
+    },
+    calendarDayCell: {
+      flex: 1,
+      aspectRatio: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      margin: 2,
+      borderRadius: 8,
+    },
+    calendarDayCellSelected: {
+      borderWidth: 2,
+      borderColor: colors.accentMint,
+    },
+    calendarDayCellToday: {
+      backgroundColor: colors.bgSecondary,
+    },
+    calendarDayText: {
+      fontSize: 14,
+      color: colors.textPrimary,
+    },
+    calendarDayTextSunday: {
+      color: '#EF4444',
+    },
+    calendarDayTextSaturday: {
+      color: '#3B82F6',
+    },
+    calendarDayTextMuted: {
+      color: colors.textMuted,
+    },
+    calendarIndicators: {
+      flexDirection: 'row',
+      gap: 3,
+      marginTop: 2,
+      height: 6,
+    },
+    calendarIndicatorDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    calendarSelectedSection: {
+      backgroundColor: colors.bgCard,
+      marginHorizontal: 12,
+      marginTop: 16,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    calendarSelectedHeader: {
+      marginBottom: 12,
+    },
+    calendarSelectedDate: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginBottom: 4,
+    },
+    calendarSelectedSummary: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    calendarSummaryIncome: {
+      fontSize: 14,
+      color: colors.accentMint,
+      fontWeight: '500',
+    },
+    calendarSummaryExpense: {
+      fontSize: 14,
+      color: colors.accentCoral,
+      fontWeight: '500',
+    },
+    calendarTransactionList: {
+      gap: 8,
+    },
+    calendarTransactionItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    calendarTransactionItemLast: {
+      borderBottomWidth: 0,
+    },
+    calendarTransactionIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    calendarTransactionInfo: {
+      flex: 1,
+    },
+    calendarTransactionCategory: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textPrimary,
+    },
+    calendarTransactionDate: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    calendarTransactionAmount: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    calendarEmptyText: {
+      textAlign: 'center',
+      color: colors.textMuted,
+      paddingVertical: 20,
+    },
   });
 
   const renderAccountTab = () => (
@@ -1425,6 +1749,7 @@ export default function SettingsScreen() {
 
   // Navigation menu items
   const navigationMenuItems = [
+    { id: 'calendar', icon: 'calendar-today' as MaterialIconName, label: '일별 내역', color: '#10B981', onPress: () => setActiveModal('calendar') },
     { id: 'transactions', icon: 'receipt-long' as MaterialIconName, label: '거래 내역', color: '#3B82F6', onPress: () => router.push('/(tabs)/transactions') },
     { id: 'savings', icon: 'savings' as MaterialIconName, label: '저축 목표', color: '#F59E0B', onPress: () => router.push('/(tabs)/savings') },
   ];
@@ -1631,6 +1956,210 @@ export default function SettingsScreen() {
             </TouchableWithoutFeedback>
           </KeyboardAvoidingView>
         </Modal>
+      </Modal>
+
+      {/* Calendar Modal */}
+      <Modal
+        visible={activeModal === 'calendar'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal('none')}
+      >
+        <View style={styles.calendarContainer}>
+          {/* Header */}
+          <View style={styles.calendarHeader}>
+            <TouchableOpacity onPress={() => setActiveModal('none')}>
+              <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <View style={styles.calendarMonthNav}>
+              <TouchableOpacity
+                style={[
+                  styles.calendarNavButton,
+                  isCalendarPrevMonthDisabled() && styles.calendarNavButtonDisabled,
+                ]}
+                onPress={handleCalendarPrevMonth}
+                disabled={isCalendarPrevMonthDisabled()}
+              >
+                <MaterialIcons name="chevron-left" size={28} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.calendarMonthText}>
+                {calendarDate.getFullYear()}년 {calendarDate.getMonth() + 1}월
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.calendarNavButton,
+                  isCalendarNextMonthDisabled() && styles.calendarNavButtonDisabled,
+                ]}
+                onPress={handleCalendarNextMonth}
+                disabled={isCalendarNextMonthDisabled()}
+              >
+                <MaterialIcons name="chevron-right" size={28} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <ScrollView>
+            {/* Calendar Grid */}
+            <View style={styles.calendarGrid}>
+              {/* Day names */}
+              <View style={styles.calendarDayNames}>
+                {DAY_NAMES.map((day, index) => (
+                  <Text
+                    key={day}
+                    style={[
+                      styles.calendarDayName,
+                      index === 0 && styles.calendarDayTextSunday,
+                      index === 6 && styles.calendarDayTextSaturday,
+                      index !== 0 && index !== 6 && { color: colors.textSecondary },
+                    ]}
+                  >
+                    {day}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Calendar days */}
+              {isLoadingCalendar ? (
+                <ActivityIndicator size="large" color={colors.accentMint} style={{ padding: 40 }} />
+              ) : (
+                (() => {
+                  const days = getCalendarDays();
+                  const weeks: (number | null)[][] = [];
+                  for (let i = 0; i < days.length; i += 7) {
+                    weeks.push(days.slice(i, i + 7));
+                  }
+                  // Pad the last week if needed
+                  const lastWeek = weeks[weeks.length - 1];
+                  while (lastWeek && lastWeek.length < 7) {
+                    lastWeek.push(null);
+                  }
+
+                  return weeks.map((week, weekIndex) => (
+                    <View key={weekIndex} style={styles.calendarWeekRow}>
+                      {week.map((day, dayIndex) => {
+                        if (day === null) {
+                          return <View key={`empty-${dayIndex}`} style={styles.calendarDayCell} />;
+                        }
+
+                        const indicators = getDayIndicators(day);
+                        const isSunday = dayIndex === 0;
+                        const isSaturday = dayIndex === 6;
+                        const holidayDays = getHolidayDaysInMonth(calendarDate.getFullYear(), calendarDate.getMonth() + 1);
+                        const isHoliday = holidayDays.has(day);
+
+                        return (
+                          <TouchableOpacity
+                            key={day}
+                            style={[
+                              styles.calendarDayCell,
+                              isToday(day) && styles.calendarDayCellToday,
+                              isSelectedDay(day) && styles.calendarDayCellSelected,
+                            ]}
+                            onPress={() => setSelectedCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth(), day))}
+                          >
+                            <Text
+                              style={[
+                                styles.calendarDayText,
+                                (isSunday || isHoliday) && styles.calendarDayTextSunday,
+                                isSaturday && !isHoliday && styles.calendarDayTextSaturday,
+                              ]}
+                            >
+                              {day}
+                            </Text>
+                            <View style={styles.calendarIndicators}>
+                              {indicators.hasIncome && (
+                                <View style={[styles.calendarIndicatorDot, { backgroundColor: colors.accentMint }]} />
+                              )}
+                              {indicators.hasExpense && (
+                                <View style={[styles.calendarIndicatorDot, { backgroundColor: colors.accentCoral }]} />
+                              )}
+                              {indicators.hasSavings && (
+                                <View style={[styles.calendarIndicatorDot, { backgroundColor: '#3B82F6' }]} />
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ));
+                })()
+              )}
+            </View>
+
+            {/* Selected Date Section */}
+            {selectedCalendarDate && (
+              <View style={styles.calendarSelectedSection}>
+                <View style={styles.calendarSelectedHeader}>
+                  <Text style={styles.calendarSelectedDate}>
+                    {selectedCalendarDate.getMonth() + 1}월 {selectedCalendarDate.getDate()}일
+                  </Text>
+                  <View style={styles.calendarSelectedSummary}>
+                    <Text style={styles.calendarSummaryIncome}>
+                      +{formatNumber(getSelectedDateSummary().income)}
+                    </Text>
+                    <Text style={styles.calendarSummaryExpense}>
+                      -{formatNumber(getSelectedDateSummary().expense)}
+                    </Text>
+                    <Text style={{ fontSize: 14, color: '#3B82F6', fontWeight: '500' }}>
+                      -{formatNumber(getSelectedDateSummary().savings)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.calendarTransactionList}>
+                  {getSelectedDateTransactions().length === 0 ? (
+                    <Text style={styles.calendarEmptyText}>거래 내역이 없습니다</Text>
+                  ) : (
+                    getSelectedDateTransactions().map((tx, index, arr) => (
+                      <View
+                        key={tx.id}
+                        style={[
+                          styles.calendarTransactionItem,
+                          index === arr.length - 1 && styles.calendarTransactionItemLast,
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.calendarTransactionIcon,
+                            { backgroundColor: tx.savingsGoalId ? '#3B82F620' : (tx.category?.color || '#6B7280') + '20' },
+                          ]}
+                        >
+                          {tx.savingsGoalId ? (
+                            <MaterialIcons name="savings" size={18} color="#3B82F6" />
+                          ) : tx.category?.icon ? (
+                            renderCategoryIcon(tx.category.icon, 18, tx.category.color || '#6B7280')
+                          ) : (
+                            <MaterialIcons name="attach-money" size={18} color="#6B7280" />
+                          )}
+                        </View>
+                        <View style={styles.calendarTransactionInfo}>
+                          <Text style={styles.calendarTransactionCategory}>
+                            {tx.savingsGoalId ? (tx.description || '저축') : (tx.description || tx.category?.name || '기타')}
+                          </Text>
+                          <Text style={styles.calendarTransactionDate}>
+                            {new Date(tx.date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                            {tx.savingsGoalId ? ' · 저축' : (tx.category?.name && tx.description ? ` · ${tx.category.name}` : '')}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.calendarTransactionAmount,
+                            { color: tx.savingsGoalId ? '#3B82F6' : (tx.type === 'INCOME' ? colors.accentMint : colors.accentCoral) },
+                          ]}
+                        >
+                          {tx.savingsGoalId ? '-' : (tx.type === 'INCOME' ? '+' : '-')}₩{formatNumber(tx.amount)}
+                        </Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+              </View>
+            )}
+
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
       </Modal>
 
       {/* Password Change Modal */}

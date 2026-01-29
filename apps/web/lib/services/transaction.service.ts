@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { TransactionType, Prisma } from '@prisma/client';
 import { updateDailyBalanceInTransaction } from './daily-balance.service';
 import { CATEGORY_SELECT } from '@/lib/prisma-selects';
-import { getMonthRange } from '@/lib/date-utils';
+import { getMonthRangeKST } from '@/lib/date-utils';
 import { PAGINATION } from '@/lib/constants';
 
 interface CreateTransactionInput {
@@ -180,8 +180,8 @@ export async function getTransactions(input: GetTransactionsInput) {
     const endDate = new Date(input.endYear, input.endMonth, 0, 23, 59, 59, 999);
     where.date = { gte: startDate, lte: endDate };
   } else if (year && month) {
-    // 기존 단일 월 필터
-    const { startDate, endDate } = getMonthRange(year, month);
+    // 기존 단일 월 필터 (KST 기준)
+    const { startDate, endDate } = getMonthRangeKST(year, month);
     where.date = { gte: startDate, lte: endDate };
   }
 
