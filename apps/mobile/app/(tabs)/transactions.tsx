@@ -17,13 +17,14 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { getIconName } from '../../constants/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
-import { transactionApi, categoryApi, Transaction, Category } from '../../lib/api';
+import { transactionApi, categoryApi, Transaction, Category, TransactionWithCategory as ApiTransactionWithCategory, PaginatedTransactionsResponse } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useRefreshStore } from '../../stores/refreshStore';
 
@@ -33,8 +34,12 @@ const AMOUNT_LIMITS = {
   TRANSACTION_MAX: 100_000_000_000, // 1000억 (individual transactions)
 };
 
+// Pagination settings
+const INITIAL_LOAD_LIMIT = 50; // 처음 로드할 개수
+const LOAD_MORE_LIMIT = 20; // 추가 로드할 개수
+
 // Mock data for testing
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 interface TransactionWithCategory extends Transaction {
   savingsGoalId?: string | null;
@@ -186,13 +191,15 @@ export default function TransactionsScreen() {
   const { userId } = useAuthStore();
   const { theme } = useThemeStore();
   const { showToast } = useToast();
-  const { triggerRefresh } = useRefreshStore();
+  const { triggerRefresh, lastTransactionUpdate } = useRefreshStore();
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
 
   const [transactions, setTransactions] = useState<TransactionWithCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Edit modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -207,6 +214,12 @@ export default function TransactionsScreen() {
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Filter categories (loaded from API)
+  const [filterCategories, setFilterCategories] = useState<{ INCOME: Category[]; EXPENSE: Category[] }>({
+    INCOME: [],
+    EXPENSE: [],
+  });
 
   // Edit modal drag-to-dismiss
   const screenHeight = Dimensions.get('window').height;
@@ -250,24 +263,31 @@ export default function TransactionsScreen() {
     })
   ).current;
 
-  // Filter states
+  // Filter states (applied)
   const [filterType, setFilterType] = useState<FilterType>('ALL');
   const [sortOrder, setSortOrder] = useState<SortOrder>('recent');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-
-  // Date filter
   const [isDateFilterEnabled, setIsDateFilterEnabled] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
-
-  // Amount filter
   const [isAmountFilterEnabled, setIsAmountFilterEnabled] = useState(false);
   const [amountRange, setAmountRange] = useState<AmountRange | null>(null);
-  const [minAmountInput, setMinAmountInput] = useState('');
-  const [maxAmountInput, setMaxAmountInput] = useState('');
-
-  // Category filter
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  // Draft filter states (used in modal before applying)
+  const [draftFilterType, setDraftFilterType] = useState<FilterType>('ALL');
+  const [draftIsDateFilterEnabled, setDraftIsDateFilterEnabled] = useState(false);
+  const [draftDateRange, setDraftDateRange] = useState<DateRange | null>(null);
+  const [draftIsAmountFilterEnabled, setDraftIsAmountFilterEnabled] = useState(false);
+  const [draftAmountRange, setDraftAmountRange] = useState<AmountRange | null>(null);
+  const [draftMinAmountInput, setDraftMinAmountInput] = useState('');
+  const [draftMaxAmountInput, setDraftMaxAmountInput] = useState('');
+  const [draftSelectedCategories, setDraftSelectedCategories] = useState<string[]>([]);
+
+  // Date picker dropdown states
+  const [activeDropdown, setActiveDropdown] = useState<'startYear' | 'startMonth' | 'endYear' | 'endMonth' | null>(null);
+
+  // Category accordion states
   const [isIncomeCategoryOpen, setIsIncomeCategoryOpen] = useState(true);
   const [isExpenseCategoryOpen, setIsExpenseCategoryOpen] = useState(true);
 
@@ -275,9 +295,10 @@ export default function TransactionsScreen() {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isRefresh: boolean = false) => {
     if (USE_MOCK_DATA) {
       setTransactions(MOCK_TRANSACTIONS);
+      setHasMore(false);
       setIsLoading(false);
       setRefreshing(false);
       return;
@@ -286,9 +307,27 @@ export default function TransactionsScreen() {
     if (!userId) return;
 
     try {
-      const res = await transactionApi.getAll(userId, currentYear, currentMonth + 1);
+      // Use paginated API - initial load of 50 items
+      const res = await transactionApi.getRecentPaginated(userId, INITIAL_LOAD_LIMIT, 0);
       if (res.success && res.data) {
-        setTransactions(res.data as TransactionWithCategory[]);
+        // Map API response to local TransactionWithCategory format
+        const mappedTransactions: TransactionWithCategory[] = res.data.transactions.map(tx => ({
+          id: tx.id,
+          amount: tx.amount,
+          type: tx.type,
+          description: tx.description || '',
+          date: tx.date,
+          categoryId: tx.categoryId,
+          savingsGoalId: tx.savingsGoalId,
+          category: tx.category ? {
+            name: tx.category.name,
+            icon: tx.category.icon,
+            color: tx.category.color,
+            type: tx.category.type,
+          } : undefined,
+        }));
+        setTransactions(mappedTransactions);
+        setHasMore(res.data.hasMore);
       }
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
@@ -296,72 +335,192 @@ export default function TransactionsScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [userId, currentYear, currentMonth]);
+  }, [userId]);
+
+  // Load more transactions for infinite scroll
+  const loadMoreData = useCallback(async () => {
+    if (!userId || !hasMore || isLoadingMore || isLoading) return;
+
+    setIsLoadingMore(true);
+
+    try {
+      const currentOffset = transactions.length;
+      const res = await transactionApi.getRecentPaginated(userId, LOAD_MORE_LIMIT, currentOffset);
+
+      if (res.success && res.data) {
+        const mappedTransactions: TransactionWithCategory[] = res.data.transactions.map(tx => ({
+          id: tx.id,
+          amount: tx.amount,
+          type: tx.type,
+          description: tx.description || '',
+          date: tx.date,
+          categoryId: tx.categoryId,
+          savingsGoalId: tx.savingsGoalId,
+          category: tx.category ? {
+            name: tx.category.name,
+            icon: tx.category.icon,
+            color: tx.category.color,
+            type: tx.category.type,
+          } : undefined,
+        }));
+
+        setTransactions(prev => [...prev, ...mappedTransactions]);
+        setHasMore(res.data.hasMore);
+      }
+    } catch (error) {
+      console.error('Failed to load more transactions:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [userId, hasMore, isLoadingMore, isLoading, transactions.length]);
+
+  // Fetch categories for filter modal
+  const fetchFilterCategories = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      const res = await categoryApi.getAll(userId);
+      if (res.success && res.data) {
+        const income = res.data.filter(c => c.type === 'INCOME');
+        const expense = res.data.filter(c => c.type === 'EXPENSE');
+        setFilterCategories({ INCOME: income, EXPENSE: expense });
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  }, [userId]);
+
+  // Track last seen update to avoid duplicate fetches
+  const lastSeenUpdate = useRef(0);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchFilterCategories();
+  }, [fetchData, fetchFilterCategories]);
+
+  // Refetch when screen gains focus (handles tab switching)
+  useFocusEffect(
+    useCallback(() => {
+      // Check if there was a new update since we last fetched
+      if (lastTransactionUpdate > lastSeenUpdate.current) {
+        lastSeenUpdate.current = lastTransactionUpdate;
+        fetchData();
+      }
+    }, [lastTransactionUpdate, fetchData])
+  );
+
+  // Listen for transaction updates while on this screen
+  useEffect(() => {
+    if (lastTransactionUpdate > 0 && lastTransactionUpdate > lastSeenUpdate.current) {
+      lastSeenUpdate.current = lastTransactionUpdate;
+      fetchData();
+    }
+  }, [lastTransactionUpdate, fetchData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchData();
+    fetchData(true);
   }, [fetchData]);
 
-  // Handle date filter toggle
+  // Handle scroll to detect end of list for infinite scroll
+  const handleScroll = useCallback((event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 100; // 하단에서 100px 전에 로드 시작
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+
+    if (isCloseToBottom && hasMore && !isLoadingMore && !isLoading) {
+      loadMoreData();
+    }
+  }, [hasMore, isLoadingMore, isLoading, loadMoreData]);
+
+  // Open filter modal and copy current states to draft
+  const openFilterModal = () => {
+    setDraftFilterType(filterType);
+    setDraftIsDateFilterEnabled(isDateFilterEnabled);
+    setDraftDateRange(dateRange);
+    setDraftIsAmountFilterEnabled(isAmountFilterEnabled);
+    setDraftAmountRange(amountRange);
+    setDraftMinAmountInput(amountRange?.minAmount?.toLocaleString('ko-KR') || '');
+    setDraftMaxAmountInput(amountRange?.maxAmount?.toLocaleString('ko-KR') || '');
+    setDraftSelectedCategories([...selectedCategories]);
+    setActiveDropdown(null);
+    setIsFilterModalOpen(true);
+  };
+
+  // Apply filters from draft states
+  const applyFilters = () => {
+    setFilterType(draftFilterType);
+    setIsDateFilterEnabled(draftIsDateFilterEnabled);
+    setDateRange(draftDateRange);
+    setIsAmountFilterEnabled(draftIsAmountFilterEnabled);
+    setAmountRange(draftAmountRange);
+    setSelectedCategories(draftSelectedCategories);
+    setActiveDropdown(null);
+    setIsFilterModalOpen(false);
+  };
+
+  // Close filter modal without applying
+  const closeFilterModal = () => {
+    setActiveDropdown(null);
+    setIsFilterModalOpen(false);
+  };
+
+  // Handle date filter toggle (draft)
   const handleDateFilterToggle = (enabled: boolean) => {
-    setIsDateFilterEnabled(enabled);
+    setDraftIsDateFilterEnabled(enabled);
     if (enabled) {
-      setDateRange({
+      setDraftDateRange({
         startYear: currentYear,
         startMonth: currentMonth,
         endYear: currentYear,
         endMonth: currentMonth,
       });
     } else {
-      setDateRange(null);
+      setDraftDateRange(null);
     }
   };
 
-  // Handle amount filter toggle
+  // Handle amount filter toggle (draft)
   const handleAmountFilterToggle = (enabled: boolean) => {
-    setIsAmountFilterEnabled(enabled);
+    setDraftIsAmountFilterEnabled(enabled);
     if (enabled) {
-      setAmountRange({ minAmount: null, maxAmount: null });
+      setDraftAmountRange({ minAmount: null, maxAmount: null });
     } else {
-      setAmountRange(null);
-      setMinAmountInput('');
-      setMaxAmountInput('');
+      setDraftAmountRange(null);
+      setDraftMinAmountInput('');
+      setDraftMaxAmountInput('');
     }
   };
 
-  // Handle amount input
+  // Handle amount input (draft, max 1000억)
   const handleAmountInputChange = (type: 'min' | 'max', value: string) => {
     const rawValue = value.replace(/,/g, '');
     if (rawValue === '') {
       if (type === 'min') {
-        setMinAmountInput('');
-        setAmountRange(prev => prev ? { ...prev, minAmount: null } : null);
+        setDraftMinAmountInput('');
+        setDraftAmountRange(prev => prev ? { ...prev, minAmount: null } : null);
       } else {
-        setMaxAmountInput('');
-        setAmountRange(prev => prev ? { ...prev, maxAmount: null } : null);
+        setDraftMaxAmountInput('');
+        setDraftAmountRange(prev => prev ? { ...prev, maxAmount: null } : null);
       }
       return;
     }
     if (!/^\d+$/.test(rawValue)) return;
-    const numValue = parseInt(rawValue);
+    // Limit to max 1000억
+    const numValue = Math.min(parseInt(rawValue), AMOUNT_LIMITS.TRANSACTION_MAX);
     const formatted = numValue.toLocaleString('ko-KR');
     if (type === 'min') {
-      setMinAmountInput(formatted);
-      setAmountRange(prev => prev ? { ...prev, minAmount: numValue } : null);
+      setDraftMinAmountInput(formatted);
+      setDraftAmountRange(prev => prev ? { ...prev, minAmount: numValue } : null);
     } else {
-      setMaxAmountInput(formatted);
-      setAmountRange(prev => prev ? { ...prev, maxAmount: numValue } : null);
+      setDraftMaxAmountInput(formatted);
+      setDraftAmountRange(prev => prev ? { ...prev, maxAmount: numValue } : null);
     }
   };
 
-  // Toggle category selection
+  // Toggle category selection (draft)
   const toggleCategory = (categoryId: string) => {
-    setSelectedCategories(prev =>
+    setDraftSelectedCategories(prev =>
       prev.includes(categoryId)
         ? prev.filter(id => id !== categoryId)
         : [...prev, categoryId]
@@ -443,14 +602,16 @@ export default function TransactionsScreen() {
     return result;
   }, [transactions, filterType, searchKeyword, sortOrder, isDateFilterEnabled, dateRange, isAmountFilterEnabled, amountRange, selectedCategories]);
 
-  // Group transactions by date
+  // Group transactions by date (normalize to YYYY-MM-DD to group same-day transactions)
   const groupedTransactions = useMemo(() => {
     const groups: { [date: string]: TransactionWithCategory[] } = {};
     filteredTransactions.forEach((tx) => {
-      if (!groups[tx.date]) {
-        groups[tx.date] = [];
+      // Extract just the date portion (YYYY-MM-DD) to group same-day transactions
+      const dateKey = tx.date.split('T')[0];
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
       }
-      groups[tx.date].push(tx);
+      groups[dateKey].push(tx);
     });
 
     const entries = Object.entries(groups);
@@ -491,16 +652,17 @@ export default function TransactionsScreen() {
     selectedCategories.length > 0,
   ].filter(Boolean).length;
 
+  // Reset draft filters in modal
   const handleResetFilters = () => {
-    setFilterType('ALL');
-    setSearchKeyword('');
-    setIsDateFilterEnabled(false);
-    setDateRange(null);
-    setIsAmountFilterEnabled(false);
-    setAmountRange(null);
-    setMinAmountInput('');
-    setMaxAmountInput('');
-    setSelectedCategories([]);
+    setDraftFilterType('ALL');
+    setDraftIsDateFilterEnabled(false);
+    setDraftDateRange(null);
+    setDraftIsAmountFilterEnabled(false);
+    setDraftAmountRange(null);
+    setDraftMinAmountInput('');
+    setDraftMaxAmountInput('');
+    setDraftSelectedCategories([]);
+    setActiveDropdown(null);
   };
 
   // Fetch categories for edit modal
@@ -615,9 +777,9 @@ export default function TransactionsScreen() {
   const editCategories = useMemo(() => {
     const filtered = allCategories.filter(c => c.type === editType);
     if (filtered.length > 0) return filtered;
-    // Fallback
-    return editType === 'EXPENSE' ? MOCK_CATEGORIES.EXPENSE : MOCK_CATEGORIES.INCOME;
-  }, [allCategories, editType]);
+    // Fallback to filter categories
+    return editType === 'EXPENSE' ? filterCategories.EXPENSE : filterCategories.INCOME;
+  }, [allCategories, editType, filterCategories]);
 
   // Year/Month options
   const yearOptions = [];
@@ -719,10 +881,12 @@ export default function TransactionsScreen() {
       fontSize: 11,
       color: colors.textMuted,
       marginBottom: 4,
+      textAlign: 'right',
     },
     summaryValue: {
       fontSize: 14,
       fontWeight: 'bold',
+      textAlign: 'right',
     },
     // Transaction list
     section: {
@@ -802,6 +966,25 @@ export default function TransactionsScreen() {
       justifyContent: 'center',
       alignItems: 'center',
     },
+    loadingMore: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 16,
+      gap: 8,
+    },
+    loadingMoreText: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    endOfList: {
+      alignItems: 'center',
+      paddingVertical: 16,
+    },
+    endOfListText: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
     // Filter Modal
     modalOverlay: {
       flex: 1,
@@ -812,7 +995,7 @@ export default function TransactionsScreen() {
       backgroundColor: colors.bgCard,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      maxHeight: '85%',
+      height: '85%',
     },
     modalHeader: {
       flexDirection: 'row',
@@ -858,6 +1041,21 @@ export default function TransactionsScreen() {
       flexWrap: 'wrap',
       gap: 8,
     },
+    filterTypeRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    filterTypeOption: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: colors.bgSecondary,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     filterOption: {
       paddingVertical: 10,
       paddingHorizontal: 16,
@@ -900,7 +1098,9 @@ export default function TransactionsScreen() {
       gap: 8,
     },
     filterSelect: {
-      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       backgroundColor: colors.bgCard,
       borderRadius: 8,
       borderWidth: 1,
@@ -908,10 +1108,47 @@ export default function TransactionsScreen() {
       paddingVertical: 10,
       paddingHorizontal: 12,
     },
+    filterSelectActive: {
+      borderColor: colors.accentMint,
+    },
     filterSelectText: {
       fontSize: 14,
       color: colors.textPrimary,
+    },
+    dropdownList: {
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      right: 0,
+      marginTop: 4,
+      backgroundColor: colors.bgCard,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      zIndex: 100,
+      elevation: 5,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    dropdownItem: {
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    dropdownItemActive: {
+      backgroundColor: colors.accentMint + '20',
+    },
+    dropdownItemText: {
+      fontSize: 14,
+      color: colors.textPrimary,
       textAlign: 'center',
+    },
+    dropdownItemTextActive: {
+      color: colors.accentMint,
+      fontWeight: '600',
     },
     amountInputContainer: {
       flexDirection: 'row',
@@ -1290,6 +1527,8 @@ export default function TransactionsScreen() {
             tintColor={colors.accentMint}
           />
         }
+        onScroll={handleScroll}
+        scrollEventThrottle={400}
       >
         <View style={styles.header}>
           <Text style={styles.title}>내역</Text>
@@ -1317,7 +1556,7 @@ export default function TransactionsScreen() {
           </View>
           <TouchableOpacity
             style={[styles.filterButton, hasActiveFilters && styles.filterButtonActive]}
-            onPress={() => setIsFilterModalOpen(true)}
+            onPress={openFilterModal}
           >
             <MaterialIcons
               name="tune"
@@ -1340,13 +1579,23 @@ export default function TransactionsScreen() {
           <View style={styles.summaryRow}>
             <View style={styles.summaryCard}>
               <Text style={styles.summaryLabel}>수입</Text>
-              <Text style={[styles.summaryValue, { color: colors.accentMint }]}>
+              <Text
+                style={[styles.summaryValue, { color: colors.accentMint }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 +{formatNumber(summary.income)}
               </Text>
             </View>
             <View style={styles.summaryCard}>
               <Text style={styles.summaryLabel}>지출</Text>
-              <Text style={[styles.summaryValue, { color: colors.accentCoral }]}>
+              <Text
+                style={[styles.summaryValue, { color: colors.accentCoral }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 -{formatNumber(summary.expense)}
               </Text>
             </View>
@@ -1354,7 +1603,12 @@ export default function TransactionsScreen() {
           <View style={styles.summaryRow}>
             <View style={styles.summaryCard}>
               <Text style={styles.summaryLabel}>저축</Text>
-              <Text style={[styles.summaryValue, { color: colors.accentBlue }]}>
+              <Text
+                style={[styles.summaryValue, { color: colors.accentBlue }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {formatNumber(summary.savings)}
               </Text>
             </View>
@@ -1365,6 +1619,9 @@ export default function TransactionsScreen() {
                   styles.summaryValue,
                   { color: summary.balance >= 0 ? colors.accentMint : colors.accentCoral },
                 ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
               >
                 {summary.balance >= 0 ? '+' : ''}{formatNumber(summary.balance)}
               </Text>
@@ -1392,58 +1649,86 @@ export default function TransactionsScreen() {
               <View key={date} style={styles.dateGroup}>
                 <Text style={styles.dateHeader}>{formatDate(date)}</Text>
                 <View style={styles.transactionCard}>
-                  {txs.map((tx, index) => (
-                    <View key={tx.id}>
-                      <TouchableOpacity
-                        style={styles.transactionItem}
-                        onPress={() => handleOpenEditModal(tx)}
-                      >
-                        <View
-                          style={[
-                            styles.transactionIcon,
-                            { backgroundColor: (tx.category?.color || '#6B7280') + '20' },
-                          ]}
+                  {txs.map((tx, index) => {
+                    const isSavings = isSavingsTransaction(tx);
+                    const iconColor = isSavings
+                      ? colors.accentBlue
+                      : (tx.category?.color || '#6B7280');
+                    const amountColor = isSavings
+                      ? colors.accentBlue
+                      : tx.type === 'INCOME'
+                        ? colors.accentMint
+                        : colors.accentCoral;
+                    const categoryName = isSavings
+                      ? '저축'
+                      : (tx.category?.name || '미분류');
+                    const iconName = isSavings
+                      ? 'savings'
+                      : getIconName(tx.category?.icon);
+
+                    return (
+                      <View key={tx.id}>
+                        <TouchableOpacity
+                          style={styles.transactionItem}
+                          onPress={() => handleOpenEditModal(tx)}
                         >
-                          <MaterialIcons
-                            name={getIconName(tx.category?.icon)}
-                            size={20}
-                            color={tx.category?.color || '#6B7280'}
-                          />
-                        </View>
-                        <View style={styles.transactionInfo}>
-                          <Text style={styles.transactionDescription}>
-                            {tx.description || '내역 없음'}
-                          </Text>
-                          <Text style={styles.transactionCategory}>
-                            {tx.category?.name || '미분류'}
-                          </Text>
-                        </View>
-                        <View style={styles.transactionRight}>
-                          <Text
+                          <View
                             style={[
-                              styles.transactionAmount,
-                              {
-                                color:
-                                  tx.type === 'INCOME'
-                                    ? colors.accentMint
-                                    : colors.accentCoral,
-                              },
+                              styles.transactionIcon,
+                              { backgroundColor: iconColor + '20' },
                             ]}
                           >
-                            {tx.type === 'INCOME' ? '+' : '-'}
-                            {formatNumber(tx.amount)}
-                          </Text>
-                          <Text style={styles.transactionTime}>
-                            {formatTime(tx.date)}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                      {index < txs.length - 1 && <View style={styles.divider} />}
-                    </View>
-                  ))}
+                            <MaterialIcons
+                              name={iconName}
+                              size={20}
+                              color={iconColor}
+                            />
+                          </View>
+                          <View style={styles.transactionInfo}>
+                            <Text style={styles.transactionDescription}>
+                              {tx.description || '내역 없음'}
+                            </Text>
+                            <Text style={styles.transactionCategory}>
+                              {categoryName}
+                            </Text>
+                          </View>
+                          <View style={styles.transactionRight}>
+                            <Text
+                              style={[
+                                styles.transactionAmount,
+                                { color: amountColor },
+                              ]}
+                            >
+                              {tx.type === 'INCOME' ? '+' : '-'}
+                              {formatNumber(tx.amount)}
+                            </Text>
+                            <Text style={styles.transactionTime}>
+                              {formatTime(tx.date)}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                        {index < txs.length - 1 && <View style={styles.divider} />}
+                      </View>
+                    );
+                  })}
                 </View>
               </View>
             ))
+          )}
+
+          {/* Loading More Indicator */}
+          {isLoadingMore && (
+            <View style={styles.loadingMore}>
+              <ActivityIndicator size="small" color={colors.accentMint} />
+              <Text style={styles.loadingMoreText}>더 불러오는 중...</Text>
+            </View>
+          )}
+
+          {/* End of List Indicator */}
+          {!hasMore && transactions.length > 0 && !isLoading && (
+            <View style={styles.endOfList}>
+              <Text style={styles.endOfListText}>모든 내역을 불러왔습니다</Text>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -1453,22 +1738,26 @@ export default function TransactionsScreen() {
         visible={isFilterModalOpen}
         animationType="slide"
         transparent
-        onRequestClose={() => setIsFilterModalOpen(false)}
+        onRequestClose={closeFilterModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>필터</Text>
-              <TouchableOpacity onPress={() => setIsFilterModalOpen(false)}>
+              <TouchableOpacity onPress={closeFilterModal}>
                 <MaterialIcons name="close" size={24} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+              onScrollBeginDrag={() => setActiveDropdown(null)}
+            >
               {/* Transaction Type */}
               <View style={styles.filterSection}>
                 <Text style={styles.filterSectionTitle}>거래 유형</Text>
-                <View style={[styles.filterGrid, { marginTop: 12 }]}>
+                <View style={[styles.filterTypeRow, { marginTop: 12 }]}>
                   {[
                     { value: 'ALL', label: '전체', gradient: ['#34D399', '#60A5FA'] },
                     { value: 'INCOME', label: '수입', gradient: ['#34D399', '#4ade80'] },
@@ -1478,12 +1767,12 @@ export default function TransactionsScreen() {
                     <TouchableOpacity
                       key={option.value}
                       style={[
-                        styles.filterOption,
-                        filterType === option.value && styles.filterOptionActive,
+                        styles.filterTypeOption,
+                        draftFilterType === option.value && styles.filterOptionActive,
                       ]}
-                      onPress={() => setFilterType(option.value as FilterType)}
+                      onPress={() => setDraftFilterType(option.value as FilterType)}
                     >
-                      {filterType === option.value && (
+                      {draftFilterType === option.value && (
                         <LinearGradient
                           colors={option.gradient as [string, string]}
                           start={{ x: 0, y: 0 }}
@@ -1494,7 +1783,7 @@ export default function TransactionsScreen() {
                       <Text
                         style={[
                           styles.filterOptionText,
-                          filterType === option.value && styles.filterOptionTextActive,
+                          draftFilterType === option.value && styles.filterOptionTextActive,
                         ]}
                       >
                         {option.label}
@@ -1511,59 +1800,161 @@ export default function TransactionsScreen() {
                   <View style={styles.filterToggleRow}>
                     <Text style={styles.filterToggleLabel}>사용</Text>
                     <Switch
-                      value={isDateFilterEnabled}
+                      value={draftIsDateFilterEnabled}
                       onValueChange={handleDateFilterToggle}
                       trackColor={{ false: colors.border, true: colors.accentMint }}
                       thumbColor="#fff"
                     />
                   </View>
                 </View>
-                {isDateFilterEnabled && dateRange && (
+                {draftIsDateFilterEnabled && draftDateRange && (
                   <View style={styles.filterContent}>
-                    <View style={styles.filterRow}>
+                    {/* 시작 날짜 */}
+                    <View style={[styles.filterRow, { zIndex: 20 }]}>
                       <Text style={styles.filterLabel}>시작</Text>
                       <View style={styles.filterInputRow}>
-                        <TouchableOpacity
-                          style={styles.filterSelect}
-                          onPress={() => {
-                            const newYear = dateRange.startYear === 2020 ? currentYear : dateRange.startYear - 1;
-                            setDateRange({ ...dateRange, startYear: newYear });
-                          }}
-                        >
-                          <Text style={styles.filterSelectText}>{dateRange.startYear}년</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.filterSelect}
-                          onPress={() => {
-                            const newMonth = (dateRange.startMonth + 1) % 12;
-                            setDateRange({ ...dateRange, startMonth: newMonth });
-                          }}
-                        >
-                          <Text style={styles.filterSelectText}>{dateRange.startMonth + 1}월</Text>
-                        </TouchableOpacity>
+                        {/* 시작 연도 드롭다운 */}
+                        <View style={{ flex: 1, zIndex: activeDropdown === 'startYear' ? 10 : 1 }}>
+                          <TouchableOpacity
+                            style={[styles.filterSelect, activeDropdown === 'startYear' && styles.filterSelectActive]}
+                            onPress={() => setActiveDropdown(activeDropdown === 'startYear' ? null : 'startYear')}
+                          >
+                            <Text style={styles.filterSelectText}>{draftDateRange.startYear}년</Text>
+                            <MaterialIcons
+                              name={activeDropdown === 'startYear' ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                              size={18}
+                              color={colors.textMuted}
+                            />
+                          </TouchableOpacity>
+                          {activeDropdown === 'startYear' && (
+                            <View style={styles.dropdownList}>
+                              <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
+                                {yearOptions.map((year) => (
+                                  <TouchableOpacity
+                                    key={year}
+                                    style={[styles.dropdownItem, draftDateRange.startYear === year && styles.dropdownItemActive]}
+                                    onPress={() => {
+                                      setDraftDateRange({ ...draftDateRange, startYear: year });
+                                      setActiveDropdown(null);
+                                    }}
+                                  >
+                                    <Text style={[styles.dropdownItemText, draftDateRange.startYear === year && styles.dropdownItemTextActive]}>
+                                      {year}년
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </ScrollView>
+                            </View>
+                          )}
+                        </View>
+                        {/* 시작 월 드롭다운 */}
+                        <View style={{ flex: 1, zIndex: activeDropdown === 'startMonth' ? 10 : 1 }}>
+                          <TouchableOpacity
+                            style={[styles.filterSelect, activeDropdown === 'startMonth' && styles.filterSelectActive]}
+                            onPress={() => setActiveDropdown(activeDropdown === 'startMonth' ? null : 'startMonth')}
+                          >
+                            <Text style={styles.filterSelectText}>{draftDateRange.startMonth + 1}월</Text>
+                            <MaterialIcons
+                              name={activeDropdown === 'startMonth' ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                              size={18}
+                              color={colors.textMuted}
+                            />
+                          </TouchableOpacity>
+                          {activeDropdown === 'startMonth' && (
+                            <View style={styles.dropdownList}>
+                              <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
+                                {monthOptions.map((month) => (
+                                  <TouchableOpacity
+                                    key={month}
+                                    style={[styles.dropdownItem, draftDateRange.startMonth === month && styles.dropdownItemActive]}
+                                    onPress={() => {
+                                      setDraftDateRange({ ...draftDateRange, startMonth: month });
+                                      setActiveDropdown(null);
+                                    }}
+                                  >
+                                    <Text style={[styles.dropdownItemText, draftDateRange.startMonth === month && styles.dropdownItemTextActive]}>
+                                      {month + 1}월
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </ScrollView>
+                            </View>
+                          )}
+                        </View>
                       </View>
                     </View>
-                    <View style={[styles.filterRow, styles.filterRowLast]}>
+                    {/* 종료 날짜 */}
+                    <View style={[styles.filterRow, styles.filterRowLast, { zIndex: 10 }]}>
                       <Text style={styles.filterLabel}>종료</Text>
                       <View style={styles.filterInputRow}>
-                        <TouchableOpacity
-                          style={styles.filterSelect}
-                          onPress={() => {
-                            const newYear = dateRange.endYear === currentYear ? 2020 : dateRange.endYear + 1;
-                            setDateRange({ ...dateRange, endYear: newYear });
-                          }}
-                        >
-                          <Text style={styles.filterSelectText}>{dateRange.endYear}년</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.filterSelect}
-                          onPress={() => {
-                            const newMonth = (dateRange.endMonth + 1) % 12;
-                            setDateRange({ ...dateRange, endMonth: newMonth });
-                          }}
-                        >
-                          <Text style={styles.filterSelectText}>{dateRange.endMonth + 1}월</Text>
-                        </TouchableOpacity>
+                        {/* 종료 연도 드롭다운 */}
+                        <View style={{ flex: 1, zIndex: activeDropdown === 'endYear' ? 10 : 1 }}>
+                          <TouchableOpacity
+                            style={[styles.filterSelect, activeDropdown === 'endYear' && styles.filterSelectActive]}
+                            onPress={() => setActiveDropdown(activeDropdown === 'endYear' ? null : 'endYear')}
+                          >
+                            <Text style={styles.filterSelectText}>{draftDateRange.endYear}년</Text>
+                            <MaterialIcons
+                              name={activeDropdown === 'endYear' ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                              size={18}
+                              color={colors.textMuted}
+                            />
+                          </TouchableOpacity>
+                          {activeDropdown === 'endYear' && (
+                            <View style={styles.dropdownList}>
+                              <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
+                                {yearOptions.map((year) => (
+                                  <TouchableOpacity
+                                    key={year}
+                                    style={[styles.dropdownItem, draftDateRange.endYear === year && styles.dropdownItemActive]}
+                                    onPress={() => {
+                                      setDraftDateRange({ ...draftDateRange, endYear: year });
+                                      setActiveDropdown(null);
+                                    }}
+                                  >
+                                    <Text style={[styles.dropdownItemText, draftDateRange.endYear === year && styles.dropdownItemTextActive]}>
+                                      {year}년
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </ScrollView>
+                            </View>
+                          )}
+                        </View>
+                        {/* 종료 월 드롭다운 */}
+                        <View style={{ flex: 1, zIndex: activeDropdown === 'endMonth' ? 10 : 1 }}>
+                          <TouchableOpacity
+                            style={[styles.filterSelect, activeDropdown === 'endMonth' && styles.filterSelectActive]}
+                            onPress={() => setActiveDropdown(activeDropdown === 'endMonth' ? null : 'endMonth')}
+                          >
+                            <Text style={styles.filterSelectText}>{draftDateRange.endMonth + 1}월</Text>
+                            <MaterialIcons
+                              name={activeDropdown === 'endMonth' ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                              size={18}
+                              color={colors.textMuted}
+                            />
+                          </TouchableOpacity>
+                          {activeDropdown === 'endMonth' && (
+                            <View style={styles.dropdownList}>
+                              <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
+                                {monthOptions.map((month) => (
+                                  <TouchableOpacity
+                                    key={month}
+                                    style={[styles.dropdownItem, draftDateRange.endMonth === month && styles.dropdownItemActive]}
+                                    onPress={() => {
+                                      setDraftDateRange({ ...draftDateRange, endMonth: month });
+                                      setActiveDropdown(null);
+                                    }}
+                                  >
+                                    <Text style={[styles.dropdownItemText, draftDateRange.endMonth === month && styles.dropdownItemTextActive]}>
+                                      {month + 1}월
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </ScrollView>
+                            </View>
+                          )}
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -1577,14 +1968,14 @@ export default function TransactionsScreen() {
                   <View style={styles.filterToggleRow}>
                     <Text style={styles.filterToggleLabel}>사용</Text>
                     <Switch
-                      value={isAmountFilterEnabled}
+                      value={draftIsAmountFilterEnabled}
                       onValueChange={handleAmountFilterToggle}
                       trackColor={{ false: colors.border, true: colors.accentMint }}
                       thumbColor="#fff"
                     />
                   </View>
                 </View>
-                {isAmountFilterEnabled && (
+                {draftIsAmountFilterEnabled && (
                   <View style={styles.filterContent}>
                     <View style={styles.filterRow}>
                       <Text style={styles.filterLabel}>최소 금액</Text>
@@ -1592,7 +1983,7 @@ export default function TransactionsScreen() {
                         <Text style={styles.amountPrefix}>₩</Text>
                         <TextInput
                           style={styles.amountInput}
-                          value={minAmountInput}
+                          value={draftMinAmountInput}
                           onChangeText={(v) => handleAmountInputChange('min', v)}
                           placeholder="0"
                           placeholderTextColor={colors.textMuted}
@@ -1606,9 +1997,9 @@ export default function TransactionsScreen() {
                         <Text style={styles.amountPrefix}>₩</Text>
                         <TextInput
                           style={styles.amountInput}
-                          value={maxAmountInput}
+                          value={draftMaxAmountInput}
                           onChangeText={(v) => handleAmountInputChange('max', v)}
-                          placeholder="제한 없음"
+                          placeholder="최대 1000억"
                           placeholderTextColor={colors.textMuted}
                           keyboardType="numeric"
                         />
@@ -1622,14 +2013,14 @@ export default function TransactionsScreen() {
               <View style={styles.filterSection}>
                 <View style={styles.filterSectionHeader}>
                   <Text style={styles.filterSectionTitle}>
-                    카테고리 {selectedCategories.length > 0 && (
-                      <Text style={{ color: colors.accentMint }}>({selectedCategories.length})</Text>
+                    카테고리 {draftSelectedCategories.length > 0 && (
+                      <Text style={{ color: colors.accentMint }}>({draftSelectedCategories.length})</Text>
                     )}
                   </Text>
                 </View>
 
                 {/* Income Categories */}
-                {(filterType === 'ALL' || filterType === 'INCOME') && (
+                {(draftFilterType === 'ALL' || draftFilterType === 'INCOME') && filterCategories.INCOME.length > 0 && (
                   <View style={styles.categoryAccordion}>
                     <TouchableOpacity
                       style={styles.categoryAccordionHeader}
@@ -1640,7 +2031,7 @@ export default function TransactionsScreen() {
                         <Text style={[styles.categoryAccordionTitle, { color: colors.accentMint }]}>
                           수입{' '}
                           <Text style={styles.categoryAccordionCount}>
-                            ({MOCK_CATEGORIES.INCOME.length})
+                            ({filterCategories.INCOME.length})
                           </Text>
                         </Text>
                       </View>
@@ -1652,22 +2043,22 @@ export default function TransactionsScreen() {
                     </TouchableOpacity>
                     {isIncomeCategoryOpen && (
                       <View style={styles.categoryList}>
-                        {MOCK_CATEGORIES.INCOME.map((cat, index) => (
+                        {filterCategories.INCOME.map((cat, index) => (
                           <TouchableOpacity
                             key={cat.id}
                             style={[
                               styles.categoryItem,
-                              index === MOCK_CATEGORIES.INCOME.length - 1 && styles.categoryItemLast,
+                              index === filterCategories.INCOME.length - 1 && styles.categoryItemLast,
                             ]}
                             onPress={() => toggleCategory(cat.id)}
                           >
                             <View
                               style={[
                                 styles.categoryCheckbox,
-                                selectedCategories.includes(cat.id) && styles.categoryCheckboxActive,
+                                draftSelectedCategories.includes(cat.id) && styles.categoryCheckboxActive,
                               ]}
                             >
-                              {selectedCategories.includes(cat.id) && (
+                              {draftSelectedCategories.includes(cat.id) && (
                                 <MaterialIcons name="check" size={14} color="#fff" />
                               )}
                             </View>
@@ -1681,7 +2072,7 @@ export default function TransactionsScreen() {
                 )}
 
                 {/* Expense Categories */}
-                {(filterType === 'ALL' || filterType === 'EXPENSE') && (
+                {(draftFilterType === 'ALL' || draftFilterType === 'EXPENSE') && filterCategories.EXPENSE.length > 0 && (
                   <View style={[styles.categoryAccordion, styles.categoryAccordionLast]}>
                     <TouchableOpacity
                       style={styles.categoryAccordionHeader}
@@ -1692,7 +2083,7 @@ export default function TransactionsScreen() {
                         <Text style={[styles.categoryAccordionTitle, { color: colors.accentCoral }]}>
                           지출{' '}
                           <Text style={styles.categoryAccordionCount}>
-                            ({MOCK_CATEGORIES.EXPENSE.length})
+                            ({filterCategories.EXPENSE.length})
                           </Text>
                         </Text>
                       </View>
@@ -1704,22 +2095,22 @@ export default function TransactionsScreen() {
                     </TouchableOpacity>
                     {isExpenseCategoryOpen && (
                       <View style={styles.categoryList}>
-                        {MOCK_CATEGORIES.EXPENSE.map((cat, index) => (
+                        {filterCategories.EXPENSE.map((cat, index) => (
                           <TouchableOpacity
                             key={cat.id}
                             style={[
                               styles.categoryItem,
-                              index === MOCK_CATEGORIES.EXPENSE.length - 1 && styles.categoryItemLast,
+                              index === filterCategories.EXPENSE.length - 1 && styles.categoryItemLast,
                             ]}
                             onPress={() => toggleCategory(cat.id)}
                           >
                             <View
                               style={[
                                 styles.categoryCheckbox,
-                                selectedCategories.includes(cat.id) && styles.categoryCheckboxActive,
+                                draftSelectedCategories.includes(cat.id) && styles.categoryCheckboxActive,
                               ]}
                             >
-                              {selectedCategories.includes(cat.id) && (
+                              {draftSelectedCategories.includes(cat.id) && (
                                 <MaterialIcons name="check" size={14} color="#fff" />
                               )}
                             </View>
@@ -1744,7 +2135,7 @@ export default function TransactionsScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.applyButton}
-                onPress={() => setIsFilterModalOpen(false)}
+                onPress={applyFilters}
               >
                 <LinearGradient
                   colors={['#34D399', '#60A5FA']}

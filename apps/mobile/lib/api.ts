@@ -189,16 +189,59 @@ export interface MonthlyStats {
   last7Days: Array<{ date: string; amount: number }>;
 }
 
+// Response type for paginated transactions
+export interface PaginatedTransactionsResponse {
+  transactions: TransactionWithCategory[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
 export const transactionApi = {
   getAll: (userId: string, year: number, month: number) =>
     request<Transaction[]>(
       `${API_ENDPOINTS.TRANSACTIONS}?userId=${userId}&year=${year}&month=${month}`
     ),
 
-  getRecent: (userId: string, limit: number = 10) =>
+  getRecent: (userId: string, limit: number = 10, offset: number = 0) =>
     request<TransactionWithCategory[]>(
-      `${API_ENDPOINTS.TRANSACTIONS_RECENT}?userId=${userId}&limit=${limit}`
+      `${API_ENDPOINTS.TRANSACTIONS_RECENT}?userId=${userId}&limit=${limit}&offset=${offset}`
     ),
+
+  getRecentPaginated: async (userId: string, limit: number = 10, offset: number = 0): Promise<ApiResponse<PaginatedTransactionsResponse>> => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}${API_ENDPOINTS.TRANSACTIONS_RECENT}?userId=${userId}&limit=${limit}&offset=${offset}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || 'An error occurred',
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          transactions: data.data || [],
+          totalCount: data.totalCount || 0,
+          hasMore: data.hasMore ?? false,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error',
+      };
+    }
+  },
 
   getSummary: (userId: string, year: number, month: number) =>
     request<TransactionSummary>(
@@ -239,8 +282,9 @@ export const transactionApi = {
     }),
 
   delete: (id: string, userId: string) =>
-    request(`${API_ENDPOINTS.TRANSACTIONS}/${id}?userId=${userId}`, {
+    request(`${API_ENDPOINTS.TRANSACTIONS}/${id}`, {
       method: 'DELETE',
+      body: JSON.stringify({ userId }),
     }),
 
   getOldestDate: (userId: string) =>
