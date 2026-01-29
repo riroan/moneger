@@ -765,33 +765,18 @@ export default function TransactionsScreen() {
       fontWeight: '500',
       color: colors.textPrimary,
     },
-    transactionMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 4,
-      gap: 6,
+    transactionCategory: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
     },
-    transactionTimeBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.bgSecondary,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-      gap: 3,
+    transactionRight: {
+      alignItems: 'flex-end',
     },
     transactionTime: {
       fontSize: 11,
       color: colors.textMuted,
-      fontWeight: '500',
-    },
-    metaSeparator: {
-      fontSize: 12,
-      color: colors.textMuted,
-    },
-    transactionCategory: {
-      fontSize: 11,
-      color: colors.textMuted,
+      marginTop: 2,
     },
     transactionAmount: {
       fontSize: 15,
@@ -1429,33 +1414,29 @@ export default function TransactionsScreen() {
                           <Text style={styles.transactionDescription}>
                             {tx.description || '내역 없음'}
                           </Text>
-                          <View style={styles.transactionMeta}>
-                            <View style={styles.transactionTimeBadge}>
-                              <MaterialIcons name="schedule" size={10} color={colors.textMuted} />
-                              <Text style={styles.transactionTime}>
-                                {formatTime(tx.date)}
-                              </Text>
-                            </View>
-                            <Text style={styles.metaSeparator}>·</Text>
-                            <Text style={styles.transactionCategory}>
-                              {tx.category?.name || '미분류'}
-                            </Text>
-                          </View>
+                          <Text style={styles.transactionCategory}>
+                            {tx.category?.name || '미분류'}
+                          </Text>
                         </View>
-                        <Text
-                          style={[
-                            styles.transactionAmount,
-                            {
-                              color:
-                                tx.type === 'INCOME'
-                                  ? colors.accentMint
-                                  : colors.accentCoral,
-                            },
-                          ]}
-                        >
-                          {tx.type === 'INCOME' ? '+' : '-'}
-                          {formatNumber(tx.amount)}
-                        </Text>
+                        <View style={styles.transactionRight}>
+                          <Text
+                            style={[
+                              styles.transactionAmount,
+                              {
+                                color:
+                                  tx.type === 'INCOME'
+                                    ? colors.accentMint
+                                    : colors.accentCoral,
+                              },
+                            ]}
+                          >
+                            {tx.type === 'INCOME' ? '+' : '-'}
+                            {formatNumber(tx.amount)}
+                          </Text>
+                          <Text style={styles.transactionTime}>
+                            {formatTime(tx.date)}
+                          </Text>
+                        </View>
                       </TouchableOpacity>
                       {index < txs.length - 1 && <View style={styles.divider} />}
                     </View>
