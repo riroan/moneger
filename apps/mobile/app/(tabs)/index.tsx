@@ -734,15 +734,29 @@ export default function HomeScreen() {
     transactionMeta: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 2,
-      gap: 8,
+      marginTop: 4,
+      gap: 6,
+    },
+    transactionTimeBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.bgSecondary,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      gap: 3,
     },
     transactionTime: {
+      fontSize: 11,
+      color: colors.textMuted,
+      fontWeight: '500',
+    },
+    metaSeparator: {
       fontSize: 12,
       color: colors.textMuted,
     },
     transactionCategory: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.textMuted,
     },
     transactionAmount: {
@@ -1119,9 +1133,13 @@ export default function HomeScreen() {
                         {tx.description || (tx.type === 'INCOME' ? '수입' : '지출')}
                       </Text>
                       <View style={styles.transactionMeta}>
-                        <Text style={styles.transactionTime}>
-                          {formatTime(tx.date)}
-                        </Text>
+                        <View style={styles.transactionTimeBadge}>
+                          <MaterialIcons name="schedule" size={10} color={colors.textMuted} />
+                          <Text style={styles.transactionTime}>
+                            {formatTime(tx.date)}
+                          </Text>
+                        </View>
+                        <Text style={styles.metaSeparator}>·</Text>
                         <Text style={styles.transactionCategory}>
                           {tx.category?.name || '미분류'}
                         </Text>
