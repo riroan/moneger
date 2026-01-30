@@ -837,34 +837,62 @@ export default function TransactionsScreen() {
       fontWeight: '600',
       color: colors.accentMint,
     },
-    // Summary cards
-    summaryContainer: {
-      paddingHorizontal: 20,
-      marginBottom: 16,
-      gap: 8,
-    },
-    summaryRow: {
-      flexDirection: 'row',
-      gap: 8,
-    },
+    // Summary card (TodaySummaryCard style)
     summaryCard: {
-      flex: 1,
+      marginHorizontal: 20,
+      marginBottom: 16,
       backgroundColor: colors.bgCard,
-      borderRadius: 12,
-      padding: 12,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    summaryHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    summaryHeaderIcon: {
+      marginRight: 8,
+    },
+    summaryTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    summaryContent: {
+      padding: 16,
+    },
+    summaryItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 8,
     },
     summaryLabel: {
-      fontSize: 11,
-      color: colors.textMuted,
-      marginBottom: 4,
-      textAlign: 'right',
+      fontSize: 14,
+      color: colors.textSecondary,
     },
     summaryValue: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    summaryDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 8,
+    },
+    summaryTotalLabel: {
       fontSize: 14,
-      fontWeight: 'bold',
-      textAlign: 'right',
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    summaryTotalValue: {
+      fontSize: 16,
+      fontWeight: '700',
     },
     // Transaction list
     section: {
@@ -1552,56 +1580,46 @@ export default function TransactionsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Summary Cards - 2x2 Grid */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>수입</Text>
-              <Text
-                style={[styles.summaryValue, { color: colors.accentMint }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                +{formatNumber(summary.income)}
-              </Text>
-            </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>지출</Text>
-              <Text
-                style={[styles.summaryValue, { color: colors.accentCoral }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                -{formatNumber(summary.expense)}
-              </Text>
-            </View>
+        {/* Summary Card */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryHeader}>
+            <MaterialIcons
+              name="account-balance-wallet"
+              size={18}
+              color={colors.accentMint}
+              style={styles.summaryHeaderIcon}
+            />
+            <Text style={styles.summaryTitle}>요약</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>저축</Text>
-              <Text
-                style={[styles.summaryValue, { color: colors.accentCyan }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {formatNumber(summary.savings)}
+          <View style={styles.summaryContent}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>수입</Text>
+              <Text style={[styles.summaryValue, { color: summary.income > 0 ? colors.accentMint : colors.textMuted }]}>
+                {summary.income > 0 ? `+₩${formatNumber(summary.income)}` : '-'}
               </Text>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>합계</Text>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>지출</Text>
+              <Text style={[styles.summaryValue, { color: summary.expense > 0 ? colors.accentCoral : colors.textMuted }]}>
+                {summary.expense > 0 ? `-₩${formatNumber(summary.expense)}` : '-'}
+              </Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>저축</Text>
+              <Text style={[styles.summaryValue, { color: summary.savings > 0 ? colors.accentCyan : colors.textMuted }]}>
+                {summary.savings > 0 ? `₩${formatNumber(summary.savings)}` : '-'}
+              </Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryTotalLabel}>합계</Text>
               <Text
                 style={[
-                  styles.summaryValue,
+                  styles.summaryTotalValue,
                   { color: summary.balance >= 0 ? colors.accentMint : colors.accentCoral },
                 ]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
               >
-                {summary.balance >= 0 ? '+' : ''}{formatNumber(summary.balance)}
+                {summary.balance >= 0 ? '+' : ''}₩{formatNumber(Math.abs(summary.balance))}
               </Text>
             </View>
           </View>
@@ -1677,8 +1695,7 @@ export default function TransactionsScreen() {
                                 { color: amountColor },
                               ]}
                             >
-                              {tx.type === 'INCOME' ? '+' : '-'}
-                              {formatNumber(tx.amount)}
+                              {tx.type === 'INCOME' ? '+' : '-'}₩{formatNumber(tx.amount)}
                             </Text>
                             <Text style={styles.transactionTime}>
                               {formatTime(tx.date)}

@@ -26,26 +26,38 @@ export default function DailyReportCard() {
   const colors = Colors[theme];
 
   const [data, setData] = useState<DailyBalance[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [selectedDays, setSelectedDays] = useState(7);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isInitial: boolean = false) => {
     if (!userId) return;
 
-    setIsLoading(true);
+    if (isInitial) {
+      setIsInitialLoading(true);
+    }
     const result = await dailyBalanceApi.getRecent(userId, selectedDays);
     if (result.success && result.data) {
       setData(result.data);
       // 기본값으로 마지막 인덱스(오늘) 선택
       setSelectedIndex(result.data.length > 0 ? result.data.length - 1 : null);
     }
-    setIsLoading(false);
+    if (isInitial) {
+      setIsInitialLoading(false);
+    }
   }, [userId, selectedDays]);
 
+  // 초기 로딩
   useEffect(() => {
-    fetchData();
-  }, [fetchData, lastTransactionUpdate]);
+    fetchData(true);
+  }, [userId]);
+
+  // 날짜 범위 변경 또는 거래 업데이트 시 (깜빡임 없이)
+  useEffect(() => {
+    if (!isInitialLoading) {
+      fetchData(false);
+    }
+  }, [selectedDays, lastTransactionUpdate]);
 
   const chartWidth = SCREEN_WIDTH - CHART_PADDING;
 
@@ -249,7 +261,7 @@ export default function DailyReportCard() {
         ))}
       </View>
 
-      {isLoading ? (
+      {isInitialLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={colors.textMuted} />
         </View>

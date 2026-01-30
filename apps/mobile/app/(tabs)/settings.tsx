@@ -529,11 +529,20 @@ export default function SettingsScreen() {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    menuSection: {
+      marginTop: 16,
+    },
+    menuSectionTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textMuted,
+      marginHorizontal: 20,
+      marginBottom: 8,
+    },
     menuListCard: {
       backgroundColor: colors.bgCard,
       borderRadius: 16,
       marginHorizontal: 16,
-      marginTop: 8,
       borderWidth: 1,
       borderColor: colors.border,
       overflow: 'hidden',
@@ -1231,11 +1240,14 @@ export default function SettingsScreen() {
     </ScrollView>
   );
 
-  const navigationMenuItems = [
+  const reportMenuItems = [
     { id: 'calendar', icon: 'calendar-today' as MaterialIconName, label: '일별 내역', color: '#10B981', onPress: () => setActiveModal('calendar') },
     { id: 'daily-report', icon: 'show-chart' as MaterialIconName, label: '일별 리포트', color: '#8B5CF6', onPress: () => setActiveModal('daily-report') },
-    { id: 'transactions', icon: 'receipt-long' as MaterialIconName, label: '거래 내역', color: '#3B82F6', onPress: () => router.push('/(tabs)/transactions') },
-    { id: 'savings', icon: 'savings' as MaterialIconName, label: '저축 목표', color: '#F59E0B', onPress: () => router.push('/(tabs)/savings') },
+  ];
+
+  const navigationMenuItems = [
+    { id: 'transactions', icon: 'receipt-long' as MaterialIconName, label: '내역', color: '#3B82F6', onPress: () => router.push('/(tabs)/transactions') },
+    { id: 'savings', icon: 'savings' as MaterialIconName, label: '저축', color: '#F59E0B', onPress: () => router.push('/(tabs)/savings') },
   ];
 
   const settingsMenuItems = [
@@ -1261,36 +1273,58 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.menuListCard}>
-          {navigationMenuItems.map((item, index) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.menuListItem, index === 0 && styles.menuItemFirst]}
-              onPress={item.onPress}
-            >
-              <View style={[styles.menuListIcon, { backgroundColor: item.color + '20' }]}>
-                <MaterialIcons name={item.icon} size={20} color={item.color} />
-              </View>
-              <Text style={styles.menuListText}>{item.label}</Text>
-              <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-          ))}
+        <View style={styles.menuSection}>
+          <View style={styles.menuListCard}>
+            {reportMenuItems.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuListItem, index === 0 && styles.menuItemFirst]}
+                onPress={item.onPress}
+              >
+                <View style={[styles.menuListIcon, { backgroundColor: item.color + '20' }]}>
+                  <MaterialIcons name={item.icon} size={20} color={item.color} />
+                </View>
+                <Text style={styles.menuListText}>{item.label}</Text>
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        <View style={[styles.menuListCard, { marginTop: 16 }]}>
-          {settingsMenuItems.map((item, index) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.menuListItem, index === 0 && styles.menuItemFirst]}
-              onPress={item.onPress}
-            >
-              <View style={[styles.menuListIcon, { backgroundColor: item.color + '20' }]}>
-                <MaterialIcons name={item.icon} size={20} color={item.color} />
-              </View>
-              <Text style={styles.menuListText}>{item.label}</Text>
-              <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-          ))}
+        <View style={styles.menuSection}>
+          <View style={styles.menuListCard}>
+            {navigationMenuItems.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuListItem, index === 0 && styles.menuItemFirst]}
+                onPress={item.onPress}
+              >
+                <View style={[styles.menuListIcon, { backgroundColor: item.color + '20' }]}>
+                  <MaterialIcons name={item.icon} size={20} color={item.color} />
+                </View>
+                <Text style={styles.menuListText}>{item.label}</Text>
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.menuSection}>
+          <View style={styles.menuListCard}>
+            {settingsMenuItems.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuListItem, index === 0 && styles.menuItemFirst]}
+                onPress={item.onPress}
+              >
+                <View style={[styles.menuListIcon, { backgroundColor: item.color + '20' }]}>
+                  <MaterialIcons name={item.icon} size={20} color={item.color} />
+                </View>
+                <Text style={styles.menuListText}>{item.label}</Text>
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={styles.bottomSpacer} />

@@ -160,13 +160,15 @@ export async function saveDailyBalance(
  * 최근 N일 일별 잔액 조회 (KST 기준)
  * 1. KST 오늘 날짜 계산
  * 2. DailyBalance에서 오늘 포함 최근 N일 조회
+ *
+ * 주의: toKST로 변환된 Date는 UTC 메서드를 사용해야 올바른 KST 값을 얻음
  */
 export async function getRecentDailyBalances(userId: string, days: number) {
-  // 1. KST 오늘 날짜
+  // 1. KST 오늘 날짜 (UTC 메서드 사용)
   const kstNow = toKST(new Date());
-  const kstYear = kstNow.getFullYear();
-  const kstMonth = kstNow.getMonth();
-  const kstDay = kstNow.getDate();
+  const kstYear = kstNow.getUTCFullYear();
+  const kstMonth = kstNow.getUTCMonth();
+  const kstDay = kstNow.getUTCDate();
 
   // 2. 시작일과 종료일 (UTC 자정 기준 - @db.Date 타입용)
   const startDate = new Date(Date.UTC(kstYear, kstMonth, kstDay - days + 1));
