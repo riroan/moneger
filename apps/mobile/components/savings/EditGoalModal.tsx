@@ -176,6 +176,7 @@ export function EditGoalModal({
     iconGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
+      justifyContent: 'center',
       gap: 8,
     },
     iconButton: {
@@ -285,7 +286,8 @@ export function EditGoalModal({
       borderWidth: 1,
       borderColor: colors.accentCoral,
       alignItems: 'center',
-      marginTop: 16,
+      marginHorizontal: 20,
+      marginBottom: 20,
     },
     deleteButtonText: {
       fontSize: 15,
@@ -296,7 +298,8 @@ export function EditGoalModal({
       backgroundColor: 'rgba(239, 68, 68, 0.1)',
       borderRadius: 12,
       padding: 16,
-      marginTop: 16,
+      marginHorizontal: 20,
+      marginBottom: 20,
     },
     deleteConfirmText: {
       fontSize: 14,
@@ -428,42 +431,7 @@ export function EditGoalModal({
               </View>
             </View>
 
-            {/* Delete Button */}
-            {!showDeleteConfirm ? (
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => setShowDeleteConfirm(true)}
-                disabled={isSubmitting}
-              >
-                <Text style={styles.deleteButtonText}>삭제</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.deleteConfirmContainer}>
-                <Text style={styles.deleteConfirmText}>
-                  정말로 이 저축 목표를 삭제하시겠습니까?{'\n'}저축 내역도 함께 삭제됩니다.
-                </Text>
-                <View style={styles.deleteConfirmButtons}>
-                  <TouchableOpacity
-                    style={styles.deleteConfirmCancel}
-                    onPress={() => setShowDeleteConfirm(false)}
-                    disabled={isSubmitting}
-                  >
-                    <Text style={styles.deleteConfirmCancelText}>취소</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.deleteConfirmDelete}
-                    onPress={onDelete}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.deleteConfirmDeleteText}>삭제</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+            <View style={{ height: 20 }} />
           </ScrollView>
 
           <View style={styles.buttons}>
@@ -478,6 +446,43 @@ export function EditGoalModal({
               <Text style={styles.saveButtonText}>{isSubmitting ? '저장 중...' : '저장'}</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Delete Button */}
+          {!showDeleteConfirm ? (
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => setShowDeleteConfirm(true)}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.deleteButtonText}>삭제</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.deleteConfirmContainer}>
+              <Text style={styles.deleteConfirmText}>
+                정말로 이 저축 목표를 삭제하시겠습니까?{'\n'}저축 내역도 함께 삭제됩니다.
+              </Text>
+              <View style={styles.deleteConfirmButtons}>
+                <TouchableOpacity
+                  style={styles.deleteConfirmCancel}
+                  onPress={() => setShowDeleteConfirm(false)}
+                  disabled={isSubmitting}
+                >
+                  <Text style={styles.deleteConfirmCancelText}>취소</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteConfirmDelete}
+                  onPress={onDelete}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.deleteConfirmDeleteText}>삭제</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>

@@ -173,6 +173,7 @@ export function AddGoalModal({
     iconGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
+      justifyContent: 'center',
       gap: 8,
     },
     iconButton: {
@@ -415,6 +416,8 @@ export function AddGoalModal({
                 </TouchableOpacity>
               </View>
             </View>
+
+            <View style={{ height: 20 }} />
           </ScrollView>
 
           <View style={styles.buttons}>

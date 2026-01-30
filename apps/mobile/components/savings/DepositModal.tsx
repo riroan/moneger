@@ -252,7 +252,7 @@ export function DepositModal({
       alignItems: 'center',
     },
     quickAmountText: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '500',
       color: colors.accentMint,
     },
@@ -286,9 +286,11 @@ export function DepositModal({
       marginBottom: 8,
     },
     previewAmount: {
+      flex: 1,
       fontSize: 18,
       fontWeight: 'bold',
       color: colors.textPrimary,
+      marginRight: 8,
     },
     previewPercent: {
       fontSize: 14,
@@ -365,9 +367,13 @@ export function DepositModal({
                 {renderGoalIcon(goal.icon, 24, '#FBBF24')}
               </View>
               <View style={styles.goalDetails}>
-                <Text style={styles.goalName}>{goal.name}</Text>
-                <Text style={styles.goalProgress}>현재 ₩{formatNumber(goal.currentAmount)}</Text>
-                <Text style={styles.goalProgress}>목표 ₩{formatNumber(goal.targetAmount)}</Text>
+                <Text style={styles.goalName} numberOfLines={1}>{goal.name}</Text>
+                <Text style={styles.goalProgress} numberOfLines={1} adjustsFontSizeToFit>
+                  현재 ₩{formatNumber(goal.currentAmount)}
+                </Text>
+                <Text style={styles.goalProgress} numberOfLines={1} adjustsFontSizeToFit>
+                  목표 ₩{formatNumber(goal.targetAmount)}
+                </Text>
               </View>
               <Text style={styles.goalPercent}>{goal.progressPercent}%</Text>
             </View>
@@ -375,7 +381,7 @@ export function DepositModal({
             {/* Remaining Amount */}
             <View style={styles.remainingBox}>
               <Text style={styles.remainingLabel}>목표까지 남은 금액</Text>
-              <Text style={styles.remainingValue}>
+              <Text style={styles.remainingValue} numberOfLines={1} adjustsFontSizeToFit>
                 ₩{formatNumber(Math.max(goal.targetAmount - goal.currentAmount, 0))}
               </Text>
             </View>
@@ -410,7 +416,9 @@ export function DepositModal({
                   style={styles.quickAmountButton}
                   onPress={() => handleQuickAmount(amount)}
                 >
-                  <Text style={styles.quickAmountText}>+{formatNumber(amount)}</Text>
+                  <Text style={styles.quickAmountText} numberOfLines={1} adjustsFontSizeToFit>
+                    +{formatNumber(amount)}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -418,7 +426,7 @@ export function DepositModal({
             {/* Full Amount Button */}
             {goal.targetAmount - goal.currentAmount > 0 && (
               <TouchableOpacity style={styles.fullAmountButton} onPress={handleFullAmount}>
-                <Text style={styles.fullAmountText}>
+                <Text style={styles.fullAmountText} numberOfLines={1} adjustsFontSizeToFit>
                   전액 (₩{formatNumber(Math.min(goal.targetAmount - goal.currentAmount, AMOUNT_LIMITS.TRANSACTION_MAX))})
                 </Text>
               </TouchableOpacity>
@@ -429,7 +437,9 @@ export function DepositModal({
               <View style={styles.preview}>
                 <Text style={styles.previewLabel}>저축 후 예상</Text>
                 <View style={styles.previewRow}>
-                  <Text style={styles.previewAmount}>₩{formatNumber(afterDepositAmount)}</Text>
+                  <Text style={styles.previewAmount} numberOfLines={1} adjustsFontSizeToFit>
+                    ₩{formatNumber(afterDepositAmount)}
+                  </Text>
                   <Text style={styles.previewPercent}>{afterDepositPercent}%</Text>
                 </View>
                 <View style={styles.previewBar}>

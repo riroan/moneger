@@ -58,6 +58,14 @@ export function getKSTDateParts(date: Date): { year: number; month: number; day:
 }
 
 /**
+ * 한국 시간대(KST, UTC+9) 기준으로 날짜(일) 추출
+ */
+export function getKSTDay(date: Date): number {
+  const kstDate = new Date(date.getTime() + KST_OFFSET_MS);
+  return kstDate.getUTCDate();
+}
+
+/**
  * 숫자를 천단위 콤마가 포함된 문자열로 변환
  */
 export function formatNumber(num: number): string {

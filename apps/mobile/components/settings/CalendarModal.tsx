@@ -11,7 +11,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useThemeStore } from '../../stores/themeStore';
 import { Colors } from '../../constants/Colors';
-import { getHolidayDaysInMonth, formatNumber } from '@moneger/shared';
+import { getHolidayDaysInMonth, formatNumber, getKSTDay } from '@moneger/shared';
 import type { MaterialIconName } from '../../constants/Icons';
 
 // Icon mapping for categories
@@ -122,7 +122,7 @@ export function CalendarModal({
   const getTransactionsForDay = (day: number) => {
     return transactions.filter(tx => {
       const txDate = new Date(tx.date);
-      return txDate.getDate() === day;
+      return getKSTDay(txDate) === day;
     });
   };
 
@@ -136,9 +136,10 @@ export function CalendarModal({
 
   const getSelectedDateTransactions = () => {
     if (!selectedDate) return [];
+    const selectedDay = selectedDate.getDate();
     return transactions.filter(tx => {
       const txDate = new Date(tx.date);
-      return txDate.getDate() === selectedDate.getDate();
+      return getKSTDay(txDate) === selectedDay;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 

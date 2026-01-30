@@ -28,6 +28,7 @@ import { transactionApi, categoryApi, Transaction, Category, TransactionWithCate
 import { useToast } from '../../contexts/ToastContext';
 import { useRefreshStore } from '../../stores/refreshStore';
 import { AMOUNT_LIMITS, formatNumber, formatAmountInput, formatDateWithDay, formatTime } from '@moneger/shared';
+import { EditSavingsTransactionModal, type SavingsTransactionForEdit } from '../../components/savings';
 
 // Pagination settings
 const INITIAL_LOAD_LIMIT = 50; // 처음 로드할 개수
@@ -192,6 +193,12 @@ export default function TransactionsScreen() {
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Savings transaction edit modal states
+  const [isSavingsEditModalOpen, setIsSavingsEditModalOpen] = useState(false);
+  const [editingSavingsTransaction, setEditingSavingsTransaction] = useState<SavingsTransactionForEdit | null>(null);
+  const [isSavingsEditSubmitting, setIsSavingsEditSubmitting] = useState(false);
+  const isSavingsDeleteInProgress = useRef(false);
 
   // Filter categories (loaded from API)
   const [filterCategories, setFilterCategories] = useState<{ INCOME: Category[]; EXPENSE: Category[] }>({
@@ -656,9 +663,16 @@ export default function TransactionsScreen() {
 
   // Open edit modal
   const handleOpenEditModal = (tx: TransactionWithCategory) => {
-    // 저축 거래는 수정 불가
+    // 저축 거래는 별도 모달로 표시
     if (tx.savingsGoalId) {
-      showToast('저축 거래는 저축 탭에서 관리해주세요.', 'info');
+      setEditingSavingsTransaction({
+        id: tx.id,
+        amount: tx.amount,
+        description: tx.description || '',
+        date: tx.date,
+        savingsGoalId: tx.savingsGoalId,
+      });
+      setIsSavingsEditModalOpen(true);
       return;
     }
     setEditingTransaction(tx);
@@ -680,6 +694,40 @@ export default function TransactionsScreen() {
     setShowDeleteConfirm(false);
     setEditAmountExceeded(false);
     editModalTranslateY.setValue(0);
+  };
+
+  // Close savings transaction edit modal
+  const handleCloseSavingsEditModal = () => {
+    setIsSavingsEditModalOpen(false);
+    setEditingSavingsTransaction(null);
+  };
+
+  // Delete savings transaction
+  const handleDeleteSavingsTransaction = async () => {
+    // ref로 즉시 중복 호출 방지
+    if (isSavingsDeleteInProgress.current) return;
+    if (!userId || !editingSavingsTransaction) return;
+
+    isSavingsDeleteInProgress.current = true;
+    const transactionId = editingSavingsTransaction.id;
+
+    // 모달 먼저 닫기
+    setIsSavingsEditModalOpen(false);
+    setEditingSavingsTransaction(null);
+
+    const res = await transactionApi.delete(transactionId, userId);
+    if (res.success) {
+      showToast('저축 내역이 삭제되었습니다.', 'success');
+      triggerRefresh();
+      fetchData(true);
+    } else {
+      showToast('삭제에 실패했습니다.', 'error');
+    }
+
+    // 3초 후에 ref 해제 (중복 호출 방지 유지)
+    setTimeout(() => {
+      isSavingsDeleteInProgress.current = false;
+    }, 3000);
   };
 
   // Format amount for edit with max limit (returns { value, exceeded })
@@ -1619,7 +1667,7 @@ export default function TransactionsScreen() {
                   { color: summary.balance >= 0 ? colors.accentMint : colors.accentCoral },
                 ]}
               >
-                {summary.balance >= 0 ? '+' : ''}₩{formatNumber(Math.abs(summary.balance))}
+                {summary.balance >= 0 ? '+' : '-'}₩{formatNumber(Math.abs(summary.balance))}
               </Text>
             </View>
           </View>
@@ -2393,6 +2441,15 @@ export default function TransactionsScreen() {
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Savings Transaction Edit Modal */}
+      <EditSavingsTransactionModal
+        visible={isSavingsEditModalOpen}
+        transaction={editingSavingsTransaction}
+        onClose={handleCloseSavingsEditModal}
+        onDelete={handleDeleteSavingsTransaction}
+        isSubmitting={isSavingsEditSubmitting}
+      />
     </View>
   );
 }

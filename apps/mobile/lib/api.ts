@@ -197,9 +197,9 @@ export interface PaginatedTransactionsResponse {
 }
 
 export const transactionApi = {
-  getAll: (userId: string, year: number, month: number) =>
+  getAll: (userId: string, year: number, month: number, limit?: number) =>
     request<Transaction[]>(
-      `${API_ENDPOINTS.TRANSACTIONS}?userId=${userId}&year=${year}&month=${month}`
+      `${API_ENDPOINTS.TRANSACTIONS}?userId=${userId}&year=${year}&month=${month}${limit ? `&limit=${limit}` : ''}`
     ),
 
   getRecent: (userId: string, limit: number = 10, offset: number = 0) =>

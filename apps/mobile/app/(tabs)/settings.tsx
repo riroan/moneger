@@ -153,7 +153,7 @@ export default function SettingsScreen() {
     try {
       const year = calendarDate.getFullYear();
       const month = calendarDate.getMonth() + 1;
-      const res = await transactionApi.getAll(userId, year, month);
+      const res = await transactionApi.getAll(userId, year, month, 1000);
       if (res.success && res.data) {
         setCalendarTransactions(res.data as CalendarTransaction[]);
       }
