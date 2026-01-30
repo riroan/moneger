@@ -7,10 +7,6 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,7 +18,8 @@ import { useRefreshStore } from '../../stores/refreshStore';
 import { useToast } from '../../contexts/ToastContext';
 import { Colors } from '../../constants/Colors';
 import { savingsApi, SavingsGoal } from '../../lib/api';
-import { AMOUNT_LIMITS, SAVINGS_GOAL, formatNumber, formatAmountInput } from '@moneger/shared';
+import { SAVINGS_GOAL, formatNumber } from '@moneger/shared';
+import { AddGoalModal, DepositModal, EditGoalModal, type SavingsGoalForDeposit, type SavingsGoalForEdit } from '../../components/savings';
 
 const MAX_GOALS = SAVINGS_GOAL.MAX_COUNT;
 
@@ -37,9 +34,6 @@ const GOAL_ICONS: Record<string, MaterialIconName> = {
   health: 'favorite',
   savings: 'savings',
 };
-
-// Quick amount options for deposit
-const QUICK_AMOUNTS = [10000, 50000, 100000, 500000];
 
 export default function SavingsScreen() {
   const { userId } = useAuthStore();
@@ -56,41 +50,14 @@ export default function SavingsScreen() {
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
-  const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null);
-
-  // Add modal form states
-  const [newGoalName, setNewGoalName] = useState('');
-  const [newGoalIcon, setNewGoalIcon] = useState('savings');
-  const [newGoalTargetAmount, setNewGoalTargetAmount] = useState('');
-  const [newGoalCurrentAmount, setNewGoalCurrentAmount] = useState('');
-  const [newGoalStartYear, setNewGoalStartYear] = useState(new Date().getFullYear());
-  const [newGoalStartMonth, setNewGoalStartMonth] = useState(new Date().getMonth() + 1);
-  const [newGoalTargetYear, setNewGoalTargetYear] = useState(new Date().getFullYear() + 1);
-  const [newGoalTargetMonth, setNewGoalTargetMonth] = useState(12);
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Deposit modal form states
-  const [depositAmount, setDepositAmount] = useState('');
-  const [isDepositing, setIsDepositing] = useState(false);
-  const [depositAmountExceeded, setDepositAmountExceeded] = useState(false);
-
-  // Add modal amount exceeded states
-  const [targetAmountExceeded, setTargetAmountExceeded] = useState(false);
-  const [currentAmountExceeded, setCurrentAmountExceeded] = useState(false);
-
-  // Edit modal amount exceeded state
-  const [editTargetAmountExceeded, setEditTargetAmountExceeded] = useState(false);
-
-  // Edit modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
-  const [editGoalName, setEditGoalName] = useState('');
-  const [editGoalIcon, setEditGoalIcon] = useState('savings');
-  const [editGoalTargetAmount, setEditGoalTargetAmount] = useState('');
-  const [editGoalTargetYear, setEditGoalTargetYear] = useState(new Date().getFullYear() + 1);
-  const [editGoalTargetMonth, setEditGoalTargetMonth] = useState(12);
+
+  // Submitting states
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDepositing, setIsDepositing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [showEditDeleteConfirm, setShowEditDeleteConfirm] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!userId) {
@@ -160,54 +127,36 @@ export default function SavingsScreen() {
     return <MaterialIcons name={iconKey} size={size} color={color} />;
   };
 
-  // Reset add modal form
-  const resetAddModal = () => {
-    setNewGoalName('');
-    setNewGoalIcon('savings');
-    setNewGoalTargetAmount('');
-    setNewGoalCurrentAmount('');
-    const now = new Date();
-    setNewGoalStartYear(now.getFullYear());
-    setNewGoalStartMonth(now.getMonth() + 1);
-    setNewGoalTargetYear(now.getFullYear() + 1);
-    setNewGoalTargetMonth(12);
-    setTargetAmountExceeded(false);
-    setCurrentAmountExceeded(false);
-  };
-
   // Handle add goal
-  const handleAddGoal = async () => {
+  const handleAddGoal = async (data: {
+    name: string;
+    icon: string;
+    targetAmount: number;
+    currentAmount: number;
+    startYear: number;
+    startMonth: number;
+    targetYear: number;
+    targetMonth: number;
+  }) => {
     if (!userId) return;
-
-    if (!newGoalName.trim()) {
-      showToast('목표 이름을 입력해주세요', 'error');
-      return;
-    }
-
-    const targetNum = parseInt(newGoalTargetAmount.replace(/,/g, '') || '0', 10);
-    if (targetNum <= 0) {
-      showToast('목표 금액을 입력해주세요', 'error');
-      return;
-    }
 
     setIsSaving(true);
     try {
       const res = await savingsApi.create({
         userId,
-        name: newGoalName.trim(),
-        icon: newGoalIcon,
-        targetAmount: targetNum,
-        currentAmount: parseInt(newGoalCurrentAmount.replace(/,/g, '') || '0', 10),
-        startYear: newGoalStartYear,
-        startMonth: newGoalStartMonth,
-        targetYear: newGoalTargetYear,
-        targetMonth: newGoalTargetMonth,
+        name: data.name,
+        icon: data.icon,
+        targetAmount: data.targetAmount,
+        currentAmount: data.currentAmount,
+        startYear: data.startYear,
+        startMonth: data.startMonth,
+        targetYear: data.targetYear,
+        targetMonth: data.targetMonth,
       });
 
       if (res.success) {
         showToast('저축 목표가 추가되었습니다', 'success');
         setIsAddModalOpen(false);
-        resetAddModal();
         fetchData();
         triggerRefresh();
       } else {
@@ -221,24 +170,17 @@ export default function SavingsScreen() {
   };
 
   // Handle deposit
-  const handleDeposit = async () => {
+  const handleDeposit = async (amount: number) => {
     if (!userId || !selectedGoal) return;
-
-    const depositNum = parseInt(depositAmount.replace(/,/g, '') || '0', 10);
-    if (depositNum <= 0) {
-      showToast('저축 금액을 입력해주세요', 'error');
-      return;
-    }
 
     setIsDepositing(true);
     try {
-      const res = await savingsApi.deposit(selectedGoal.id, userId, depositNum);
+      const res = await savingsApi.deposit(selectedGoal.id, userId, amount);
 
       if (res.success) {
         showToast('저축이 완료되었습니다', 'success');
         setIsDepositModalOpen(false);
         setSelectedGoal(null);
-        setDepositAmount('');
         fetchData();
         triggerRefresh();
       } else {
@@ -284,29 +226,10 @@ export default function SavingsScreen() {
   // Open deposit modal
   const openDepositModal = (goal: SavingsGoal) => {
     setSelectedGoal(goal);
-    setDepositAmount('');
-    setDepositAmountExceeded(false);
     setIsDepositModalOpen(true);
   };
 
-  // Handle quick amount
-  const handleQuickAmount = (amount: number) => {
-    const current = parseInt(depositAmount.replace(/,/g, '') || '0', 10);
-    const newAmount = current + amount;
-    if (newAmount > AMOUNT_LIMITS.TRANSACTION_MAX) {
-      setDepositAmountExceeded(true);
-      setDepositAmount(formatNumber(AMOUNT_LIMITS.TRANSACTION_MAX));
-    } else {
-      setDepositAmountExceeded(false);
-      setDepositAmount(formatNumber(newAmount));
-    }
-  };
-
-  // Format input as currency with max limit (using shared formatAmountInput)
-  const formatInputAmountWithCheck = (text: string, maxAmount: number = AMOUNT_LIMITS.MAX) =>
-    formatAmountInput(text, maxAmount);
-
-  // Handle toggle primary goal (same as web implementation)
+  // Handle toggle primary goal
   const handleTogglePrimary = async (goal: SavingsGoal) => {
     if (!userId) return;
 
@@ -328,66 +251,37 @@ export default function SavingsScreen() {
     }
   };
 
-  // Parse target date string to year and month
-  const parseTargetDate = (targetDate: string): { year: number; month: number } => {
-    const match = targetDate.match(/(\d{4})년\s*(\d{1,2})월/);
-    if (match) {
-      return { year: parseInt(match[1], 10), month: parseInt(match[2], 10) };
-    }
-    return { year: new Date().getFullYear() + 1, month: 12 };
-  };
-
   // Open edit modal
   const openEditModal = (goal: SavingsGoal) => {
     setEditingGoal(goal);
-    setEditGoalName(goal.name);
-    setEditGoalIcon(goal.icon);
-    setEditGoalTargetAmount(formatNumber(goal.targetAmount));
-    const { year, month } = parseTargetDate(goal.targetDate);
-    setEditGoalTargetYear(year);
-    setEditGoalTargetMonth(month);
-    setShowEditDeleteConfirm(false);
-    setEditTargetAmountExceeded(false);
     setIsEditModalOpen(true);
   };
 
-  // Close edit modal
-  const closeEditModal = () => {
-    setIsEditModalOpen(false);
-    setEditingGoal(null);
-    setShowEditDeleteConfirm(false);
-    setEditTargetAmountExceeded(false);
-  };
-
   // Handle edit goal
-  const handleEditGoal = async () => {
+  const handleEditGoal = async (data: {
+    name: string;
+    icon: string;
+    targetAmount: number;
+    targetYear: number;
+    targetMonth: number;
+  }) => {
     if (!userId || !editingGoal) return;
-
-    if (!editGoalName.trim()) {
-      showToast('목표 이름을 입력해주세요', 'error');
-      return;
-    }
-
-    const targetNum = parseInt(editGoalTargetAmount.replace(/,/g, '') || '0', 10);
-    if (targetNum <= 0) {
-      showToast('목표 금액을 입력해주세요', 'error');
-      return;
-    }
 
     setIsEditing(true);
     try {
       const res = await savingsApi.update(editingGoal.id, {
         userId,
-        name: editGoalName.trim(),
-        icon: editGoalIcon,
-        targetAmount: targetNum,
-        targetYear: editGoalTargetYear,
-        targetMonth: editGoalTargetMonth,
+        name: data.name,
+        icon: data.icon,
+        targetAmount: data.targetAmount,
+        targetYear: data.targetYear,
+        targetMonth: data.targetMonth,
       });
 
       if (res.success) {
         showToast('저축 목표가 수정되었습니다', 'success');
-        closeEditModal();
+        setIsEditModalOpen(false);
+        setEditingGoal(null);
         fetchData();
         triggerRefresh();
       } else {
@@ -409,7 +303,8 @@ export default function SavingsScreen() {
       const res = await savingsApi.delete(editingGoal.id, userId);
       if (res.success) {
         showToast('저축 목표가 삭제되었습니다', 'success');
-        closeEditModal();
+        setIsEditModalOpen(false);
+        setEditingGoal(null);
         fetchData();
         triggerRefresh();
       } else {
@@ -420,6 +315,31 @@ export default function SavingsScreen() {
     } finally {
       setIsEditing(false);
     }
+  };
+
+  // Convert SavingsGoal to SavingsGoalForDeposit
+  const getGoalForDeposit = (goal: SavingsGoal | null): SavingsGoalForDeposit | null => {
+    if (!goal) return null;
+    return {
+      id: goal.id,
+      name: goal.name,
+      icon: goal.icon,
+      targetAmount: goal.targetAmount,
+      currentAmount: goal.currentAmount,
+      progressPercent: goal.progressPercent,
+    };
+  };
+
+  // Convert SavingsGoal to SavingsGoalForEdit
+  const getGoalForEdit = (goal: SavingsGoal | null): SavingsGoalForEdit | null => {
+    if (!goal) return null;
+    return {
+      id: goal.id,
+      name: goal.name,
+      icon: goal.icon,
+      targetAmount: goal.targetAmount,
+      targetDate: goal.targetDate,
+    };
   };
 
   const styles = StyleSheet.create({
@@ -683,347 +603,6 @@ export default function SavingsScreen() {
       color: colors.textMuted,
       marginTop: 8,
     },
-    // Modal styles
-    modalOverlay: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    modalBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    },
-    modalContent: {
-      width: '90%',
-      maxWidth: 400,
-      maxHeight: '85%',
-      backgroundColor: colors.bgCard,
-      borderRadius: 24,
-      padding: 24,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 20,
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: colors.textPrimary,
-    },
-    modalCloseButton: {
-      padding: 4,
-    },
-    modalBody: {
-      maxHeight: 400,
-    },
-    inputLabel: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.textSecondary,
-      marginBottom: 8,
-      marginTop: 16,
-    },
-    textInput: {
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 12,
-      padding: 14,
-      fontSize: 15,
-      color: colors.textPrimary,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    iconGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: 8,
-    },
-    iconButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: colors.bgSecondary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    iconButtonSelected: {
-      backgroundColor: colors.accentMint,
-    },
-    amountInputContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    amountInputExceeded: {
-      borderColor: '#F87171',
-      borderWidth: 2,
-    },
-    amountExceededText: {
-      fontSize: 12,
-      color: '#F87171',
-      marginTop: 6,
-    },
-    currencySymbol: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      marginRight: 4,
-    },
-    amountInput: {
-      flex: 1,
-      fontSize: 16,
-      color: colors.textPrimary,
-      paddingVertical: 14,
-    },
-    dateRow: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    datePickerContainer: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 12,
-      padding: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    dateButton: {
-      padding: 4,
-    },
-    dateText: {
-      fontSize: 14,
-      color: colors.textPrimary,
-      fontWeight: '500',
-    },
-    modalButtons: {
-      flexDirection: 'row',
-      gap: 12,
-      marginTop: 20,
-    },
-    cancelButton: {
-      flex: 1,
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 12,
-      padding: 14,
-      alignItems: 'center',
-    },
-    cancelButtonText: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: colors.textPrimary,
-    },
-    saveButton: {
-      flex: 1,
-      backgroundColor: colors.accentMint,
-      borderRadius: 12,
-      padding: 14,
-      alignItems: 'center',
-    },
-    saveButtonDisabled: {
-      opacity: 0.5,
-    },
-    saveButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: '#0D1117',
-    },
-    // Deposit Modal styles
-    depositGoalInfo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 14,
-      padding: 14,
-      marginBottom: 16,
-    },
-    depositGoalIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 12,
-      backgroundColor: 'rgba(251, 191, 36, 0.15)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-    depositGoalDetails: {
-      flex: 1,
-    },
-    depositGoalName: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textPrimary,
-    },
-    depositGoalProgress: {
-      fontSize: 12,
-      color: colors.textMuted,
-      marginTop: 2,
-    },
-    depositGoalPercent: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: colors.accentMint,
-    },
-    remainingAmountBox: {
-      backgroundColor: 'rgba(52, 211, 153, 0.1)',
-      borderRadius: 12,
-      padding: 12,
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    remainingAmountLabel: {
-      fontSize: 12,
-      color: colors.textMuted,
-      marginBottom: 4,
-    },
-    remainingAmountValue: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: colors.accentMint,
-    },
-    quickAmountsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginTop: 12,
-    },
-    quickAmountButton: {
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 8,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-    },
-    quickAmountText: {
-      fontSize: 12,
-      color: colors.textSecondary,
-    },
-    fullAmountButton: {
-      backgroundColor: 'rgba(52, 211, 153, 0.2)',
-      borderRadius: 8,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      marginTop: 8,
-      alignSelf: 'flex-start',
-    },
-    fullAmountText: {
-      fontSize: 12,
-      color: colors.accentMint,
-    },
-    depositPreview: {
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 12,
-      padding: 12,
-      marginTop: 16,
-    },
-    depositPreviewLabel: {
-      fontSize: 12,
-      color: colors.textMuted,
-      marginBottom: 8,
-    },
-    depositPreviewRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    depositPreviewAmount: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.textPrimary,
-    },
-    depositPreviewPercent: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.accentMint,
-    },
-    depositPreviewBar: {
-      height: 8,
-      backgroundColor: colors.bgCard,
-      borderRadius: 4,
-      overflow: 'hidden',
-      marginTop: 8,
-    },
-    depositPreviewBarFill: {
-      height: '100%',
-      borderRadius: 4,
-      backgroundColor: colors.accentMint,
-    },
-    // Edit Modal styles
-    editReadOnlyHint: {
-      fontSize: 11,
-      color: colors.textMuted,
-      marginTop: 4,
-    },
-    editModalButtons: {
-      flexDirection: 'row',
-      gap: 8,
-      marginTop: 20,
-    },
-    editDeleteButton: {
-      flex: 1,
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 12,
-      padding: 14,
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: '#F87171',
-    },
-    editDeleteButtonText: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: '#F87171',
-    },
-    editDeleteConfirmBox: {
-      backgroundColor: 'rgba(248, 113, 113, 0.1)',
-      borderRadius: 12,
-      padding: 16,
-      marginTop: 16,
-      borderWidth: 1,
-      borderColor: '#F87171',
-    },
-    editDeleteConfirmText: {
-      fontSize: 13,
-      color: colors.textPrimary,
-      textAlign: 'center',
-      marginBottom: 12,
-      lineHeight: 20,
-    },
-    editDeleteConfirmButtons: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    editDeleteConfirmCancel: {
-      flex: 1,
-      backgroundColor: colors.bgSecondary,
-      borderRadius: 10,
-      padding: 12,
-      alignItems: 'center',
-    },
-    editDeleteConfirmCancelText: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.textPrimary,
-    },
-    editDeleteConfirmDelete: {
-      flex: 1,
-      backgroundColor: '#F87171',
-      borderRadius: 10,
-      padding: 12,
-      alignItems: 'center',
-    },
-    editDeleteConfirmDeleteText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#fff',
-    },
   });
 
   if (isLoading) {
@@ -1205,599 +784,37 @@ export default function SavingsScreen() {
       </ScrollView>
 
       {/* Add Savings Goal Modal */}
-      <Modal
+      <AddGoalModal
         visible={isAddModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setIsAddModalOpen(false);
-          resetAddModal();
-        }}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => {
-              setIsAddModalOpen(false);
-              resetAddModal();
-            }}
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>저축 목표 추가</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setIsAddModalOpen(false);
-                  resetAddModal();
-                }}
-                style={styles.modalCloseButton}
-              >
-                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {/* Goal Name */}
-              <Text style={styles.inputLabel}>목표 이름</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newGoalName}
-                onChangeText={setNewGoalName}
-                placeholder="예: 내 집 마련, 여행 자금"
-                placeholderTextColor={colors.textMuted}
-              />
-
-              {/* Icon Selection */}
-              <Text style={styles.inputLabel}>아이콘</Text>
-              <View style={styles.iconGrid}>
-                {Object.keys(GOAL_ICONS).map((iconId) => (
-                  <TouchableOpacity
-                    key={iconId}
-                    style={[
-                      styles.iconButton,
-                      newGoalIcon === iconId && styles.iconButtonSelected,
-                    ]}
-                    onPress={() => setNewGoalIcon(iconId)}
-                  >
-                    {renderGoalIcon(iconId, 24, newGoalIcon === iconId ? '#fff' : colors.textSecondary)}
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Target Amount */}
-              <Text style={styles.inputLabel}>목표 금액</Text>
-              <View style={[styles.amountInputContainer, targetAmountExceeded && styles.amountInputExceeded]}>
-                <Text style={styles.currencySymbol}>₩</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  value={newGoalTargetAmount}
-                  onChangeText={(text) => {
-                    const result = formatInputAmountWithCheck(text);
-                    setNewGoalTargetAmount(result.value);
-                    setTargetAmountExceeded(result.exceeded);
-                  }}
-                  placeholder="0"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="number-pad"
-                />
-              </View>
-              {targetAmountExceeded && (
-                <Text style={styles.amountExceededText}>
-                  100조 원을 초과할 수 없습니다.
-                </Text>
-              )}
-
-              {/* Current Amount */}
-              <Text style={styles.inputLabel}>현재 저축액 (선택)</Text>
-              <View style={[styles.amountInputContainer, currentAmountExceeded && styles.amountInputExceeded]}>
-                <Text style={styles.currencySymbol}>₩</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  value={newGoalCurrentAmount}
-                  onChangeText={(text) => {
-                    const result = formatInputAmountWithCheck(text);
-                    setNewGoalCurrentAmount(result.value);
-                    setCurrentAmountExceeded(result.exceeded);
-                  }}
-                  placeholder="0"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="number-pad"
-                />
-              </View>
-              {currentAmountExceeded && (
-                <Text style={styles.amountExceededText}>
-                  100조 원을 초과할 수 없습니다.
-                </Text>
-              )}
-
-              {/* Start Date */}
-              <Text style={styles.inputLabel}>시작 날짜</Text>
-              <View style={styles.dateRow}>
-                <View style={styles.datePickerContainer}>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newYear = newGoalStartYear > 2020 ? newGoalStartYear - 1 : newGoalStartYear;
-                      setNewGoalStartYear(newYear);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-left" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                  <Text style={styles.dateText}>{newGoalStartYear}년</Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const maxYear = new Date().getFullYear();
-                      const newYear = newGoalStartYear < maxYear ? newGoalStartYear + 1 : newGoalStartYear;
-                      setNewGoalStartYear(newYear);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.datePickerContainer}>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newMonth = newGoalStartMonth > 1 ? newGoalStartMonth - 1 : 12;
-                      setNewGoalStartMonth(newMonth);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-left" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                  <Text style={styles.dateText}>{newGoalStartMonth}월</Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newMonth = newGoalStartMonth < 12 ? newGoalStartMonth + 1 : 1;
-                      setNewGoalStartMonth(newMonth);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Target Date */}
-              <Text style={styles.inputLabel}>목표 날짜</Text>
-              <View style={styles.dateRow}>
-                <View style={styles.datePickerContainer}>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newYear = newGoalTargetYear > new Date().getFullYear() ? newGoalTargetYear - 1 : newGoalTargetYear;
-                      setNewGoalTargetYear(newYear);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-left" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                  <Text style={styles.dateText}>{newGoalTargetYear}년</Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newYear = newGoalTargetYear < new Date().getFullYear() + 10 ? newGoalTargetYear + 1 : newGoalTargetYear;
-                      setNewGoalTargetYear(newYear);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.datePickerContainer}>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newMonth = newGoalTargetMonth > 1 ? newGoalTargetMonth - 1 : 12;
-                      setNewGoalTargetMonth(newMonth);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-left" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                  <Text style={styles.dateText}>{newGoalTargetMonth}월</Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newMonth = newGoalTargetMonth < 12 ? newGoalTargetMonth + 1 : 1;
-                      setNewGoalTargetMonth(newMonth);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </ScrollView>
-
-            {/* Buttons */}
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setIsAddModalOpen(false);
-                  resetAddModal();
-                }}
-                disabled={isSaving}
-              >
-                <Text style={styles.cancelButtonText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-                onPress={handleAddGoal}
-                disabled={isSaving}
-              >
-                <Text style={styles.saveButtonText}>{isSaving ? '저장 중...' : '추가'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmit={handleAddGoal}
+        isSubmitting={isSaving}
+      />
 
       {/* Deposit Modal */}
-      <Modal
+      <DepositModal
         visible={isDepositModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
+        goal={getGoalForDeposit(selectedGoal)}
+        onClose={() => {
           setIsDepositModalOpen(false);
           setSelectedGoal(null);
-          setDepositAmount('');
         }}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => {
-              setIsDepositModalOpen(false);
-              setSelectedGoal(null);
-              setDepositAmount('');
-            }}
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>저축하기</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setIsDepositModalOpen(false);
-                  setSelectedGoal(null);
-                  setDepositAmount('');
-                }}
-                style={styles.modalCloseButton}
-              >
-                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            {selectedGoal && (
-              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                {/* Goal Info */}
-                <View style={styles.depositGoalInfo}>
-                  <View style={styles.depositGoalIcon}>
-                    {renderGoalIcon(selectedGoal.icon, 24, '#FBBF24')}
-                  </View>
-                  <View style={styles.depositGoalDetails}>
-                    <Text style={styles.depositGoalName}>{selectedGoal.name}</Text>
-                    <Text style={styles.depositGoalProgress}>현재 ₩{formatNumber(selectedGoal.currentAmount)}</Text>
-                    <Text style={styles.depositGoalProgress}>목표 ₩{formatNumber(selectedGoal.targetAmount)}</Text>
-                  </View>
-                  <Text style={styles.depositGoalPercent}>{selectedGoal.progressPercent}%</Text>
-                </View>
-
-                {/* Remaining Amount */}
-                <View style={styles.remainingAmountBox}>
-                  <Text style={styles.remainingAmountLabel}>목표까지 남은 금액</Text>
-                  <Text style={styles.remainingAmountValue}>
-                    ₩{formatNumber(Math.max(selectedGoal.targetAmount - selectedGoal.currentAmount, 0))}
-                  </Text>
-                </View>
-
-                {/* Deposit Amount Input */}
-                <Text style={styles.inputLabel}>저축 금액</Text>
-                <View style={[styles.amountInputContainer, depositAmountExceeded && styles.amountInputExceeded]}>
-                  <Text style={styles.currencySymbol}>₩</Text>
-                  <TextInput
-                    style={styles.amountInput}
-                    value={depositAmount}
-                    onChangeText={(text) => {
-                      const result = formatInputAmountWithCheck(text, AMOUNT_LIMITS.TRANSACTION_MAX);
-                      setDepositAmount(result.value);
-                      setDepositAmountExceeded(result.exceeded);
-                    }}
-                    placeholder="0"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="number-pad"
-                    autoFocus
-                  />
-                </View>
-                {depositAmountExceeded && (
-                  <Text style={styles.amountExceededText}>
-                    1000억 원을 초과할 수 없습니다.
-                  </Text>
-                )}
-
-                {/* Quick Amount Buttons */}
-                <View style={styles.quickAmountsRow}>
-                  {QUICK_AMOUNTS.map((amount) => (
-                    <TouchableOpacity
-                      key={amount}
-                      style={styles.quickAmountButton}
-                      onPress={() => handleQuickAmount(amount)}
-                    >
-                      <Text style={styles.quickAmountText}>+{formatNumber(amount)}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Full Amount Button */}
-                {selectedGoal.targetAmount - selectedGoal.currentAmount > 0 && (
-                  <TouchableOpacity
-                    style={styles.fullAmountButton}
-                    onPress={() => {
-                      const remainingAmount = selectedGoal.targetAmount - selectedGoal.currentAmount;
-                      if (remainingAmount > AMOUNT_LIMITS.TRANSACTION_MAX) {
-                        setDepositAmountExceeded(true);
-                        setDepositAmount(formatNumber(AMOUNT_LIMITS.TRANSACTION_MAX));
-                      } else {
-                        setDepositAmountExceeded(false);
-                        setDepositAmount(formatNumber(remainingAmount));
-                      }
-                    }}
-                  >
-                    <Text style={styles.fullAmountText}>
-                      전액 (₩{formatNumber(Math.min(selectedGoal.targetAmount - selectedGoal.currentAmount, AMOUNT_LIMITS.TRANSACTION_MAX))})
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Preview */}
-                {parseInt(depositAmount.replace(/,/g, '') || '0', 10) > 0 && (
-                  <View style={styles.depositPreview}>
-                    <Text style={styles.depositPreviewLabel}>저축 후 예상</Text>
-                    <View style={styles.depositPreviewRow}>
-                      <Text style={styles.depositPreviewAmount}>
-                        ₩{formatNumber(selectedGoal.currentAmount + parseInt(depositAmount.replace(/,/g, '') || '0', 10))}
-                      </Text>
-                      <Text style={styles.depositPreviewPercent}>
-                        {Math.min(Math.round(((selectedGoal.currentAmount + parseInt(depositAmount.replace(/,/g, '') || '0', 10)) / selectedGoal.targetAmount) * 100), 100)}%
-                      </Text>
-                    </View>
-                    <View style={styles.depositPreviewBar}>
-                      <View
-                        style={[
-                          styles.depositPreviewBarFill,
-                          {
-                            width: `${Math.min(Math.round(((selectedGoal.currentAmount + parseInt(depositAmount.replace(/,/g, '') || '0', 10)) / selectedGoal.targetAmount) * 100), 100)}%`,
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                )}
-              </ScrollView>
-            )}
-
-            {/* Buttons */}
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setIsDepositModalOpen(false);
-                  setSelectedGoal(null);
-                  setDepositAmount('');
-                }}
-                disabled={isDepositing}
-              >
-                <Text style={styles.cancelButtonText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  (isDepositing || !depositAmount || parseInt(depositAmount.replace(/,/g, ''), 10) <= 0) && styles.saveButtonDisabled,
-                ]}
-                onPress={handleDeposit}
-                disabled={isDepositing || !depositAmount || parseInt(depositAmount.replace(/,/g, ''), 10) <= 0}
-              >
-                <Text style={styles.saveButtonText}>{isDepositing ? '저축 중...' : '저축하기'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        onSubmit={handleDeposit}
+        isSubmitting={isDepositing}
+      />
 
       {/* Edit Savings Goal Modal */}
-      <Modal
+      <EditGoalModal
         visible={isEditModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={closeEditModal}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={closeEditModal}
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>저축 목표 수정</Text>
-              <TouchableOpacity onPress={closeEditModal} style={styles.modalCloseButton}>
-                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {/* Goal Name */}
-              <Text style={styles.inputLabel}>목표 이름</Text>
-              <TextInput
-                style={styles.textInput}
-                value={editGoalName}
-                onChangeText={setEditGoalName}
-                placeholder="예: 내 집 마련, 여행 자금"
-                placeholderTextColor={colors.textMuted}
-              />
-
-              {/* Icon Selection */}
-              <Text style={styles.inputLabel}>아이콘</Text>
-              <View style={styles.iconGrid}>
-                {Object.keys(GOAL_ICONS).map((iconId) => (
-                  <TouchableOpacity
-                    key={iconId}
-                    style={[
-                      styles.iconButton,
-                      editGoalIcon === iconId && styles.iconButtonSelected,
-                    ]}
-                    onPress={() => setEditGoalIcon(iconId)}
-                  >
-                    {renderGoalIcon(iconId, 24, editGoalIcon === iconId ? '#fff' : colors.textSecondary)}
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Target Amount */}
-              <Text style={styles.inputLabel}>목표 금액</Text>
-              <View style={[styles.amountInputContainer, editTargetAmountExceeded && styles.amountInputExceeded]}>
-                <Text style={styles.currencySymbol}>₩</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  value={editGoalTargetAmount}
-                  onChangeText={(text) => {
-                    const result = formatInputAmountWithCheck(text);
-                    setEditGoalTargetAmount(result.value);
-                    setEditTargetAmountExceeded(result.exceeded);
-                  }}
-                  placeholder="0"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="number-pad"
-                />
-              </View>
-              {editTargetAmountExceeded && (
-                <Text style={styles.amountExceededText}>
-                  100조 원을 초과할 수 없습니다.
-                </Text>
-              )}
-
-              {/* Current Amount (Read-only) */}
-              <Text style={styles.inputLabel}>현재 저축액</Text>
-              <View style={[styles.amountInputContainer, { opacity: 0.6 }]}>
-                <Text style={styles.currencySymbol}>₩</Text>
-                <Text style={[styles.amountInput, { paddingVertical: 14 }]}>
-                  {editingGoal ? formatNumber(editingGoal.currentAmount) : '0'}
-                </Text>
-              </View>
-              <Text style={styles.editReadOnlyHint}>
-                저축액은 '저축하기' 버튼으로만 변경할 수 있습니다
-              </Text>
-
-              {/* Target Date */}
-              <Text style={styles.inputLabel}>목표 날짜</Text>
-              <View style={styles.dateRow}>
-                <View style={styles.datePickerContainer}>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newYear = editGoalTargetYear > new Date().getFullYear() ? editGoalTargetYear - 1 : editGoalTargetYear;
-                      setEditGoalTargetYear(newYear);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-left" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                  <Text style={styles.dateText}>{editGoalTargetYear}년</Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newYear = editGoalTargetYear < new Date().getFullYear() + 10 ? editGoalTargetYear + 1 : editGoalTargetYear;
-                      setEditGoalTargetYear(newYear);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.datePickerContainer}>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newMonth = editGoalTargetMonth > 1 ? editGoalTargetMonth - 1 : 12;
-                      setEditGoalTargetMonth(newMonth);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-left" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                  <Text style={styles.dateText}>{editGoalTargetMonth}월</Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => {
-                      const newMonth = editGoalTargetMonth < 12 ? editGoalTargetMonth + 1 : 1;
-                      setEditGoalTargetMonth(newMonth);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Delete Confirmation */}
-              {showEditDeleteConfirm && (
-                <View style={styles.editDeleteConfirmBox}>
-                  <Text style={styles.editDeleteConfirmText}>
-                    '{editingGoal?.name}' 목표를 삭제하시겠습니까?{'\n'}이 작업은 되돌릴 수 없습니다.
-                  </Text>
-                  <View style={styles.editDeleteConfirmButtons}>
-                    <TouchableOpacity
-                      style={styles.editDeleteConfirmCancel}
-                      onPress={() => setShowEditDeleteConfirm(false)}
-                      disabled={isEditing}
-                    >
-                      <Text style={styles.editDeleteConfirmCancelText}>취소</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.editDeleteConfirmDelete, isEditing && styles.saveButtonDisabled]}
-                      onPress={handleDeleteFromEdit}
-                      disabled={isEditing}
-                    >
-                      <Text style={styles.editDeleteConfirmDeleteText}>
-                        {isEditing ? '삭제 중...' : '삭제'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </ScrollView>
-
-            {/* Buttons */}
-            <View style={styles.editModalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={closeEditModal}
-                disabled={isEditing}
-              >
-                <Text style={styles.cancelButtonText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.editDeleteButton}
-                onPress={() => setShowEditDeleteConfirm(true)}
-                disabled={isEditing || showEditDeleteConfirm}
-              >
-                <Text style={styles.editDeleteButtonText}>삭제</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.saveButton, isEditing && styles.saveButtonDisabled]}
-                onPress={handleEditGoal}
-                disabled={isEditing}
-              >
-                <Text style={styles.saveButtonText}>{isEditing ? '저장 중...' : '저장'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        goal={getGoalForEdit(editingGoal)}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingGoal(null);
+        }}
+        onSubmit={handleEditGoal}
+        onDelete={handleDeleteFromEdit}
+        isSubmitting={isEditing}
+      />
     </View>
   );
 }

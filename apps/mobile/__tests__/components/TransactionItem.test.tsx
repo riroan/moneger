@@ -157,9 +157,9 @@ describe('TransactionItem', () => {
 
     // Check that divider View exists (height: 1)
     const allViews = UNSAFE_root.findAllByType('View');
-    const dividerExists = allViews.some(view => {
+    const dividerExists = allViews.some((view: { props: { style?: { height?: number } | Array<{ height?: number } | null> } }) => {
       const style = view.props.style;
-      return style && (style.height === 1 || (Array.isArray(style) && style.some(s => s?.height === 1)));
+      return style && (typeof style === 'object' && !Array.isArray(style) && style.height === 1 || (Array.isArray(style) && style.some(s => s?.height === 1)));
     });
     expect(dividerExists).toBe(true);
   });
