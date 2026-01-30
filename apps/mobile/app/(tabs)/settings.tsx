@@ -6,10 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Switch,
-  TextInput,
   Modal,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -19,7 +18,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { useToast } from '../../contexts/ToastContext';
 import { Colors } from '../../constants/Colors';
-import { authApi, categoryApi, budgetApi, transactionApi, CategoryWithBudget, BudgetItem } from '../../lib/api';
+import { categoryApi, budgetApi, transactionApi, CategoryWithBudget, BudgetItem } from '../../lib/api';
 import { formatNumber } from '@moneger/shared';
 import {
   CalendarModal,
@@ -31,7 +30,7 @@ import {
 } from '../../components/settings';
 import { DailyReportCard } from '../../components/cards';
 
-type SettingsModal = 'none' | 'category' | 'budget' | 'password' | 'account' | 'calendar' | 'daily-report';
+type SettingsModal = 'none' | 'category' | 'budget' | 'calendar' | 'daily-report';
 
 // Icon mapping for categories
 const CATEGORY_ICONS: Record<string, MaterialIconName> = {
@@ -91,17 +90,6 @@ export default function SettingsScreen() {
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [editingBudgetCategory, setEditingBudgetCategory] = useState<CategoryWithBudget | null>(null);
   const [isBudgetSubmitting, setIsBudgetSubmitting] = useState(false);
-
-  // Password change state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-
-  // Delete account state
-  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // Calendar state
   const [calendarDate, setCalendarDate] = useState(() => new Date());
@@ -210,65 +198,6 @@ export default function SettingsScreen() {
         },
       ]
     );
-  };
-
-  const handleChangePassword = async () => {
-    if (!userId) return;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      showToast('모든 필드를 입력해주세요', 'error');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      showToast('새 비밀번호는 최소 6자 이상이어야 합니다', 'error');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      showToast('새 비밀번호가 일치하지 않습니다', 'error');
-      return;
-    }
-
-    setIsChangingPassword(true);
-    try {
-      const res = await authApi.changePassword(userId, currentPassword, newPassword);
-      if (res.success) {
-        showToast('비밀번호가 변경되었습니다', 'success');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        showToast(res.error || '비밀번호 변경에 실패했습니다', 'error');
-      }
-    } catch (error) {
-      showToast('비밀번호 변경에 실패했습니다', 'error');
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!userId || !deletePassword) {
-      showToast('비밀번호를 입력해주세요', 'error');
-      return;
-    }
-
-    setIsDeletingAccount(true);
-    try {
-      const res = await authApi.deleteAccount(userId, deletePassword);
-      if (res.success) {
-        showToast('계정이 삭제되었습니다', 'success');
-        await logout();
-        router.replace('/login');
-      } else {
-        showToast(res.error || '계정 삭제에 실패했습니다', 'error');
-      }
-    } catch (error) {
-      showToast('계정 삭제에 실패했습니다', 'error');
-    } finally {
-      setIsDeletingAccount(false);
-    }
   };
 
   // Category functions
@@ -572,7 +501,7 @@ export default function SettingsScreen() {
       color: colors.textPrimary,
     },
     bottomSpacer: {
-      height: 100,
+      height: 20,
     },
     fullScreenModal: {
       flex: 1,
@@ -943,122 +872,6 @@ export default function SettingsScreen() {
     },
   });
 
-  const renderAccountTab = () => (
-    <ScrollView>
-      <View style={[styles.section, { paddingTop: 16 }]}>
-        <Text style={styles.sectionTitle}>프로필</Text>
-        <View style={styles.card}>
-          <View style={styles.profileCard}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {(userName || userEmail || '?').charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>
-                {userName || '닉네임 없음'}
-              </Text>
-              <Text style={styles.profileEmail}>{userEmail}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>앱 설정</Text>
-        <View style={styles.card}>
-          <View style={[styles.menuItemOld, styles.menuItemFirst]}>
-            <View style={styles.menuIcon}>
-              <MaterialIcons
-                name={theme === 'dark' ? 'dark-mode' : 'light-mode'}
-                size={20}
-                color={colors.accentMint}
-              />
-            </View>
-            <Text style={styles.menuText}>다크 모드</Text>
-            <Switch
-              value={theme === 'dark'}
-              onValueChange={toggleTheme}
-              trackColor={{
-                false: colors.bgSecondary,
-                true: colors.accentMint,
-              }}
-              thumbColor="#ffffff"
-            />
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>비밀번호 변경</Text>
-        <View style={styles.card}>
-          <View style={styles.formContainer}>
-            <Text style={styles.inputLabel}>현재 비밀번호</Text>
-            <TextInput
-              style={styles.textInput}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              placeholder="현재 비밀번호 입력"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-            />
-
-            <Text style={styles.inputLabel}>새 비밀번호</Text>
-            <TextInput
-              style={styles.textInput}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="새 비밀번호 입력 (6자 이상)"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-            />
-
-            <Text style={styles.inputLabel}>새 비밀번호 확인</Text>
-            <TextInput
-              style={styles.textInput}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="새 비밀번호 다시 입력"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-            />
-
-            <TouchableOpacity
-              style={[styles.submitButton, isChangingPassword && styles.submitButtonDisabled]}
-              onPress={handleChangePassword}
-              disabled={isChangingPassword}
-            >
-              <Text style={styles.submitButtonText}>
-                {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.dangerCard}>
-          <Text style={styles.dangerTitle}>계정 삭제</Text>
-          <Text style={styles.dangerText}>
-            계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
-          </Text>
-          <TouchableOpacity
-            style={styles.dangerButton}
-            onPress={() => setIsDeleteAccountModalOpen(true)}
-          >
-            <Text style={styles.dangerButtonText}>계정 삭제</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>로그아웃</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.version}>MONEGER v1.0.0</Text>
-    </ScrollView>
-  );
-
   const renderCategoryTab = () => (
     <ScrollView>
       <View style={[styles.section, { paddingTop: 16 }]}>
@@ -1245,11 +1058,6 @@ export default function SettingsScreen() {
     { id: 'daily-report', icon: 'show-chart' as MaterialIconName, label: '일별 리포트', color: '#8B5CF6', onPress: () => setActiveModal('daily-report') },
   ];
 
-  const navigationMenuItems = [
-    { id: 'transactions', icon: 'receipt-long' as MaterialIconName, label: '내역', color: '#3B82F6', onPress: () => router.push('/(tabs)/transactions') },
-    { id: 'savings', icon: 'savings' as MaterialIconName, label: '저축', color: '#F59E0B', onPress: () => router.push('/(tabs)/savings') },
-  ];
-
   const settingsMenuItems = [
     { id: 'category', icon: 'category' as MaterialIconName, label: '카테고리 관리', color: '#6366F1', onPress: () => setActiveModal('category') },
     { id: 'budget', icon: 'account-balance-wallet' as MaterialIconName, label: '월별 예산 관리', color: '#10B981', onPress: () => setActiveModal('budget') },
@@ -1268,7 +1076,7 @@ export default function SettingsScreen() {
             <Text style={styles.profileName}>{userName || '사용자'}</Text>
             <Text style={styles.profileEmail}>{userEmail || ''}</Text>
           </View>
-          <TouchableOpacity style={styles.profileSettingsButton} onPress={() => setActiveModal('account')}>
+          <TouchableOpacity style={styles.profileSettingsButton} onPress={() => router.push('/account-settings')}>
             <MaterialIcons name="settings" size={24} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
@@ -1276,24 +1084,6 @@ export default function SettingsScreen() {
         <View style={styles.menuSection}>
           <View style={styles.menuListCard}>
             {reportMenuItems.map((item, index) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.menuListItem, index === 0 && styles.menuItemFirst]}
-                onPress={item.onPress}
-              >
-                <View style={[styles.menuListIcon, { backgroundColor: item.color + '20' }]}>
-                  <MaterialIcons name={item.icon} size={20} color={item.color} />
-                </View>
-                <Text style={styles.menuListText}>{item.label}</Text>
-                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.menuSection}>
-          <View style={styles.menuListCard}>
-            {navigationMenuItems.map((item, index) => (
               <TouchableOpacity
                 key={item.id}
                 style={[styles.menuListItem, index === 0 && styles.menuItemFirst]}
@@ -1324,6 +1114,30 @@ export default function SettingsScreen() {
                 <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+
+        <View style={styles.menuSection}>
+          <View style={styles.menuListCard}>
+            <View style={[styles.menuListItem, styles.menuItemFirst]}>
+              <View style={[styles.menuListIcon, { backgroundColor: colors.accentMint + '20' }]}>
+                <MaterialIcons
+                  name={theme === 'dark' ? 'dark-mode' : 'light-mode'}
+                  size={20}
+                  color={colors.accentMint}
+                />
+              </View>
+              <Text style={styles.menuListText}>다크 모드</Text>
+              <Switch
+                value={theme === 'dark'}
+                onValueChange={toggleTheme}
+                trackColor={{
+                  false: colors.bgSecondary,
+                  true: colors.accentMint,
+                }}
+                thumbColor="#ffffff"
+              />
+            </View>
           </View>
         </View>
 
@@ -1414,25 +1228,6 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Account Settings Modal */}
-      <Modal
-        visible={activeModal === 'account'}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setActiveModal('none')}
-      >
-        <View style={styles.fullScreenModal}>
-          <View style={styles.fullModalHeader}>
-            <TouchableOpacity onPress={() => setActiveModal('none')}>
-              <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.fullModalTitle}>계정 설정</Text>
-            <View style={{ width: 24 }} />
-          </View>
-          {renderAccountTab()}
-        </View>
-      </Modal>
-
       {/* Category Edit Modal */}
       <CategoryEditModal
         visible={isCategoryModalOpen}
@@ -1445,71 +1240,6 @@ export default function SettingsScreen() {
         isSubmitting={isCategorySubmitting}
       />
 
-      {/* Delete Account Modal */}
-      <Modal
-        visible={isDeleteAccountModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsDeleteAccountModalOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setIsDeleteAccountModalOpen(false)}
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: '#F87171' }]}>계정 삭제</Text>
-              <TouchableOpacity
-                onPress={() => setIsDeleteAccountModalOpen(false)}
-                style={styles.modalCloseButton}
-              >
-                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBody}>
-              <Text style={[styles.dangerText, { marginBottom: 24 }]}>
-                계정을 삭제하면 모든 거래 내역, 카테고리, 예산, 저축 목표 등 모든 데이터가 영구적으로 삭제됩니다.{'\n\n'}
-                이 작업은 되돌릴 수 없습니다.
-              </Text>
-
-              <Text style={styles.inputLabel}>비밀번호 확인</Text>
-              <TextInput
-                style={styles.textInput}
-                value={deletePassword}
-                onChangeText={setDeletePassword}
-                placeholder="비밀번호를 입력하세요"
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry
-              />
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setIsDeleteAccountModalOpen(false);
-                  setDeletePassword('');
-                }}
-                disabled={isDeletingAccount}
-              >
-                <Text style={styles.cancelButtonText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dangerButton, { flex: 1 }, isDeletingAccount && styles.saveButtonDisabled]}
-                onPress={handleDeleteAccount}
-                disabled={isDeletingAccount}
-              >
-                <Text style={styles.dangerButtonText}>
-                  {isDeletingAccount ? '삭제 중...' : '계정 삭제'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
