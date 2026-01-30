@@ -1582,7 +1582,7 @@ export default function TransactionsScreen() {
             <View style={styles.summaryCard}>
               <Text style={styles.summaryLabel}>저축</Text>
               <Text
-                style={[styles.summaryValue, { color: colors.accentBlue }]}
+                style={[styles.summaryValue, { color: colors.accentCyan }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}
@@ -1630,10 +1630,10 @@ export default function TransactionsScreen() {
                   {txs.map((tx, index) => {
                     const isSavings = isSavingsTransaction(tx);
                     const iconColor = isSavings
-                      ? colors.accentBlue
+                      ? colors.accentCyan
                       : (tx.category?.color || '#6B7280');
                     const amountColor = isSavings
-                      ? colors.accentBlue
+                      ? colors.accentCyan
                       : tx.type === 'INCOME'
                         ? colors.accentMint
                         : colors.accentCoral;

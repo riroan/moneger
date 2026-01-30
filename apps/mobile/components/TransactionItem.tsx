@@ -33,10 +33,10 @@ export default function TransactionItem({
 
   const isSavings = !!transaction.savingsGoalId;
   const iconColor = isSavings
-    ? colors.accentBlue
+    ? colors.accentCyan
     : (transaction.category?.color || '#6B7280');
   const amountColor = isSavings
-    ? colors.accentBlue
+    ? colors.accentCyan
     : transaction.type === 'INCOME'
       ? colors.accentMint
       : colors.accentCoral;

@@ -151,7 +151,7 @@ export default function TodaySummaryCard({
               <Text style={styles.itemLabel}>저축</Text>
               {hasSavings && <Text style={styles.itemCount}>{savings.count}건</Text>}
             </View>
-            <Text style={[styles.itemAmount, { color: hasSavings ? colors.accentBlue : colors.textMuted }]}>
+            <Text style={[styles.itemAmount, { color: hasSavings ? colors.accentCyan : colors.textMuted }]}>
               {hasSavings ? `₩${formatNumber(savings.total)}` : '-'}
             </Text>
           </View>

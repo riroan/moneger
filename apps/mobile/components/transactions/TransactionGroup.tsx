@@ -114,10 +114,10 @@ export function TransactionGroup({
         {transactions.map((tx, index) => {
           const isSavings = isSavingsTransaction(tx);
           const iconColor = isSavings
-            ? colors.accentBlue
+            ? colors.accentCyan
             : (tx.category?.color || '#6B7280');
           const amountColor = isSavings
-            ? colors.accentBlue
+            ? colors.accentCyan
             : tx.type === 'INCOME'
               ? colors.accentMint
               : colors.accentCoral;

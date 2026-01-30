@@ -396,7 +396,7 @@ export default function SavingsScreen() {
     summaryValueBlue: {
       fontSize: 20,
       fontWeight: 'bold',
-      color: '#3B82F6',
+      color: colors.accentCyan,
     },
     summarySubtext: {
       fontSize: 11,

@@ -10,6 +10,7 @@ export const Colors = {
     accentMint: '#4ade80',
     accentCoral: '#ff6b6b',
     accentBlue: '#60a5fa',
+    accentCyan: '#06B6D4',
     accentPurple: '#a78bfa',
     accentYellow: '#fbbf24',
 
@@ -36,6 +37,7 @@ export const Colors = {
     accentMint: '#22c55e',
     accentCoral: '#ef4444',
     accentBlue: '#3b82f6',
+    accentCyan: '#0891B2',
     accentPurple: '#8b5cf6',
     accentYellow: '#f59e0b',
 

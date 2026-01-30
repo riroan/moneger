@@ -293,7 +293,7 @@ export function CalendarModal({
     },
     summarySavings: {
       fontSize: 14,
-      color: '#3B82F6',
+      color: colors.accentCyan,
       fontWeight: '500',
     },
     transactionList: {
@@ -447,7 +447,7 @@ export function CalendarModal({
                               <View style={[styles.indicatorDot, { backgroundColor: colors.accentCoral }]} />
                             )}
                             {indicators.hasSavings && (
-                              <View style={[styles.indicatorDot, { backgroundColor: '#3B82F6' }]} />
+                              <View style={[styles.indicatorDot, { backgroundColor: colors.accentCyan }]} />
                             )}
                           </View>
                         </TouchableOpacity>
@@ -493,11 +493,11 @@ export function CalendarModal({
                       <View
                         style={[
                           styles.transactionIcon,
-                          { backgroundColor: tx.savingsGoalId ? '#3B82F620' : (tx.category?.color || '#6B7280') + '20' },
+                          { backgroundColor: tx.savingsGoalId ? colors.accentCyan + '20' : (tx.category?.color || '#6B7280') + '20' },
                         ]}
                       >
                         {tx.savingsGoalId ? (
-                          <MaterialIcons name="savings" size={18} color="#3B82F6" />
+                          <MaterialIcons name="savings" size={18} color={colors.accentCyan} />
                         ) : tx.category?.icon ? (
                           renderCategoryIcon(tx.category.icon, 18, tx.category.color || '#6B7280')
                         ) : (
@@ -516,7 +516,7 @@ export function CalendarModal({
                       <Text
                         style={[
                           styles.transactionAmount,
-                          { color: tx.savingsGoalId ? '#3B82F6' : (tx.type === 'INCOME' ? colors.accentMint : colors.accentCoral) },
+                          { color: tx.savingsGoalId ? colors.accentCyan : (tx.type === 'INCOME' ? colors.accentMint : colors.accentCoral) },
                         ]}
                       >
                         {tx.savingsGoalId ? '-' : (tx.type === 'INCOME' ? '+' : '-')}₩{formatNumber(tx.amount)}
