@@ -494,3 +494,24 @@ export const statsApi = {
       `${API_ENDPOINTS.STATS}?userId=${userId}&year=${year}&month=${month}`
     ),
 };
+
+// Daily Balance API
+export interface DailyBalance {
+  date: string;
+  balance: number;
+  income: number;
+  expense: number;
+  savings: number;
+}
+
+export const dailyBalanceApi = {
+  getRecent: (userId: string, days: number = 7) =>
+    request<DailyBalance[]>(
+      `${API_ENDPOINTS.DAILY_BALANCE}?userId=${userId}&days=${days}`
+    ),
+
+  getMonthly: (userId: string, year: number, month: number) =>
+    request<DailyBalance[]>(
+      `${API_ENDPOINTS.DAILY_BALANCE}?userId=${userId}&year=${year}&month=${month}`
+    ),
+};

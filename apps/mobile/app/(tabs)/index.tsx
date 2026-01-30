@@ -24,7 +24,7 @@ import {
   TransactionWithCategory,
 } from '../../lib/api';
 import { useRefreshStore } from '../../stores/refreshStore';
-import { formatNumber } from '@moneger/shared';
+import { formatNumber, getKSTDateParts } from '@moneger/shared';
 import TransactionItem from '../../components/TransactionItem';
 import { SummaryCarousel, SummaryCardData, CategoryExpenseList, CategoryData } from '../../components/home';
 import { TodaySummaryCard } from '../../components/cards';
@@ -50,8 +50,9 @@ export default function HomeScreen() {
   const [selectedCategoryIndex, setSelectedCategoryIndex] = useState<number | null>(null);
 
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
+  const kstNow = getKSTDateParts(now);
+  const year = kstNow.year;
+  const month = kstNow.month;
 
   const fetchData = useCallback(async () => {
     if (!userId) {
@@ -171,8 +172,9 @@ export default function HomeScreen() {
     },
   ];
 
-  // Today summary values
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  // Today summary values (from API - KST based)
+  const todayMonth = todaySummary?.month ?? month;
+  const todayDay = todaySummary?.day ?? now.getDate();
   const todayDayOfWeek = todaySummary?.dayOfWeek ?? now.getDay();
   const todayIncome = { total: todaySummary?.income?.total || 0, count: todaySummary?.income?.count || 0 };
   const todayExpense = { total: todaySummary?.expense?.total || 0, count: todaySummary?.expense?.count || 0 };
@@ -424,7 +426,8 @@ export default function HomeScreen() {
         <View style={styles.cardsSection}>
           {/* Today Summary Card */}
           <TodaySummaryCard
-            date={todayDateStr}
+            month={todayMonth}
+            day={todayDay}
             dayOfWeek={todayDayOfWeek}
             income={todayIncome}
             expense={todayExpense}

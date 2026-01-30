@@ -9,7 +9,6 @@ import { logger } from '@/lib/logger';
 import {
   saveDailyBalance,
   getRecentDailyBalances,
-  calculateDailyBalancesFromTransactions,
   getMonthlyDailyBalances,
 } from '@/lib/services/daily-balance.service';
 
@@ -68,15 +67,8 @@ export async function GET(request: NextRequest) {
       return successResponse(monthlyBalances, 200, { maxAge: 60, staleWhileRevalidate: 300 });
     }
 
-    // 최근 N일 데이터 조회
+    // 최근 N일 데이터 조회 - DailyBalance 테이블에서 직접 조회
     const dailyBalances = await getRecentDailyBalances(userId!, days);
-
-    // 데이터가 없으면 거래 데이터로부터 계산
-    if (dailyBalances.length === 0) {
-      const calculatedBalances = await calculateDailyBalancesFromTransactions(userId!, days);
-      return successResponseWithMessage(calculatedBalances, '거래 데이터로부터 계산된 잔액입니다');
-    }
-
     return successResponse(dailyBalances);
   } catch (error) {
     logger.error('Daily balance fetch failed', error);

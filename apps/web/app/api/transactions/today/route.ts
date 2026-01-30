@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { successResponse, errorResponse, validateUserId } from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
+import { getKSTDayStartUTC, getKSTDayEndUTC, getKSTDateParts } from '@/lib/date-utils';
 
 // GET /api/transactions/today - 오늘의 지출 요약 조회
 export async function GET(request: NextRequest) {
@@ -12,10 +13,11 @@ export async function GET(request: NextRequest) {
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;
 
-    // 오늘 날짜 범위 설정 (00:00:00 ~ 23:59:59)
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+    // KST 기준 오늘 날짜 범위 설정 (00:00:00 ~ 23:59:59 KST를 UTC로 변환)
+    const now = new Date();
+    const startOfDay = getKSTDayStartUTC(now);
+    const endOfDay = getKSTDayEndUTC(now);
+    const kstToday = getKSTDateParts(now);
 
     // 오늘의 지출/수입/저축 집계
     const [expenseAgg, incomeAgg, savingsAgg, expenseCount, incomeCount, savingsCount] = await Promise.all([
@@ -85,11 +87,11 @@ export async function GET(request: NextRequest) {
     const totalSavings = savingsAgg._sum.amount || 0;
 
     return successResponse({
-      date: today.toISOString(),
-      year: today.getFullYear(),
-      month: today.getMonth() + 1,
-      day: today.getDate(),
-      dayOfWeek: today.getDay(), // 0: 일요일, 1: 월요일, ...
+      date: now.toISOString(),
+      year: kstToday.year,
+      month: kstToday.month,
+      day: kstToday.day,
+      dayOfWeek: kstToday.dayOfWeek, // 0: 일요일, 1: 월요일, ...
       expense: {
         total: totalExpense,
         count: expenseCount,

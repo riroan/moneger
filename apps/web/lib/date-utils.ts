@@ -68,15 +68,88 @@ export function getDaysInMonth(year: number, month: number): number {
 }
 
 /**
- * 오늘부터 N일 전까지의 날짜 범위를 반환
+ * KST 기준 오늘부터 N일 전까지의 날짜 범위를 반환 (UTC로 변환)
  */
 export function getLastNDaysRange(days: number): { startDate: Date; endDate: Date } {
-  const endDate = new Date();
-  endDate.setHours(23, 59, 59, 999);
+  const now = new Date();
+  const kstNow = toKST(now);
 
-  const startDate = new Date(endDate);
-  startDate.setDate(startDate.getDate() - days + 1);
-  startDate.setHours(0, 0, 0, 0);
+  // KST 기준 오늘 끝
+  const kstEndOfDay = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate(), 23, 59, 59, 999);
+  const endDate = new Date(kstEndOfDay.getTime() - KST_OFFSET_MS);
+
+  // KST 기준 N일 전 시작
+  const kstStartOfDay = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate() - days + 1, 0, 0, 0, 0);
+  const startDate = new Date(kstStartOfDay.getTime() - KST_OFFSET_MS);
 
   return { startDate, endDate };
+}
+
+/**
+ * UTC Date를 KST Date로 변환
+ */
+export function toKST(date: Date): Date {
+  return new Date(date.getTime() + KST_OFFSET_MS);
+}
+
+/**
+ * KST 기준 오늘의 시작 시간 (UTC)
+ */
+export function getKSTDayStartUTC(date: Date = new Date()): Date {
+  const kst = toKST(date);
+  const kstMidnight = new Date(kst.getFullYear(), kst.getMonth(), kst.getDate(), 0, 0, 0, 0);
+  return new Date(kstMidnight.getTime() - KST_OFFSET_MS);
+}
+
+/**
+ * KST 기준 오늘의 끝 시간 (UTC)
+ */
+export function getKSTDayEndUTC(date: Date = new Date()): Date {
+  const kst = toKST(date);
+  const kstEndOfDay = new Date(kst.getFullYear(), kst.getMonth(), kst.getDate(), 23, 59, 59, 999);
+  return new Date(kstEndOfDay.getTime() - KST_OFFSET_MS);
+}
+
+/**
+ * KST 기준 연/월/일 정보 추출
+ */
+export function getKSTDateParts(date: Date): { year: number; month: number; day: number; dayOfWeek: number; hours: number; minutes: number } {
+  const kst = toKST(date);
+  return {
+    year: kst.getFullYear(),
+    month: kst.getMonth() + 1,
+    day: kst.getDate(),
+    dayOfWeek: kst.getDay(),
+    hours: kst.getHours(),
+    minutes: kst.getMinutes(),
+  };
+}
+
+/**
+ * KST 기준 날짜를 PostgreSQL DATE 타입용 Date 객체로 변환
+ * DATE 타입은 UTC 날짜를 저장하므로, KST 날짜가 UTC 날짜와 일치하도록 변환
+ */
+export function toKSTDateForDB(date: Date): Date {
+  const kst = toKST(date);
+  // KST 날짜를 UTC 자정으로 설정 (PostgreSQL DATE 저장용)
+  return new Date(Date.UTC(kst.getFullYear(), kst.getMonth(), kst.getDate()));
+}
+
+/**
+ * KST 기준 특정 날짜의 시작/종료 시간 범위 (UTC로 변환)
+ */
+export function getKSTDayRangeUTC(date: Date): { startOfDay: Date; endOfDay: Date; dateForDB: Date } {
+  const kst = toKST(date);
+  const year = kst.getFullYear();
+  const month = kst.getMonth();
+  const day = kst.getDate();
+
+  // KST 00:00:00 -> UTC
+  const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - KST_OFFSET_MS);
+  // KST 23:59:59.999 -> UTC
+  const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - KST_OFFSET_MS);
+  // PostgreSQL DATE 저장용 (UTC 자정)
+  const dateForDB = new Date(Date.UTC(year, month, day));
+
+  return { startOfDay, endOfDay, dateForDB };
 }

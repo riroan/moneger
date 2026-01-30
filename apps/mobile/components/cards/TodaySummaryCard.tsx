@@ -9,7 +9,8 @@ import { UI_ICONS } from '../../constants/Icons';
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
 interface TodaySummaryCardProps {
-  date: string;
+  month: number;
+  day: number;
   dayOfWeek: number;
   income: { total: number; count: number };
   expense: { total: number; count: number };
@@ -17,7 +18,8 @@ interface TodaySummaryCardProps {
 }
 
 export default function TodaySummaryCard({
-  date,
+  month,
+  day,
   dayOfWeek,
   income,
   expense,
@@ -113,10 +115,7 @@ export default function TodaySummaryCard({
     },
   });
 
-  const formattedDate = (() => {
-    const d = new Date(date);
-    return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_NAMES[dayOfWeek]})`;
-  })();
+  const formattedDate = `${month}월 ${day}일 (${DAY_NAMES[dayOfWeek]})`;
 
   return (
     <View style={styles.card}>
@@ -157,7 +156,7 @@ export default function TodaySummaryCard({
           </View>
           <View style={styles.divider} />
           <View style={styles.balanceRow}>
-            <Text style={styles.balanceLabel}>잔액</Text>
+            <Text style={styles.balanceLabel}>합계</Text>
             <Text style={[styles.balanceAmount, { color: balance >= 0 ? colors.accentMint : colors.accentCoral }]}>
               {balance >= 0 ? '+' : '-'}₩{formatNumber(Math.abs(balance))}
             </Text>

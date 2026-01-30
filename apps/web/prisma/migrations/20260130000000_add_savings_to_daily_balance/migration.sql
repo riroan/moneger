@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "DailyBalance" ADD COLUMN "savings" DOUBLE PRECISION NOT NULL DEFAULT 0;

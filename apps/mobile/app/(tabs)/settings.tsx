@@ -29,8 +29,9 @@ import {
   type CategoryForEdit,
   type CategoryForBudget,
 } from '../../components/settings';
+import { DailyReportCard } from '../../components/cards';
 
-type SettingsModal = 'none' | 'category' | 'budget' | 'password' | 'account' | 'calendar';
+type SettingsModal = 'none' | 'category' | 'budget' | 'password' | 'account' | 'calendar' | 'daily-report';
 
 // Icon mapping for categories
 const CATEGORY_ICONS: Record<string, MaterialIconName> = {
@@ -1232,6 +1233,7 @@ export default function SettingsScreen() {
 
   const navigationMenuItems = [
     { id: 'calendar', icon: 'calendar-today' as MaterialIconName, label: '일별 내역', color: '#10B981', onPress: () => setActiveModal('calendar') },
+    { id: 'daily-report', icon: 'show-chart' as MaterialIconName, label: '일별 리포트', color: '#8B5CF6', onPress: () => setActiveModal('daily-report') },
     { id: 'transactions', icon: 'receipt-long' as MaterialIconName, label: '거래 내역', color: '#3B82F6', onPress: () => router.push('/(tabs)/transactions') },
     { id: 'savings', icon: 'savings' as MaterialIconName, label: '저축 목표', color: '#F59E0B', onPress: () => router.push('/(tabs)/savings') },
   ];
@@ -1356,6 +1358,27 @@ export default function SettingsScreen() {
         isPrevMonthDisabled={isCalendarPrevMonthDisabled()}
         isNextMonthDisabled={isCalendarNextMonthDisabled()}
       />
+
+      {/* Daily Report Modal */}
+      <Modal
+        visible={activeModal === 'daily-report'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal('none')}
+      >
+        <View style={styles.fullScreenModal}>
+          <View style={styles.fullModalHeader}>
+            <View style={{ width: 24 }} />
+            <Text style={styles.fullModalTitle}>일별 리포트</Text>
+            <TouchableOpacity onPress={() => setActiveModal('none')}>
+              <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flex: 1, padding: 20 }}>
+            <DailyReportCard />
+          </View>
+        </View>
+      </Modal>
 
       {/* Account Settings Modal */}
       <Modal

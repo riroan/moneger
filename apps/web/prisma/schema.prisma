@@ -92,6 +92,7 @@ model DailyBalance {
   balance   Float
   income    Float
   expense   Float
+  savings   Float    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

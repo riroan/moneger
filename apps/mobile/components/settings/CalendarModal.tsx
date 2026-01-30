@@ -350,9 +350,7 @@ export function CalendarModal({
     >
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose}>
-            <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <View style={{ width: 24 }} />
           <View style={styles.monthNav}>
             <TouchableOpacity
               style={[styles.navButton, isPrevMonthDisabled && styles.navButtonDisabled]}
@@ -372,7 +370,9 @@ export function CalendarModal({
               <MaterialIcons name="chevron-right" size={28} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
-          <View style={{ width: 24 }} />
+          <TouchableOpacity onPress={onClose}>
+            <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
         </View>
 
         <ScrollView>
