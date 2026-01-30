@@ -69,18 +69,21 @@ export function getDaysInMonth(year: number, month: number): number {
 
 /**
  * KST 기준 오늘부터 N일 전까지의 날짜 범위를 반환 (UTC로 변환)
+ * toKST로 변환된 Date는 UTC 메서드를 사용해야 올바른 KST 값을 얻음
  */
 export function getLastNDaysRange(days: number): { startDate: Date; endDate: Date } {
   const now = new Date();
   const kstNow = toKST(now);
 
-  // KST 기준 오늘 끝
-  const kstEndOfDay = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate(), 23, 59, 59, 999);
-  const endDate = new Date(kstEndOfDay.getTime() - KST_OFFSET_MS);
+  const year = kstNow.getUTCFullYear();
+  const month = kstNow.getUTCMonth();
+  const day = kstNow.getUTCDate();
 
-  // KST 기준 N일 전 시작
-  const kstStartOfDay = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate() - days + 1, 0, 0, 0, 0);
-  const startDate = new Date(kstStartOfDay.getTime() - KST_OFFSET_MS);
+  // KST 기준 오늘 끝 -> UTC
+  const endDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - KST_OFFSET_MS);
+
+  // KST 기준 N일 전 시작 -> UTC
+  const startDate = new Date(Date.UTC(year, month, day - days + 1, 0, 0, 0, 0) - KST_OFFSET_MS);
 
   return { startDate, endDate };
 }
@@ -94,55 +97,57 @@ export function toKST(date: Date): Date {
 
 /**
  * KST 기준 오늘의 시작 시간 (UTC)
+ * toKST로 변환된 Date는 UTC 메서드를 사용해야 올바른 KST 값을 얻음
  */
 export function getKSTDayStartUTC(date: Date = new Date()): Date {
   const kst = toKST(date);
-  const kstMidnight = new Date(kst.getFullYear(), kst.getMonth(), kst.getDate(), 0, 0, 0, 0);
-  return new Date(kstMidnight.getTime() - KST_OFFSET_MS);
+  return new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 0, 0, 0, 0) - KST_OFFSET_MS);
 }
 
 /**
  * KST 기준 오늘의 끝 시간 (UTC)
+ * toKST로 변환된 Date는 UTC 메서드를 사용해야 올바른 KST 값을 얻음
  */
 export function getKSTDayEndUTC(date: Date = new Date()): Date {
   const kst = toKST(date);
-  const kstEndOfDay = new Date(kst.getFullYear(), kst.getMonth(), kst.getDate(), 23, 59, 59, 999);
-  return new Date(kstEndOfDay.getTime() - KST_OFFSET_MS);
+  return new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 23, 59, 59, 999) - KST_OFFSET_MS);
 }
 
 /**
  * KST 기준 연/월/일 정보 추출
+ * toKST로 변환된 Date는 UTC 메서드를 사용해야 올바른 KST 값을 얻음
  */
 export function getKSTDateParts(date: Date): { year: number; month: number; day: number; dayOfWeek: number; hours: number; minutes: number } {
   const kst = toKST(date);
   return {
-    year: kst.getFullYear(),
-    month: kst.getMonth() + 1,
-    day: kst.getDate(),
-    dayOfWeek: kst.getDay(),
-    hours: kst.getHours(),
-    minutes: kst.getMinutes(),
+    year: kst.getUTCFullYear(),
+    month: kst.getUTCMonth() + 1,
+    day: kst.getUTCDate(),
+    dayOfWeek: kst.getUTCDay(),
+    hours: kst.getUTCHours(),
+    minutes: kst.getUTCMinutes(),
   };
 }
 
 /**
  * KST 기준 날짜를 PostgreSQL DATE 타입용 Date 객체로 변환
  * DATE 타입은 UTC 날짜를 저장하므로, KST 날짜가 UTC 날짜와 일치하도록 변환
+ * toKST로 변환된 Date는 UTC 메서드를 사용해야 올바른 KST 값을 얻음
  */
 export function toKSTDateForDB(date: Date): Date {
   const kst = toKST(date);
-  // KST 날짜를 UTC 자정으로 설정 (PostgreSQL DATE 저장용)
-  return new Date(Date.UTC(kst.getFullYear(), kst.getMonth(), kst.getDate()));
+  return new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()));
 }
 
 /**
  * KST 기준 특정 날짜의 시작/종료 시간 범위 (UTC로 변환)
+ * toKST로 변환된 Date는 UTC 메서드를 사용해야 올바른 KST 값을 얻음
  */
 export function getKSTDayRangeUTC(date: Date): { startOfDay: Date; endOfDay: Date; dateForDB: Date } {
   const kst = toKST(date);
-  const year = kst.getFullYear();
-  const month = kst.getMonth();
-  const day = kst.getDate();
+  const year = kst.getUTCFullYear();
+  const month = kst.getUTCMonth();
+  const day = kst.getUTCDate();
 
   // KST 00:00:00 -> UTC
   const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - KST_OFFSET_MS);

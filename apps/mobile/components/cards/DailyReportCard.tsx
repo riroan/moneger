@@ -170,6 +170,25 @@ export default function DailyReportCard() {
     periodButtonTextActive: {
       color: colors.bgPrimary,
     },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 10,
+    },
+    totalItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    totalLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    totalValue: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
   });
 
   // 선택된 날짜의 데이터 (기본값: 마지막 = 오늘)
@@ -177,6 +196,7 @@ export default function DailyReportCard() {
   const selectedIncome = selectedData?.income ?? 0;
   const selectedExpense = selectedData?.expense ?? 0;
   const selectedSavings = selectedData?.savings ?? 0;
+  const selectedTotal = selectedIncome - selectedExpense - selectedSavings;
 
   return (
     <View style={styles.card}>
@@ -269,6 +289,13 @@ export default function DailyReportCard() {
               <Text style={styles.summaryLabel}>저축</Text>
               <Text style={[styles.summaryValue, { color: selectedSavings > 0 ? colors.accentCyan : colors.textMuted }]}>
                 {selectedSavings > 0 ? `₩${formatNumber(selectedSavings)}` : '-'}
+              </Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.totalItem}>
+              <Text style={styles.totalLabel}>합계</Text>
+              <Text style={[styles.totalValue, { color: selectedTotal >= 0 ? colors.accentMint : colors.accentCoral }]}>
+                {selectedTotal >= 0 ? '+' : '-'}₩{formatNumber(Math.abs(selectedTotal))}
               </Text>
             </View>
           </View>

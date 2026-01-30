@@ -43,16 +43,17 @@ export function getKSTDayEndUTC(date: Date = new Date()): Date {
 
 /**
  * KST 기준 연/월/일 정보 추출
+ * toKST로 변환된 Date는 UTC 메서드를 사용해야 올바른 KST 값을 얻음
  */
 export function getKSTDateParts(date: Date): { year: number; month: number; day: number; dayOfWeek: number; hours: number; minutes: number } {
   const kst = toKST(date);
   return {
-    year: kst.getFullYear(),
-    month: kst.getMonth() + 1,
-    day: kst.getDate(),
-    dayOfWeek: kst.getDay(),
-    hours: kst.getHours(),
-    minutes: kst.getMinutes(),
+    year: kst.getUTCFullYear(),
+    month: kst.getUTCMonth() + 1,
+    day: kst.getUTCDate(),
+    dayOfWeek: kst.getUTCDay(),
+    hours: kst.getUTCHours(),
+    minutes: kst.getUTCMinutes(),
   };
 }
 

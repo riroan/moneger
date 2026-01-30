@@ -173,9 +173,9 @@ export default function HomeScreen() {
   ];
 
   // Today summary values (from API - KST based)
-  const todayMonth = todaySummary?.month ?? month;
-  const todayDay = todaySummary?.day ?? now.getDate();
-  const todayDayOfWeek = todaySummary?.dayOfWeek ?? now.getDay();
+  const todayMonth = todaySummary?.month ?? kstNow.month;
+  const todayDay = todaySummary?.day ?? kstNow.day;
+  const todayDayOfWeek = todaySummary?.dayOfWeek ?? kstNow.dayOfWeek;
   const todayIncome = { total: todaySummary?.income?.total || 0, count: todaySummary?.income?.count || 0 };
   const todayExpense = { total: todaySummary?.expense?.total || 0, count: todaySummary?.expense?.count || 0 };
   const todaySavingsData = { total: todaySummary?.savings?.total || 0, count: todaySummary?.savings?.count || 0 };
