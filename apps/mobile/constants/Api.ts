@@ -1,6 +1,7 @@
-// API Base URL - 개발 시 로컬 서버 사용
-// 실기기에서는 컴퓨터 IP 주소 사용 (예: http://192.168.0.9:3000)
-export const API_BASE_URL = 'http://192.168.0.9:3000';
+// API Base URL - 환경변수 EXPO_PUBLIC_API_BASE_URL 사용
+// 설정되지 않은 경우 기본값 사용
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
 
 // API Endpoints
 export const API_ENDPOINTS = {
