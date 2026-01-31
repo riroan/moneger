@@ -18,7 +18,6 @@ import { Colors } from '../../constants/Colors';
 import { getIconName, UI_ICONS } from '../../constants/Icons';
 import {
   transactionApi,
-  statsApi,
   TransactionSummary,
   TodaySummary,
   TransactionWithCategory,
@@ -41,7 +40,6 @@ export default function HomeScreen() {
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<TransactionWithCategory[]>([]);
-  const [lastMonthBalance, setLastMonthBalance] = useState<number>(0);
 
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
@@ -62,12 +60,10 @@ export default function HomeScreen() {
 
     try {
       // Fetch all data in parallel
-      const [summaryRes, todayRes, recentRes, lastMonthRes] = await Promise.all([
+      const [summaryRes, todayRes, recentRes] = await Promise.all([
         transactionApi.getSummary(userId, year, month),
         transactionApi.getToday(userId),
         transactionApi.getRecent(userId, 5),
-        // Get last month stats for comparison
-        statsApi.get(userId, month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1),
       ]);
 
       if (summaryRes.success && summaryRes.data) {
@@ -80,10 +76,6 @@ export default function HomeScreen() {
 
       if (recentRes.success && recentRes.data) {
         setRecentTransactions(recentRes.data);
-      }
-
-      if (lastMonthRes.success && lastMonthRes.data) {
-        setLastMonthBalance(lastMonthRes.data.summary.balance);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -114,14 +106,15 @@ export default function HomeScreen() {
   const totalExpense = summary?.summary?.totalExpense || 0;
   const totalSavings = summary?.summary?.totalSavings || 0;
   const balance = summary?.summary?.balance || 0;
+  const carryOverBalance = summary?.summary?.carryOverBalance || 0;
   const incomeCount = summary?.transactionCount?.income || 0;
   const expenseCount = summary?.transactionCount?.expense || 0;
   const savingsCount = summary?.savings?.count || 0;
   const primaryGoal = summary?.savings?.primaryGoal;
   const categories = summary?.categories || [];
 
-  // Calculate balance difference from last month
-  const balanceDiff = balance - lastMonthBalance;
+  // Calculate balance difference from last month (현재 잔액 - 전월 마지막 날 잔액)
+  const balanceDiff = balance - carryOverBalance;
 
   // Summary cards data for carousel
   const summaryCards: SummaryCardData[] = [

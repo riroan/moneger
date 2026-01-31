@@ -129,6 +129,7 @@ export interface TransactionSummary {
     totalSavings: number;
     netAmount: number;
     balance: number;
+    carryOverBalance: number;
   };
   budget: {
     amount: number;

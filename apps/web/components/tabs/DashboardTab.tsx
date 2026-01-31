@@ -51,10 +51,12 @@ export default function DashboardTab({
   const summary = useTransactionStore((state) => state.summary);
   const todaySummary = useTransactionStore((state) => state.todaySummary);
   const recentTransactions = useTransactionStore((state) => state.recentTransactions);
-  const lastMonthBalance = useTransactionStore((state) => state.lastMonthBalance);
   const isLoadingSummary = useTransactionStore((state) => state.isLoadingSummary);
   const isLoadingTransactions = useTransactionStore((state) => state.isLoadingTransactions);
   const isLoadingTodaySummary = useTransactionStore((state) => state.isLoadingTodaySummary);
+
+  // 전월 마지막 날 잔액 (carryOverBalance)
+  const lastMonthBalance = summary?.summary?.carryOverBalance || 0;
 
   const { handleCategoryClick, handleIncomeClick, handleExpenseClick, handleBalanceClick } = useFilterHandlers();
 

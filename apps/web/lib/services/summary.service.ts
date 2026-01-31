@@ -31,8 +31,22 @@ export async function getTransactionSummary(userId: string, year: number, month:
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
 
+  // 이전 달 마지막 날 계산 (잔액 이월용)
+  const previousMonthLastDay = new Date(Date.UTC(year, month - 1, 0));
+
   // 병렬로 DB 집계 쿼리 실행
-  const [incomeAgg, expenseAgg, categoryStats, transactionCounts, activeSavingsData, monthlySavingsAgg] = await Promise.all([
+  const [
+    incomeAgg,
+    expenseAgg,
+    categoryStats,
+    transactionCounts,
+    activeSavingsData,
+    monthlySavingsAgg,
+    previousMonthBalance,
+    previousIncomeAgg,
+    previousExpenseAgg,
+    previousSavingsAgg,
+  ] = await Promise.all([
     // 수입 합계
     prisma.transaction.aggregate({
       where: { ...whereClause, type: 'INCOME' },
@@ -86,7 +100,33 @@ export async function getTransactionSummary(userId: string, year: number, month:
       _sum: { amount: true },
       _count: true,
     }),
+    // 이전 달 마지막 날 DailyBalance 조회
+    prisma.dailyBalance.findUnique({
+      where: { userId_date: { userId, date: previousMonthLastDay } },
+      select: { balance: true },
+    }),
+    // 이전 달까지의 수입 합계 (DailyBalance 없을 경우 폴백)
+    prisma.transaction.aggregate({
+      where: { userId, date: { lt: startDate }, type: 'INCOME', savingsGoalId: null, deletedAt: null },
+      _sum: { amount: true },
+    }),
+    // 이전 달까지의 지출 합계 (DailyBalance 없을 경우 폴백)
+    prisma.transaction.aggregate({
+      where: { userId, date: { lt: startDate }, type: 'EXPENSE', savingsGoalId: null, deletedAt: null },
+      _sum: { amount: true },
+    }),
+    // 이전 달까지의 저축 합계 (DailyBalance 없을 경우 폴백)
+    prisma.transaction.aggregate({
+      where: { userId, date: { lt: startDate }, savingsGoalId: { not: null }, deletedAt: null },
+      _sum: { amount: true },
+    }),
   ]);
+
+  // 이전 달 마지막 날 잔액 계산 (DailyBalance가 있으면 사용, 없으면 거래에서 계산)
+  const prevIncome = previousIncomeAgg._sum.amount || 0;
+  const prevExpense = previousExpenseAgg._sum.amount || 0;
+  const prevSavings = previousSavingsAgg._sum.amount || 0;
+  const carryOverBalance = previousMonthBalance?.balance ?? (prevIncome - prevExpense - prevSavings);
 
   const totalIncome = incomeAgg._sum.amount || 0;
   const totalExpense = expenseAgg._sum.amount || 0;
@@ -179,7 +219,8 @@ export async function getTransactionSummary(userId: string, year: number, month:
       totalExpense,
       totalSavings: monthlySavingsAmount,
       netAmount: totalIncome - totalExpense,
-      balance: totalIncome - totalExpense - monthlySavingsAmount,
+      balance: carryOverBalance + totalIncome - totalExpense - monthlySavingsAmount,
+      carryOverBalance,
     },
     budget: {
       amount: monthlyBudget,
