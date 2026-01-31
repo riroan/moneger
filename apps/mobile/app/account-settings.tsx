@@ -323,6 +323,22 @@ export default function AccountSettingsScreen() {
     bottomSpacer: {
       height: 40,
     },
+    logoutButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.bgCard,
+      borderRadius: 12,
+      padding: 16,
+      gap: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    logoutButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
     // Delete Account Modal
     modalOverlay: {
       flex: 1,
@@ -778,6 +794,19 @@ export default function AccountSettingsScreen() {
               <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={async () => {
+              await logout();
+              router.replace('/landing');
+            }}
+          >
+            <MaterialIcons name="logout" size={20} color={colors.textSecondary} />
+            <Text style={styles.logoutButtonText}>로그아웃</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
