@@ -6,7 +6,7 @@ import { useThemeStore } from '../stores/themeStore';
 import { Colors } from '../constants/Colors';
 
 // Mock mode - skip login and go directly to tabs
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 export default function Index() {
   const router = useRouter();

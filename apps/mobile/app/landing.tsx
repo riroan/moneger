@@ -7,6 +7,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeStore } from '../stores/themeStore';
 import { Colors } from '../constants/Colors';
 
@@ -66,7 +67,7 @@ export default function LandingScreen() {
       marginBottom: 12,
     },
     heroTitleAccent: {
-      color: colors.accentMint,
+      color: '#34D399',
     },
     heroTitleNormal: {
       color: colors.textPrimary,
@@ -80,15 +81,15 @@ export default function LandingScreen() {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.accentMint,
       paddingVertical: 16,
       borderRadius: 12,
       gap: 8,
+      overflow: 'hidden',
     },
     primaryButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.bgPrimary,
+      color: '#fff',
     },
     footerText: {
       fontSize: 12,
@@ -118,9 +119,16 @@ export default function LandingScreen() {
       </View>
 
       <View style={styles.bottomSection}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleStart}>
-          <Text style={styles.primaryButtonText}>무료로 시작하기</Text>
-          <MaterialIcons name="arrow-forward" size={20} color={colors.bgPrimary} />
+        <TouchableOpacity onPress={handleStart} activeOpacity={0.8}>
+          <LinearGradient
+            colors={['#34D399', '#60A5FA']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.primaryButton}
+          >
+            <Text style={styles.primaryButtonText}>무료로 시작하기</Text>
+            <MaterialIcons name="arrow-forward" size={20} color="#fff" />
+          </LinearGradient>
         </TouchableOpacity>
         <Text style={styles.footerText}>© 2026 MONEGER. All rights reserved.</Text>
       </View>

@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import { Colors } from '../constants/Colors';
@@ -121,7 +122,7 @@ export default function LoginScreen() {
       fontSize: 32,
       fontWeight: 'bold',
       textAlign: 'center',
-      color: colors.accentMint,
+      color: '#34D399',
       marginBottom: 8,
     },
     subtitle: {
@@ -156,20 +157,22 @@ export default function LoginScreen() {
       textAlign: 'center',
     },
     successText: {
-      color: colors.accentMint,
+      color: '#34D399',
       fontSize: 14,
       marginBottom: 16,
       textAlign: 'center',
-      backgroundColor: 'rgba(74, 222, 128, 0.1)',
+      backgroundColor: 'rgba(52, 211, 153, 0.1)',
       padding: 12,
       borderRadius: 12,
     },
     button: {
-      backgroundColor: colors.accentMint,
       borderRadius: 12,
+      overflow: 'hidden',
+      marginTop: 8,
+    },
+    buttonGradient: {
       padding: 16,
       alignItems: 'center',
-      marginTop: 8,
     },
     buttonDisabled: {
       opacity: 0.5,
@@ -177,7 +180,7 @@ export default function LoginScreen() {
     buttonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.bgPrimary,
+      color: '#fff',
     },
     toggleContainer: {
       marginTop: 20,
@@ -188,7 +191,7 @@ export default function LoginScreen() {
       color: colors.textSecondary,
     },
     toggleLink: {
-      color: colors.accentMint,
+      color: '#34D399',
       fontWeight: '500',
     },
     hint: {
@@ -217,8 +220,8 @@ export default function LoginScreen() {
       marginTop: 1,
     },
     checkboxChecked: {
-      backgroundColor: colors.accentMint,
-      borderColor: colors.accentMint,
+      backgroundColor: '#34D399',
+      borderColor: '#34D399',
     },
     agreementTextContainer: {
       flex: 1,
@@ -232,7 +235,7 @@ export default function LoginScreen() {
     },
     agreementLink: {
       fontSize: 13,
-      color: colors.accentMint,
+      color: '#34D399',
       textDecorationLine: 'underline',
     },
     // Modal styles
@@ -276,13 +279,13 @@ export default function LoginScreen() {
       alignSelf: 'flex-start',
       paddingHorizontal: 12,
       paddingVertical: 6,
-      backgroundColor: colors.accentMint + '20',
+      backgroundColor: 'rgba(52, 211, 153, 0.13)',
       borderRadius: 16,
       marginBottom: 16,
     },
     modalDateText: {
       fontSize: 12,
-      color: colors.accentMint,
+      color: '#34D399',
       fontWeight: '500',
     },
     modalIntro: {
@@ -309,7 +312,7 @@ export default function LoginScreen() {
       width: 28,
       height: 28,
       borderRadius: 8,
-      backgroundColor: colors.accentMint,
+      backgroundColor: '#34D399',
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 12,
@@ -340,7 +343,7 @@ export default function LoginScreen() {
     },
     bulletPoint: {
       fontSize: 14,
-      color: colors.accentMint,
+      color: '#34D399',
       marginRight: 8,
     },
     bulletText: {
@@ -369,16 +372,16 @@ export default function LoginScreen() {
     },
     infoBox: {
       padding: 14,
-      backgroundColor: colors.accentMint + '15',
+      backgroundColor: 'rgba(52, 211, 153, 0.08)',
       borderWidth: 1,
-      borderColor: colors.accentMint + '30',
+      borderColor: 'rgba(52, 211, 153, 0.19)',
       borderRadius: 12,
       marginTop: 8,
     },
     infoTitle: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.accentMint,
+      color: '#34D399',
       marginBottom: 4,
     },
     infoText: {
@@ -394,7 +397,7 @@ export default function LoginScreen() {
     },
     tableHeader: {
       flexDirection: 'row',
-      backgroundColor: colors.accentMint + '20',
+      backgroundColor: 'rgba(52, 211, 153, 0.13)',
     },
     tableHeaderCell: {
       flex: 1,
@@ -405,7 +408,7 @@ export default function LoginScreen() {
     tableHeaderText: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.accentMint,
+      color: '#34D399',
     },
     tableRow: {
       flexDirection: 'row',
@@ -431,15 +434,17 @@ export default function LoginScreen() {
       borderTopColor: colors.border,
     },
     agreeButton: {
-      backgroundColor: colors.accentMint,
       borderRadius: 12,
+      overflow: 'hidden',
+    },
+    agreeButtonGradient: {
       padding: 16,
       alignItems: 'center',
     },
     agreeButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.bgPrimary,
+      color: '#fff',
     },
   });
 
@@ -651,14 +656,22 @@ export default function LoginScreen() {
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleSubmit}
             disabled={isLoading}
+            activeOpacity={0.8}
           >
-            {isLoading ? (
-              <ActivityIndicator color={colors.bgPrimary} />
-            ) : (
-              <Text style={styles.buttonText}>
-                {isSignup ? '회원가입' : '로그인'}
-              </Text>
-            )}
+            <LinearGradient
+              colors={['#34D399', '#60A5FA']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.buttonGradient}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {isSignup ? '회원가입' : '로그인'}
+                </Text>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -711,8 +724,16 @@ export default function LoginScreen() {
                   setAgreeTerms(true);
                   setActiveModal(null);
                 }}
+                activeOpacity={0.8}
               >
-                <Text style={styles.agreeButtonText}>동의</Text>
+                <LinearGradient
+                  colors={['#34D399', '#60A5FA']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.agreeButtonGradient}
+                >
+                  <Text style={styles.agreeButtonText}>동의</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -749,8 +770,16 @@ export default function LoginScreen() {
                   setAgreePrivacy(true);
                   setActiveModal(null);
                 }}
+                activeOpacity={0.8}
               >
-                <Text style={styles.agreeButtonText}>동의</Text>
+                <LinearGradient
+                  colors={['#34D399', '#60A5FA']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.agreeButtonGradient}
+                >
+                  <Text style={styles.agreeButtonText}>동의</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
