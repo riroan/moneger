@@ -82,6 +82,7 @@ export interface TransactionSummary {
     totalSavings: number;
     netAmount: number;
     balance: number;
+    carryOverBalance: number;
   };
   categories: CategorySummary[];
   transactionCount: {
