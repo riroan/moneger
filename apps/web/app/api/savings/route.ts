@@ -73,11 +73,12 @@ export async function GET(request: NextRequest) {
       const startDate = new Date(startYear, startMonth - 1, 1);
       const totalMonths = Math.max(
         1,
-        (targetDate.getFullYear() - startDate.getFullYear()) * 12 + (targetDate.getMonth() - startDate.getMonth())
+        (targetDate.getFullYear() - startDate.getFullYear()) * 12 + (targetDate.getMonth() - startDate.getMonth()) + 1
       );
 
-      // 월별 목표 저축액
-      const monthlyTarget = Math.ceil(goal.targetAmount / totalMonths);
+      // 월별 목표 저축액 (남은 금액 기준)
+      const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
+      const monthlyTarget = Math.ceil(remainingAmount / totalMonths);
 
       // 이번 달 저축액
       const thisMonthSavings = thisMonthSavingsMap.get(goal.id) || 0;
