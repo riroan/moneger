@@ -11,6 +11,8 @@ import { logger } from '@/lib/logger';
 import {
   getCategories,
   findDuplicateCategory,
+  findSoftDeletedCategory,
+  restoreCategory,
   createCategory,
 } from '@/lib/services/category.service';
 
@@ -58,6 +60,13 @@ export async function POST(request: NextRequest) {
     const existingCategory = await findDuplicateCategory(userId, name, type);
     if (existingCategory) {
       return errorResponse('이미 존재하는 카테고리입니다', 409);
+    }
+
+    // 소프트 삭제된 카테고리가 있으면 복구
+    const softDeletedCategory = await findSoftDeletedCategory(userId, name, type);
+    if (softDeletedCategory) {
+      const restoredCategory = await restoreCategory(softDeletedCategory.id, { color, icon, defaultBudget });
+      return successResponseWithMessage(restoredCategory, 'Category restored successfully', 201);
     }
 
     // 카테고리 생성

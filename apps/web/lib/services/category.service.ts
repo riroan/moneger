@@ -57,6 +57,34 @@ export async function findDuplicateCategory(
 }
 
 /**
+ * 소프트 삭제된 카테고리 찾기
+ */
+export async function findSoftDeletedCategory(
+  userId: string,
+  name: string,
+  type: TransactionType
+) {
+  return prisma.category.findFirst({
+    where: { userId, name, type, deletedAt: { not: null } },
+  });
+}
+
+/**
+ * 소프트 삭제된 카테고리 복구
+ */
+export async function restoreCategory(id: string, updates?: { color?: string; icon?: string; defaultBudget?: number | null }) {
+  return prisma.category.update({
+    where: { id },
+    data: {
+      deletedAt: null,
+      ...(updates?.color && { color: updates.color }),
+      ...(updates?.icon && { icon: updates.icon }),
+      ...(updates?.defaultBudget !== undefined && { defaultBudget: updates.defaultBudget }),
+    },
+  });
+}
+
+/**
  * 카테고리 생성
  */
 export async function createCategory(input: CreateCategoryInput) {
