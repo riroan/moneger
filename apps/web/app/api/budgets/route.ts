@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
     if (year && month) {
       const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
 
-      const budgets = await prisma.budget.findMany({
+      // 기존 예산 조회
+      let budgets = await prisma.budget.findMany({
         where: {
           userId: userId!,
           month: startDate,
@@ -36,6 +37,41 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { createdAt: 'asc' },
       });
+
+      // defaultBudget이 있는 카테고리 중 해당 월에 예산이 없는 경우 자동 생성
+      const existingCategoryIds = new Set(budgets.map(b => b.categoryId));
+      const categoriesWithDefaultBudget = await prisma.category.findMany({
+        where: {
+          userId: userId!,
+          deletedAt: null,
+          defaultBudget: { not: null },
+          id: { notIn: Array.from(existingCategoryIds).filter((id): id is string => id !== null) },
+        },
+        select: { id: true, name: true, icon: true, color: true, defaultBudget: true },
+      });
+
+      if (categoriesWithDefaultBudget.length > 0) {
+        // 새 예산 레코드 생성
+        const newBudgets = await prisma.$transaction(
+          categoriesWithDefaultBudget.map(category =>
+            prisma.budget.create({
+              data: {
+                userId: userId!,
+                categoryId: category.id,
+                amount: category.defaultBudget!,
+                month: startDate,
+              },
+              include: {
+                category: {
+                  select: { id: true, name: true, icon: true, color: true },
+                },
+              },
+            })
+          )
+        );
+
+        budgets = [...budgets, ...newBudgets];
+      }
 
       return successResponse(budgets);
     }
