@@ -237,6 +237,15 @@ export default function SettingsPage() {
     if (categoriesData.success) {
       setCategories(categoriesData.data);
     }
+
+    // 예산 목록도 새로고침 (기본 예산이 설정된 경우 반영)
+    const budgetYear = budgetDate.getFullYear();
+    const budgetMonth = budgetDate.getMonth() + 1;
+    const budgetsResponse = await fetch(`/api/budgets?userId=${userId}&year=${budgetYear}&month=${budgetMonth}`);
+    const budgetsData = await budgetsResponse.json();
+    if (budgetsData.success) {
+      setBudgets(budgetsData.data);
+    }
   };
 
   // 카테고리 삭제
