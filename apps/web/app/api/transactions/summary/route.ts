@@ -19,9 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const summary = await getTransactionSummary(userId!, parseInt(year), parseInt(month));
-
-    // 60초 캐시, 5분간 stale-while-revalidate
-    return successResponse(summary, 200, { maxAge: 60, staleWhileRevalidate: 300 });
+    return successResponse(summary);
   } catch (error) {
     logger.error('Failed to fetch transaction summary', error);
     return errorResponse('Failed to fetch transaction summary', 500);
