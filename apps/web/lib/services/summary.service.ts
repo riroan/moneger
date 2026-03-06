@@ -54,7 +54,7 @@ export async function getTransactionSummary(userId: string, year: number, month:
     }),
     // 지출 합계
     prisma.transaction.aggregate({
-      where: { ...whereClause, type: 'EXPENSE' },
+      where: { ...whereClause, type: 'EXPENSE', savingsGoalId: null },
       _sum: { amount: true },
     }),
     // 카테고리별 지출 통계 (groupBy)

@@ -198,6 +198,8 @@ export async function getTransactions(input: GetTransactionsInput) {
   // 저축 전용 필터 (savingsGoalId가 있는 거래만)
   if (input.savingsOnly) {
     where.savingsGoalId = { not: null };
+  } else {
+    where.savingsGoalId = null;
   }
 
   // 금액 범위 필터
