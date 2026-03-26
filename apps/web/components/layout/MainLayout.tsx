@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuthStore, useAppStore, useModalStore, useCategoryStore } from '@/stores';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -23,12 +23,13 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
   // Auth store
   const { userId, userName, userEmail, isLoading: isAuthLoading, initAuth, logout } = useAuthStore();
 
   // App store
-  const { currentDate, activeTab, goToPreviousMonth, goToNextMonth, goToMonth, setIsMobile } = useAppStore();
+  const { currentDate, goToPreviousMonth, goToNextMonth, goToMonth, setIsMobile } = useAppStore();
 
   // Transaction store
   const { oldestTransactionDate, filterType, filterCategories, searchKeyword, sortOrder, dateRange, amountRange } =
@@ -58,7 +59,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     filterCategories,
     searchKeyword,
     sortOrder,
-    activeTab,
+    activeTab: pathname === '/transactions' ? 'transactions' : 'dashboard',
     dateRange,
     amountRange,
   });
@@ -66,7 +67,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { handleSubmitTransaction, handleEditTransaction, handleDeleteTransaction, handleDeleteSavingsTransaction } =
     useTransactionHandlers({
       onSuccess: refreshData,
-      onAllTransactionsRefresh: activeTab === 'transactions' ? refreshAllTransactions : undefined,
+      onAllTransactionsRefresh: pathname === '/transactions' ? refreshAllTransactions : undefined,
     });
 
   // Initialize auth on mount
@@ -120,7 +121,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <Footer />
       </div>
 
-      <FAB onClick={openTransactionModal} visible={activeTab !== 'savings'} />
+      <FAB onClick={openTransactionModal} visible={pathname !== '/savings'} />
 
       <TransactionModal
         isOpen={isTransactionModalOpen}

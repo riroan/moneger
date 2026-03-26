@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useModalStore } from '@/stores';
+import { useAuthStore, useModalStore } from '@/stores';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import MainLayout from '@/components/layout/MainLayout';
-import DashboardTab from '@/components/tabs/DashboardTab';
-import LandingPage from '@/components/LandingPage';
-import { useAuthStore } from '@/stores';
+import TransactionsTab from '@/components/tabs/TransactionsTab';
 import type { TransactionWithCategory } from '@/types';
 
-export default function Home() {
+export default function TransactionsPage() {
   const router = useRouter();
   const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
   const { openEditModal, openSavingsTransactionModal } = useModalStore();
@@ -28,29 +27,18 @@ export default function Home() {
     }
   };
 
-  const handleViewAllTransactions = () => {
-    router.push('/transactions');
-  };
-
-  const handleViewSavings = () => {
-    router.push('/savings');
-  };
-
   if (!isInitialized || isAuthLoading) {
     return null;
   }
 
   if (!userId) {
-    return <LandingPage />;
+    router.push('/');
+    return null;
   }
 
   return (
     <MainLayout>
-      <DashboardTab
-        onTransactionClick={handleTransactionClick}
-        onViewAllTransactions={handleViewAllTransactions}
-        onViewSavings={handleViewSavings}
-      />
+      <TransactionsTab onTransactionClick={handleTransactionClick} />
     </MainLayout>
   );
 }
