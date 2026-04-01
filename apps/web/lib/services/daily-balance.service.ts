@@ -208,16 +208,8 @@ async function calculateMonthlyDailyBalancesFromTransactions(userId: string, yea
   const { startDate, endDate } = getMonthRangeKST(year, month);
   const daysInMonth = getDaysInMonth(year, month);
 
-  // 이전 달 마지막 날 (해당 월 이전 잔액 조회용) - UTC 자정으로 생성해야 DailyBalance 저장 형식과 일치
-  const previousMonthLastDay = new Date(Date.UTC(year, month - 1, 0));
-
   // DB에서 일별로 그룹화하여 집계 + 이전 잔액 조회
-  const [previousBalance, previousIncomeAgg, previousExpenseAgg, previousSavingsAgg, incomeGrouped, expenseGrouped, savingsGrouped] = await Promise.all([
-    // 이전 달 마지막 날의 DailyBalance 조회
-    prisma.dailyBalance.findUnique({
-      where: { userId_date: { userId, date: previousMonthLastDay } },
-      select: { balance: true },
-    }),
+  const [previousIncomeAgg, previousExpenseAgg, previousSavingsAgg, incomeGrouped, expenseGrouped, savingsGrouped] = await Promise.all([
     // 해당 월 이전 수입 합계 (저축 제외)
     prisma.transaction.aggregate({
       where: { userId, date: { lt: startDate }, type: 'INCOME', savingsGoalId: null, deletedAt: null },
@@ -270,11 +262,11 @@ async function calculateMonthlyDailyBalancesFromTransactions(userId: string, yea
     }),
   ]);
 
-  // 이전 잔액 계산 (DailyBalance가 있으면 사용, 없으면 거래에서 계산)
+  // 이전 잔액 계산 (항상 거래 합계로 계산 - DailyBalance 체인이 깨질 수 있으므로)
   const prevIncome = previousIncomeAgg._sum.amount || 0;
   const prevExpense = previousExpenseAgg._sum.amount || 0;
   const prevSavings = previousSavingsAgg._sum.amount || 0;
-  const initialBalance = previousBalance?.balance ?? (prevIncome - prevExpense - prevSavings);
+  const initialBalance = prevIncome - prevExpense - prevSavings;
 
   // 일별 데이터 초기화
   const dailyData: { [day: number]: { income: number; expense: number; savings: number } } = {};
