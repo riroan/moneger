@@ -208,9 +208,8 @@ async function calculateMonthlyDailyBalancesFromTransactions(userId: string, yea
   const { startDate, endDate } = getMonthRangeKST(year, month);
   const daysInMonth = getDaysInMonth(year, month);
 
-  // 이전 달 마지막 날 (해당 월 이전 잔액 조회용)
-  const previousMonthLastDay = new Date(year, month - 1, 0);
-  previousMonthLastDay.setHours(0, 0, 0, 0);
+  // 이전 달 마지막 날 (해당 월 이전 잔액 조회용) - UTC 자정으로 생성해야 DailyBalance 저장 형식과 일치
+  const previousMonthLastDay = new Date(Date.UTC(year, month - 1, 0));
 
   // DB에서 일별로 그룹화하여 집계 + 이전 잔액 조회
   const [previousBalance, previousIncomeAgg, previousExpenseAgg, previousSavingsAgg, incomeGrouped, expenseGrouped, savingsGrouped] = await Promise.all([
