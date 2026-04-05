@@ -38,9 +38,11 @@ export async function PATCH(
       if (typeError) return typeError;
     }
 
-    // 이름과 타입이 변경되는 경우 중복 확인
-    if (name && type) {
-      const duplicate = await findDuplicateCategory(userId, name, type, id);
+    // 이름 또는 타입이 변경되는 경우 중복 확인
+    if (name || type) {
+      const checkName = name || existingCategory.name;
+      const checkType = type || existingCategory.type;
+      const duplicate = await findDuplicateCategory(userId, checkName, checkType, id);
       if (duplicate) {
         return errorResponse('이미 존재하는 카테고리입니다', 409);
       }

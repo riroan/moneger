@@ -25,24 +25,26 @@ export async function PUT(
       return errorResponse('Savings goal not found', 404);
     }
 
-    // 대표 목표로 설정하는 경우, 다른 목표들의 isPrimary를 false로 변경
-    if (isPrimary === true) {
-      await prisma.savingsGoal.updateMany({
-        where: { userId, deletedAt: null, id: { not: id } },
-        data: { isPrimary: false },
-      });
-    }
+    // 트랜잭션으로 대표 목표 변경 + 업데이트를 원자적으로 처리
+    const updatedGoal = await prisma.$transaction(async (tx) => {
+      if (isPrimary === true) {
+        await tx.savingsGoal.updateMany({
+          where: { userId, deletedAt: null, id: { not: id } },
+          data: { isPrimary: false },
+        });
+      }
 
-    const updatedGoal = await prisma.savingsGoal.update({
-      where: { id },
-      data: {
-        name,
-        icon,
-        targetAmount,
-        targetYear,
-        targetMonth,
-        ...(isPrimary !== undefined && { isPrimary }),
-      },
+      return tx.savingsGoal.update({
+        where: { id },
+        data: {
+          name,
+          icon,
+          targetAmount,
+          targetYear,
+          targetMonth,
+          ...(isPrimary !== undefined && { isPrimary }),
+        },
+      });
     });
 
     return successResponse(updatedGoal);
@@ -74,17 +76,19 @@ export async function PATCH(
       return errorResponse('Savings goal not found', 404);
     }
 
-    // 대표 목표로 설정하는 경우, 다른 목표들의 isPrimary를 false로 변경
-    if (isPrimary === true) {
-      await prisma.savingsGoal.updateMany({
-        where: { userId, deletedAt: null, id: { not: id } },
-        data: { isPrimary: false },
-      });
-    }
+    // 트랜잭션으로 대표 목표 변경을 원자적으로 처리
+    const updatedGoal = await prisma.$transaction(async (tx) => {
+      if (isPrimary === true) {
+        await tx.savingsGoal.updateMany({
+          where: { userId, deletedAt: null, id: { not: id } },
+          data: { isPrimary: false },
+        });
+      }
 
-    const updatedGoal = await prisma.savingsGoal.update({
-      where: { id },
-      data: { isPrimary },
+      return tx.savingsGoal.update({
+        where: { id },
+        data: { isPrimary },
+      });
     });
 
     return successResponse(updatedGoal);

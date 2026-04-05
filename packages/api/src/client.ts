@@ -157,10 +157,10 @@ export const savingsApi = {
       body: JSON.stringify(data),
     }),
 
-  deposit: async (goalId: string, amount: number) =>
+  deposit: async (goalId: string, userId: string, amount: number) =>
     fetchApi(`/api/savings/${goalId}/deposit`, {
       method: 'POST',
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ userId, amount }),
     }),
 
   delete: async (goalId: string) =>

@@ -28,7 +28,7 @@ export function nowKST(): Date {
  */
 export function getKSTDayStartUTC(date: Date = new Date()): Date {
   const kst = toKST(date);
-  const kstMidnight = new Date(kst.getFullYear(), kst.getMonth(), kst.getDate(), 0, 0, 0, 0);
+  const kstMidnight = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 0, 0, 0, 0));
   return new Date(kstMidnight.getTime() - KST_OFFSET_MS);
 }
 
@@ -37,7 +37,7 @@ export function getKSTDayStartUTC(date: Date = new Date()): Date {
  */
 export function getKSTDayEndUTC(date: Date = new Date()): Date {
   const kst = toKST(date);
-  const kstEndOfDay = new Date(kst.getFullYear(), kst.getMonth(), kst.getDate(), 23, 59, 59, 999);
+  const kstEndOfDay = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 23, 59, 59, 999));
   return new Date(kstEndOfDay.getTime() - KST_OFFSET_MS);
 }
 

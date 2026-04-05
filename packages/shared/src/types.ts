@@ -148,6 +148,7 @@ export interface DailyBalance {
   balance: number;
   income: number;
   expense: number;
+  savings: number;
 }
 
 // API Response Types

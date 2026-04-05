@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { CATEGORY_SELECT } from '@/lib/prisma-selects';
-import { getMonthRange, getLastNDaysRange, getDateKey } from '@/lib/date-utils';
+import { getMonthRangeKST, getLastNDaysRange, getDateKey } from '@/lib/date-utils';
 
 interface CategoryStat {
   categoryId: string;
@@ -16,7 +16,7 @@ interface CategoryStat {
  */
 export async function getMonthlyStats(userId: string, year: number, month: number) {
   // 날짜 범위 설정
-  const { startDate, endDate } = getMonthRange(year, month);
+  const { startDate, endDate } = getMonthRangeKST(year, month);
 
   // 병렬로 DB 집계 쿼리 실행
   const [

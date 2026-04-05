@@ -30,9 +30,9 @@ export async function updateDailyBalanceInTransaction(
   // 이전 날짜 계산 (KST 기준)
   const kstDate = toKST(date);
   const previousDateForDB = new Date(Date.UTC(
-    kstDate.getFullYear(),
-    kstDate.getMonth(),
-    kstDate.getDate() - 1
+    kstDate.getUTCFullYear(),
+    kstDate.getUTCMonth(),
+    kstDate.getUTCDate() - 1
   ));
 
   // 병렬로 이전 잔액과 당일 집계 쿼리 실행
@@ -86,9 +86,9 @@ export async function updateDailyBalance(userId: string, date: Date): Promise<vo
     // 이전 날짜 계산 (KST 기준)
     const kstDate = toKST(date);
     const previousDateForDB = new Date(Date.UTC(
-      kstDate.getFullYear(),
-      kstDate.getMonth(),
-      kstDate.getDate() - 1
+      kstDate.getUTCFullYear(),
+      kstDate.getUTCMonth(),
+      kstDate.getUTCDate() - 1
     ));
 
     // 병렬로 이전 잔액과 당일 집계 쿼리 실행
