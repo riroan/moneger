@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // 캐시 헤더 옵션
 interface CacheOptions {
@@ -98,4 +99,64 @@ export function validateAmount(amount: number | null | undefined): NextResponse 
     return errorResponse('amount must be greater than 0', 400);
   }
   return null;
+}
+
+/**
+ * year, month 쿼리 파라미터 파싱 및 검증
+ */
+export function parseYearMonth(searchParams: URLSearchParams): { year: number; month: number } | NextResponse {
+  const yearStr = searchParams.get('year');
+  const monthStr = searchParams.get('month');
+
+  if (!yearStr || !monthStr) {
+    return errorResponse('year and month are required', 400);
+  }
+
+  const year = parseInt(yearStr);
+  const month = parseInt(monthStr);
+
+  if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+    return errorResponse('유효하지 않은 year 또는 month 값입니다', 400);
+  }
+
+  return { year, month };
+}
+
+/**
+ * NextResponse 타입 가드
+ */
+export function isErrorResponse(result: unknown): result is NextResponse {
+  return result instanceof NextResponse;
+}
+
+/**
+ * API 라우트 핸들러 래퍼 - try-catch, 에러 로깅을 자동 처리
+ */
+export function apiHandler(operationName: string, handler: (request: NextRequest) => Promise<NextResponse>) {
+  return async (request: NextRequest) => {
+    try {
+      return await handler(request);
+    } catch (error) {
+      logger.error(`Failed to ${operationName}`, error);
+      return errorResponse(`Failed to ${operationName}`, 500);
+    }
+  };
+}
+
+/**
+ * 동적 경로 파라미터가 있는 API 라우트 핸들러 래퍼
+ */
+export function apiHandlerWithParams<P extends Record<string, string>>(
+  operationName: string,
+  handler: (request: NextRequest, params: P) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, { params }: { params: Promise<P> }) => {
+    try {
+      const resolvedParams = await params;
+      return await handler(request, resolvedParams);
+    } catch (error) {
+      logger.error(`Failed to ${operationName}`, error);
+      return errorResponse(`Failed to ${operationName}`, 500);
+    }
+  };
 }

@@ -2,11 +2,9 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import {
-  getDayRange,
   getMonthRangeKST,
   getDaysInMonth,
   getKSTDay,
-  getDateKey,
   getLastNDaysRange,
   KST_OFFSET_MS,
   toKST,
@@ -15,19 +13,23 @@ import {
 
 type TransactionClient = Prisma.TransactionClient;
 
+// Prisma 클라이언트 인터페이스 (prisma 또는 트랜잭션 클라이언트 공통)
+type DbClient = {
+  dailyBalance: Pick<TransactionClient['dailyBalance'], 'findUnique' | 'upsert'>;
+  transaction: Pick<TransactionClient['transaction'], 'aggregate'>;
+};
+
 /**
- * 일별 잔액 업데이트 (Prisma 트랜잭션 내에서 사용)
- * balance = 이전 날짜 잔액 + 당일 수입 - 당일 지출 - 당일 저축
+ * 일별 잔액 계산 및 upsert (공통 헬퍼)
+ * 트랜잭션 클라이언트와 독립 클라이언트 모두 지원
  */
-export async function updateDailyBalanceInTransaction(
-  tx: TransactionClient,
+async function computeAndUpsertDailyBalance(
+  client: DbClient,
   userId: string,
   date: Date
-): Promise<void> {
-  // KST 기준 날짜 범위 계산
+): Promise<{ dateForDB: Date; balance: number; savings: number }> {
   const { startOfDay, endOfDay, dateForDB } = getKSTDayRangeUTC(date);
 
-  // 이전 날짜 계산 (KST 기준)
   const kstDate = toKST(date);
   const previousDateForDB = new Date(Date.UTC(
     kstDate.getUTCFullYear(),
@@ -35,25 +37,20 @@ export async function updateDailyBalanceInTransaction(
     kstDate.getUTCDate() - 1
   ));
 
-  // 병렬로 이전 잔액과 당일 집계 쿼리 실행
   const [previousBalance, dayIncomeAgg, dayExpenseAgg, daySavingsAgg] = await Promise.all([
-    // 이전 날짜의 잔액 조회
-    tx.dailyBalance.findUnique({
+    client.dailyBalance.findUnique({
       where: { userId_date: { userId, date: previousDateForDB } },
       select: { balance: true },
     }),
-    // 당일 수입 합계 (저축 제외)
-    tx.transaction.aggregate({
+    client.transaction.aggregate({
       where: { userId, date: { gte: startOfDay, lte: endOfDay }, type: 'INCOME', deletedAt: null, savingsGoalId: null },
       _sum: { amount: true },
     }),
-    // 당일 지출 합계 (저축 제외)
-    tx.transaction.aggregate({
+    client.transaction.aggregate({
       where: { userId, date: { gte: startOfDay, lte: endOfDay }, type: 'EXPENSE', deletedAt: null, savingsGoalId: null },
       _sum: { amount: true },
     }),
-    // 당일 저축 합계
-    tx.transaction.aggregate({
+    client.transaction.aggregate({
       where: { userId, date: { gte: startOfDay, lte: endOfDay }, deletedAt: null, savingsGoalId: { not: null } },
       _sum: { amount: true },
     }),
@@ -65,70 +62,32 @@ export async function updateDailyBalanceInTransaction(
   const savings = daySavingsAgg._sum.amount || 0;
   const balance = prevBalance + income - expense - savings;
 
-  await tx.dailyBalance.upsert({
-    where: {
-      userId_date: { userId, date: dateForDB },
-    },
+  await client.dailyBalance.upsert({
+    where: { userId_date: { userId, date: dateForDB } },
     update: { balance, income, expense, savings },
     create: { userId, date: dateForDB, balance, income, expense, savings },
   });
+
+  return { dateForDB, balance, savings };
+}
+
+/**
+ * 일별 잔액 업데이트 (Prisma 트랜잭션 내에서 사용)
+ */
+export async function updateDailyBalanceInTransaction(
+  tx: TransactionClient,
+  userId: string,
+  date: Date
+): Promise<void> {
+  await computeAndUpsertDailyBalance(tx, userId, date);
 }
 
 /**
  * 일별 잔액 업데이트 (독립적 호출용)
- * balance = 이전 날짜 잔액 + 당일 수입 - 당일 지출 - 당일 저축
  */
 export async function updateDailyBalance(userId: string, date: Date): Promise<void> {
   try {
-    // KST 기준 날짜 범위 계산
-    const { startOfDay, endOfDay, dateForDB } = getKSTDayRangeUTC(date);
-
-    // 이전 날짜 계산 (KST 기준)
-    const kstDate = toKST(date);
-    const previousDateForDB = new Date(Date.UTC(
-      kstDate.getUTCFullYear(),
-      kstDate.getUTCMonth(),
-      kstDate.getUTCDate() - 1
-    ));
-
-    // 병렬로 이전 잔액과 당일 집계 쿼리 실행
-    const [previousBalance, dayIncomeAgg, dayExpenseAgg, daySavingsAgg] = await Promise.all([
-      // 이전 날짜의 잔액 조회
-      prisma.dailyBalance.findUnique({
-        where: { userId_date: { userId, date: previousDateForDB } },
-        select: { balance: true },
-      }),
-      // 당일 수입 합계 (저축 제외)
-      prisma.transaction.aggregate({
-        where: { userId, date: { gte: startOfDay, lte: endOfDay }, type: 'INCOME', deletedAt: null, savingsGoalId: null },
-        _sum: { amount: true },
-      }),
-      // 당일 지출 합계 (저축 제외)
-      prisma.transaction.aggregate({
-        where: { userId, date: { gte: startOfDay, lte: endOfDay }, type: 'EXPENSE', deletedAt: null, savingsGoalId: null },
-        _sum: { amount: true },
-      }),
-      // 당일 저축 합계
-      prisma.transaction.aggregate({
-        where: { userId, date: { gte: startOfDay, lte: endOfDay }, deletedAt: null, savingsGoalId: { not: null } },
-        _sum: { amount: true },
-      }),
-    ]);
-
-    const prevBalance = previousBalance?.balance || 0;
-    const income = dayIncomeAgg._sum.amount || 0;
-    const expense = dayExpenseAgg._sum.amount || 0;
-    const savings = daySavingsAgg._sum.amount || 0;
-    const balance = prevBalance + income - expense - savings;
-
-    await prisma.dailyBalance.upsert({
-      where: {
-        userId_date: { userId, date: dateForDB },
-      },
-      update: { balance, income, expense, savings },
-      create: { userId, date: dateForDB, balance, income, expense, savings },
-    });
-
+    const { dateForDB, balance, savings } = await computeAndUpsertDailyBalance(prisma, userId, date);
     logger.debug(`Daily balance updated for ${dateForDB.toISOString().split('T')[0]}`, { balance, savings });
   } catch (error) {
     logger.error('Failed to update daily balance', error);
@@ -148,9 +107,7 @@ export async function saveDailyBalance(
   savings: number = 0
 ) {
   return prisma.dailyBalance.upsert({
-    where: {
-      userId_date: { userId, date },
-    },
+    where: { userId_date: { userId, date } },
     update: { balance, income, expense, savings },
     create: { userId, date, balance, income, expense, savings },
   });
@@ -158,23 +115,16 @@ export async function saveDailyBalance(
 
 /**
  * 최근 N일 일별 잔액 조회 (KST 기준)
- * 1. KST 오늘 날짜 계산
- * 2. DailyBalance에서 오늘 포함 최근 N일 조회
- *
- * 주의: toKST로 변환된 Date는 UTC 메서드를 사용해야 올바른 KST 값을 얻음
  */
 export async function getRecentDailyBalances(userId: string, days: number) {
-  // 1. KST 오늘 날짜 (UTC 메서드 사용)
   const kstNow = toKST(new Date());
   const kstYear = kstNow.getUTCFullYear();
   const kstMonth = kstNow.getUTCMonth();
   const kstDay = kstNow.getUTCDate();
 
-  // 2. 시작일과 종료일 (UTC 자정 기준 - @db.Date 타입용)
   const startDate = new Date(Date.UTC(kstYear, kstMonth, kstDay - days + 1));
   const endDate = new Date(Date.UTC(kstYear, kstMonth, kstDay));
 
-  // 3. 조회
   return prisma.dailyBalance.findMany({
     where: {
       userId,
@@ -188,115 +138,78 @@ export async function getRecentDailyBalances(userId: string, days: number) {
  * 특정 월의 일별 잔액 조회
  */
 export async function getMonthlyDailyBalances(userId: string, year: number, month: number) {
-  const startDate = new Date(year, month - 1, 1);
-  startDate.setHours(0, 0, 0, 0);
-
-  const endDate = new Date(year, month, 0);
-  endDate.setHours(23, 59, 59, 999);
-
-  const daysInMonth = endDate.getDate();
-
-  // 항상 거래 데이터로부터 계산 (타임존 정확성 보장)
   return calculateMonthlyDailyBalancesFromTransactions(userId, year, month);
 }
 
 /**
+ * 집계 결과를 일별 데이터에 매핑하는 헬퍼
+ */
+function mapGroupedToDaily(
+  grouped: { date: Date; _sum: { amount: number | null } }[],
+  dailyData: { [day: number]: { income: number; expense: number; savings: number } },
+  field: 'income' | 'expense' | 'savings'
+) {
+  grouped.forEach((item) => {
+    const day = getKSTDay(new Date(item.date));
+    if (dailyData[day]) {
+      dailyData[day][field] += item._sum.amount || 0;
+    }
+  });
+}
+
+/**
  * 거래 데이터로부터 특정 월의 일별 잔액 계산
- * balance = 이전 날짜 잔액 + 당일 수입 - 당일 지출 - 당일 저축
  */
 async function calculateMonthlyDailyBalancesFromTransactions(userId: string, year: number, month: number) {
   const { startDate, endDate } = getMonthRangeKST(year, month);
   const daysInMonth = getDaysInMonth(year, month);
 
-  // DB에서 일별로 그룹화하여 집계 + 이전 잔액 조회
   const [previousIncomeAgg, previousExpenseAgg, previousSavingsAgg, incomeGrouped, expenseGrouped, savingsGrouped] = await Promise.all([
-    // 해당 월 이전 수입 합계 (저축 제외)
     prisma.transaction.aggregate({
       where: { userId, date: { lt: startDate }, type: 'INCOME', savingsGoalId: null, deletedAt: null },
       _sum: { amount: true },
     }),
-    // 해당 월 이전 지출 합계 (저축 제외)
     prisma.transaction.aggregate({
       where: { userId, date: { lt: startDate }, type: 'EXPENSE', savingsGoalId: null, deletedAt: null },
       _sum: { amount: true },
     }),
-    // 해당 월 이전 저축 합계
     prisma.transaction.aggregate({
       where: { userId, date: { lt: startDate }, savingsGoalId: { not: null }, deletedAt: null },
       _sum: { amount: true },
     }),
-    // 수입 (저축 제외)
     prisma.transaction.groupBy({
       by: ['date'],
-      where: {
-        userId,
-        date: { gte: startDate, lte: endDate },
-        deletedAt: null,
-        type: 'INCOME',
-        savingsGoalId: null,
-      },
+      where: { userId, date: { gte: startDate, lte: endDate }, deletedAt: null, type: 'INCOME', savingsGoalId: null },
       _sum: { amount: true },
     }),
-    // 지출 (저축 제외)
     prisma.transaction.groupBy({
       by: ['date'],
-      where: {
-        userId,
-        date: { gte: startDate, lte: endDate },
-        deletedAt: null,
-        type: 'EXPENSE',
-        savingsGoalId: null,
-      },
+      where: { userId, date: { gte: startDate, lte: endDate }, deletedAt: null, type: 'EXPENSE', savingsGoalId: null },
       _sum: { amount: true },
     }),
-    // 저축
     prisma.transaction.groupBy({
       by: ['date'],
-      where: {
-        userId,
-        date: { gte: startDate, lte: endDate },
-        deletedAt: null,
-        savingsGoalId: { not: null },
-      },
+      where: { userId, date: { gte: startDate, lte: endDate }, deletedAt: null, savingsGoalId: { not: null } },
       _sum: { amount: true },
     }),
   ]);
 
-  // 이전 잔액 계산 (항상 거래 합계로 계산 - DailyBalance 체인이 깨질 수 있으므로)
-  const prevIncome = previousIncomeAgg._sum.amount || 0;
-  const prevExpense = previousExpenseAgg._sum.amount || 0;
-  const prevSavings = previousSavingsAgg._sum.amount || 0;
-  const initialBalance = prevIncome - prevExpense - prevSavings;
+  const initialBalance =
+    (previousIncomeAgg._sum.amount || 0) -
+    (previousExpenseAgg._sum.amount || 0) -
+    (previousSavingsAgg._sum.amount || 0);
 
-  // 일별 데이터 초기화
+  // 일별 데이터 초기화 및 매핑
   const dailyData: { [day: number]: { income: number; expense: number; savings: number } } = {};
   for (let day = 1; day <= daysInMonth; day++) {
     dailyData[day] = { income: 0, expense: 0, savings: 0 };
   }
 
-  // 집계 결과를 일별 데이터에 매핑
-  incomeGrouped.forEach((item) => {
-    const day = getKSTDay(new Date(item.date));
-    if (dailyData[day]) {
-      dailyData[day].income += item._sum.amount || 0;
-    }
-  });
+  mapGroupedToDaily(incomeGrouped, dailyData, 'income');
+  mapGroupedToDaily(expenseGrouped, dailyData, 'expense');
+  mapGroupedToDaily(savingsGrouped, dailyData, 'savings');
 
-  expenseGrouped.forEach((item) => {
-    const day = getKSTDay(new Date(item.date));
-    if (dailyData[day]) {
-      dailyData[day].expense += item._sum.amount || 0;
-    }
-  });
-
-  savingsGrouped.forEach((item) => {
-    const day = getKSTDay(new Date(item.date));
-    if (dailyData[day]) {
-      dailyData[day].savings += item._sum.amount || 0;
-    }
-  });
-
-  // 결과 생성 (이전 잔액부터 시작)
+  // 누적 잔액 계산
   const result: { date: Date; income: number; expense: number; savings: number; balance: number }[] = [];
   let cumulativeBalance = initialBalance;
 
@@ -316,54 +229,46 @@ async function calculateMonthlyDailyBalancesFromTransactions(userId: string, yea
 }
 
 /**
- * 거래 데이터로부터 일별 잔액 계산 (KST 기준)
+ * 거래 데이터로부터 일별 잔액 계산 (KST 기준, 최근 N일)
  */
 export async function calculateDailyBalancesFromTransactions(userId: string, days: number) {
   const { startDate, endDate } = getLastNDaysRange(days);
 
-  // 이전 날짜 계산 (기간 시작일 전날)
   const kstNow = toKST(new Date());
-  const previousDay = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate() - days);
-  previousDay.setHours(0, 0, 0, 0);
+  const previousDay = new Date(Date.UTC(
+    kstNow.getUTCFullYear(),
+    kstNow.getUTCMonth(),
+    kstNow.getUTCDate() - days
+  ));
 
-  // 기간 내 거래와 이전 잔액을 병렬로 조회
   const [transactions, previousDailyBalance] = await Promise.all([
-    // 기간 내 거래
     prisma.transaction.findMany({
-      where: {
-        userId,
-        date: { gte: startDate, lte: endDate },
-        deletedAt: null,
-      },
+      where: { userId, date: { gte: startDate, lte: endDate }, deletedAt: null },
       orderBy: { date: 'asc' },
     }),
-    // 이전 날짜의 DailyBalance 조회
     prisma.dailyBalance.findUnique({
       where: { userId_date: { userId, date: previousDay } },
       select: { balance: true },
     }),
   ]);
 
-  // 이전 잔액 (DailyBalance에서 가져옴)
   const previousBalance = previousDailyBalance?.balance || 0;
 
   // 일별 데이터 초기화 (KST 기준)
-  const dailyData: { [key: string]: { income: number; expense: number; savings: number; balance: number } } = {};
+  const dailyData: { [key: string]: { income: number; expense: number; savings: number } } = {};
 
   for (let i = days - 1; i >= 0; i--) {
-    const kstDate = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate() - i);
-    const dateKey = `${kstDate.getFullYear()}-${String(kstDate.getMonth() + 1).padStart(2, '0')}-${String(kstDate.getDate()).padStart(2, '0')}`;
-    dailyData[dateKey] = { income: 0, expense: 0, savings: 0, balance: 0 };
+    const d = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - i));
+    const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    dailyData[dateKey] = { income: 0, expense: 0, savings: 0 };
   }
 
-  // 거래 데이터로부터 일별 수입/지출/저축 계산 (KST 기준)
+  // 거래 데이터 → 일별 매핑
   transactions.forEach((transaction) => {
-    const txDate = new Date(transaction.date);
-    const kstDate = new Date(txDate.getTime() + KST_OFFSET_MS);
-    const dateKey = `${kstDate.getFullYear()}-${String(kstDate.getMonth() + 1).padStart(2, '0')}-${String(kstDate.getDate()).padStart(2, '0')}`;
+    const kstDate = new Date(new Date(transaction.date).getTime() + KST_OFFSET_MS);
+    const dateKey = `${kstDate.getUTCFullYear()}-${String(kstDate.getUTCMonth() + 1).padStart(2, '0')}-${String(kstDate.getUTCDate()).padStart(2, '0')}`;
     if (dailyData[dateKey]) {
       if (transaction.savingsGoalId) {
-        // 저축 거래
         dailyData[dateKey].savings += transaction.amount;
       } else if (transaction.type === 'INCOME') {
         dailyData[dateKey].income += transaction.amount;
@@ -373,7 +278,7 @@ export async function calculateDailyBalancesFromTransactions(userId: string, day
     }
   });
 
-  // 누적 잔액 계산 (이전 날짜 잔액부터 시작)
+  // 누적 잔액 계산
   let cumulativeBalance = previousBalance;
   return Object.keys(dailyData)
     .sort()

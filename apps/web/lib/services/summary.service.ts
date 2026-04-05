@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { getMonthRange } from '@/lib/date-utils';
+import { getMonthRangeKST } from '@/lib/date-utils';
 import { CATEGORY_WITH_BUDGET_SELECT } from '@/lib/prisma-selects';
 
 interface CategorySummary {
@@ -18,7 +18,7 @@ interface CategorySummary {
  */
 export async function getTransactionSummary(userId: string, year: number, month: number) {
   // 날짜 범위 설정
-  const { startDate, endDate } = getMonthRange(year, month);
+  const { startDate, endDate } = getMonthRangeKST(year, month);
 
   const whereClause = {
     userId,

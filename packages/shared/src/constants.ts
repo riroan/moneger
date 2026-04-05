@@ -26,6 +26,19 @@ export const CATEGORY_LIMITS = {
   MAX_PER_TYPE: 20,
 } as const;
 
+// Z-Index 계층
+export const Z_INDEX = {
+  MODAL_OVERLAY: 200,
+  MODAL_CONFIRM: 250,
+  DROPDOWN: 300,
+} as const;
+
+// 애니메이션
+export const ANIMATION = {
+  MODAL_FADE_IN: 'fadeIn_0.2s_ease-out',
+  MODAL_SLIDE_UP: 'fadeInUp_0.3s_ease-out',
+} as const;
+
 // 거래 유형
 export const TRANSACTION_TYPES = {
   INCOME: 'INCOME',
