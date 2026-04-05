@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { TransactionType, Prisma } from '@prisma/client';
 import { updateDailyBalanceInTransaction } from './daily-balance.service';
 import { CATEGORY_SELECT } from '@/lib/prisma-selects';
-import { getMonthRangeKST } from '@/lib/date-utils';
+import { getMonthRangeKST, getKSTDayStartUTC, getKSTDayEndUTC, getKSTDateParts } from '@/lib/date-utils';
 import { PAGINATION } from '@/lib/constants';
 
 interface CreateTransactionInput {
@@ -40,6 +40,14 @@ interface GetTransactionsInput {
   maxAmount?: number;
   savingsOnly?: boolean;
 }
+
+// 정렬 옵션 매핑 (모듈 레벨 상수)
+const TRANSACTION_ORDER_BY: Record<string, Prisma.TransactionOrderByWithRelationInput> = {
+  recent: { date: 'desc' },
+  oldest: { date: 'asc' },
+  expensive: { amount: 'desc' },
+  cheapest: { amount: 'asc' },
+};
 
 /**
  * 거래 생성
@@ -165,37 +173,35 @@ export async function findTransaction(id: string, userId: string) {
 }
 
 /**
- * 거래 목록 조회 (페이지네이션)
+ * 거래 필터 WHERE 절 빌드
  */
-export async function getTransactions(input: GetTransactionsInput) {
-  const { userId, year, month, type, categoryIds, search, sort = 'recent', cursor, limit = PAGINATION.DEFAULT_LIMIT } = input;
-
-  // 필터 조건
+function buildTransactionWhere(input: GetTransactionsInput): Prisma.TransactionWhereInput {
+  const { userId, year, month, type, categoryIds, search } = input;
   const where: Prisma.TransactionWhereInput = { userId, deletedAt: null };
 
-  // 날짜 범위 필터 (startYear, startMonth ~ endYear, endMonth)
+  // 날짜 범위 필터
   if (input.startYear !== undefined && input.startMonth !== undefined &&
       input.endYear !== undefined && input.endMonth !== undefined) {
     const startDate = new Date(input.startYear, input.startMonth - 1, 1);
     const endDate = new Date(input.endYear, input.endMonth, 0, 23, 59, 59, 999);
     where.date = { gte: startDate, lte: endDate };
   } else if (year && month) {
-    // 기존 단일 월 필터 (KST 기준)
     const { startDate, endDate } = getMonthRangeKST(year, month);
     where.date = { gte: startDate, lte: endDate };
   }
 
+  // 타입 필터
   if (type) {
     where.type = type;
-    // 지출 필터 시 저축 거래 제외
     if (type === 'EXPENSE') {
       where.savingsGoalId = null;
     }
   }
+
   if (categoryIds?.length) where.categoryId = { in: categoryIds };
   if (search) where.description = { contains: search, mode: 'insensitive' };
 
-  // 저축 전용 필터 (savingsGoalId가 있는 거래만)
+  // 저축 전용 필터
   if (input.savingsOnly) {
     where.savingsGoalId = { not: null };
   } else {
@@ -205,24 +211,22 @@ export async function getTransactions(input: GetTransactionsInput) {
   // 금액 범위 필터
   if (input.minAmount !== undefined || input.maxAmount !== undefined) {
     where.amount = {};
-    if (input.minAmount !== undefined) {
-      where.amount.gte = input.minAmount;
-    }
-    if (input.maxAmount !== undefined) {
-      where.amount.lte = input.maxAmount;
-    }
+    if (input.minAmount !== undefined) where.amount.gte = input.minAmount;
+    if (input.maxAmount !== undefined) where.amount.lte = input.maxAmount;
   }
 
-  // 정렬
-  const orderByMap: Record<string, Prisma.TransactionOrderByWithRelationInput> = {
-    recent: { date: 'desc' },
-    oldest: { date: 'asc' },
-    expensive: { amount: 'desc' },
-    cheapest: { amount: 'asc' },
-  };
-  const orderBy = orderByMap[sort];
+  return where;
+}
 
-  // 쿼리 옵션
+/**
+ * 거래 목록 조회 (페이지네이션)
+ */
+export async function getTransactions(input: GetTransactionsInput) {
+  const { sort = 'recent', cursor, limit = PAGINATION.DEFAULT_LIMIT } = input;
+
+  const where = buildTransactionWhere(input);
+  const orderBy = TRANSACTION_ORDER_BY[sort];
+
   const queryOptions: Prisma.TransactionFindManyArgs = {
     where,
     include: { category: { select: CATEGORY_SELECT } },
@@ -275,4 +279,51 @@ export async function validateCategory(categoryId: string, userId: string, type:
   return prisma.category.findFirst({
     where: { id: categoryId, userId, type, deletedAt: null },
   });
+}
+
+/**
+ * 오늘의 거래 요약 조회 (KST 기준)
+ */
+export async function getTodaySummary(userId: string) {
+  const now = new Date();
+  const startOfDay = getKSTDayStartUTC(now);
+  const endOfDay = getKSTDayEndUTC(now);
+  const kstToday = getKSTDateParts(now);
+
+  const baseWhere = { userId, deletedAt: null, date: { gte: startOfDay, lte: endOfDay } };
+
+  const [expenseAgg, incomeAgg, savingsAgg, expenseCount, incomeCount, savingsCount] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: { ...baseWhere, type: 'EXPENSE', savingsGoalId: null },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { ...baseWhere, type: 'INCOME' },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { ...baseWhere, savingsGoalId: { not: null } },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.count({
+      where: { ...baseWhere, type: 'EXPENSE', savingsGoalId: null },
+    }),
+    prisma.transaction.count({
+      where: { ...baseWhere, type: 'INCOME' },
+    }),
+    prisma.transaction.count({
+      where: { ...baseWhere, savingsGoalId: { not: null } },
+    }),
+  ]);
+
+  return {
+    date: now.toISOString(),
+    year: kstToday.year,
+    month: kstToday.month,
+    day: kstToday.day,
+    dayOfWeek: kstToday.dayOfWeek,
+    expense: { total: expenseAgg._sum.amount || 0, count: expenseCount },
+    income: { total: incomeAgg._sum.amount || 0, count: incomeCount },
+    savings: { total: savingsAgg._sum.amount || 0, count: savingsCount },
+  };
 }

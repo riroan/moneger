@@ -105,3 +105,85 @@ export async function depositToSavingsGoal(
 
   return { updatedGoal, transaction };
 }
+
+/**
+ * 활성 저축 목표 목록 + 진행률 조회
+ */
+export async function getActiveSavingsGoalsWithProgress(userId: string) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  // 목표일이 지나지 않은 목표만 조회
+  const activeGoals = await prisma.savingsGoal.findMany({
+    where: {
+      userId,
+      deletedAt: null,
+      OR: [
+        { targetYear: { gt: currentYear } },
+        { targetYear: currentYear, targetMonth: { gte: currentMonth } },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // 이번 달 저축 금액 조회
+  const thisMonthStart = new Date(currentYear, currentMonth - 1, 1);
+  const thisMonthEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+
+  const goalIds = activeGoals.map((goal) => goal.id);
+  const thisMonthTransactions = await prisma.transaction.groupBy({
+    by: ['savingsGoalId'],
+    where: {
+      savingsGoalId: { in: goalIds },
+      date: { gte: thisMonthStart, lte: thisMonthEnd },
+      deletedAt: null,
+    },
+    _sum: { amount: true },
+  });
+
+  const thisMonthSavingsMap = new Map<string, number>();
+  thisMonthTransactions.forEach((t) => {
+    if (t.savingsGoalId) {
+      thisMonthSavingsMap.set(t.savingsGoalId, t._sum.amount || 0);
+    }
+  });
+
+  // 진행률 및 월별 필요 금액 계산
+  return activeGoals.map((goal) => {
+    const startYear = goal.startYear ?? new Date(goal.createdAt).getFullYear();
+    const startMonth = goal.startMonth ?? (new Date(goal.createdAt).getMonth() + 1);
+    const targetDate = new Date(goal.targetYear, goal.targetMonth - 1, 1);
+    const startDate = new Date(startYear, startMonth - 1, 1);
+    const totalMonths = Math.max(
+      1,
+      (targetDate.getFullYear() - startDate.getFullYear()) * 12 + (targetDate.getMonth() - startDate.getMonth()) + 1
+    );
+
+    const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
+    const monthlyTarget = Math.ceil(remainingAmount / totalMonths);
+    const thisMonthSavings = thisMonthSavingsMap.get(goal.id) || 0;
+    const monthlyRequired = Math.max(0, monthlyTarget - thisMonthSavings);
+    const progressPercent = goal.targetAmount > 0
+      ? Math.round((goal.currentAmount / goal.targetAmount) * 100)
+      : 0;
+
+    return {
+      id: goal.id,
+      name: goal.name,
+      icon: goal.icon,
+      targetDate: `${goal.targetYear}년 ${goal.targetMonth}월 목표`,
+      currentAmount: goal.currentAmount,
+      targetAmount: goal.targetAmount,
+      progressPercent,
+      monthlyRequired,
+      monthlyTarget,
+      thisMonthSavings,
+      startYear,
+      startMonth,
+      targetYear: goal.targetYear,
+      targetMonth: goal.targetMonth,
+      isPrimary: goal.isPrimary,
+    };
+  });
+}
