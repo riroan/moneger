@@ -760,7 +760,7 @@ const LandingPage = () => {
                   <div style={{ fontSize: '20px', fontWeight: 700 }}>{feature.prefix}{feature.stat}</div>
                   <div style={{ fontSize: '10px', color: theme.textVeryMuted, transition: 'color 0.3s ease' }}>{feature.statLabel}</div>
                 </div>
-                <h3 style={{ fontWeight: 600, marginBottom: '8px' }}>{feature.title}</h3>
+                <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>{feature.title}</h3>
                 <p style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.5, transition: 'color 0.3s ease' }}>{feature.description}</p>
                 {/* 색상 밑줄 */}
                 <div style={{ ...styles.statCardLine, background: `linear-gradient(90deg, ${feature.underlineColor}, ${feature.underlineColor}80)` }} />
