@@ -66,7 +66,6 @@ export default function DashboardTab({
   const [chartViewMode, setChartViewMode] = useState<ChartViewMode>('category');
   const [calendarData, setCalendarData] = useState<DailyBalanceData[]>([]);
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
-  const [calendarDataLoaded, setCalendarDataLoaded] = useState(false);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
@@ -76,35 +75,35 @@ export default function DashboardTab({
     dailyCalendarViewImport();
   }, []);
 
-  // 달력 데이터 백그라운드 프리페치 (대시보드 로드 시)
+  // 달력 데이터 프리페치 (월 변경 시 자동 갱신)
   useEffect(() => {
-    if (userId && !calendarDataLoaded) {
-      // 달력 뷰가 선택되면 로딩 표시, 아니면 백그라운드에서 조용히 로드
-      if (chartViewMode === 'calendar') {
-        setIsLoadingCalendar(true);
-      }
-      fetch(`/api/daily-balance?userId=${userId}&year=${year}&month=${month}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.data) {
-            setCalendarData(
-              data.data.map((d: { date: string; income: number; expense: number; savings: number; balance: number }) => ({
-                ...d,
-                date: new Date(d.date),
-              }))
-            );
-            setCalendarDataLoaded(true);
-          }
-        })
-        .catch(console.error)
-        .finally(() => setIsLoadingCalendar(false));
-    }
-  }, [userId, year, month, calendarDataLoaded, chartViewMode]);
+    if (!userId) return;
 
-  // 월 변경 시 캐시 초기화
-  useEffect(() => {
-    setCalendarDataLoaded(false);
-  }, [year, month]);
+    let cancelled = false;
+    const showLoading = chartViewMode === 'calendar';
+    if (showLoading) setIsLoadingCalendar(true);
+
+    fetch(`/api/daily-balance?userId=${userId}&year=${year}&month=${month}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data.data) {
+          setCalendarData(
+            data.data.map((d: { date: string; income: number; expense: number; savings: number; balance: number }) => ({
+              ...d,
+              date: new Date(d.date),
+            }))
+          );
+        }
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (!cancelled) setIsLoadingCalendar(false);
+      });
+
+    return () => { cancelled = true; };
+    // chartViewMode는 fetch 트리거가 아닌 로딩 표시 여부만 결정하므로 의존성에서 제외
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, year, month]);
 
   const totalIncome = summary?.summary?.totalIncome || 0;
   const totalExpense = summary?.summary?.totalExpense || 0;

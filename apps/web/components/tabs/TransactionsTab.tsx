@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useMemo } from 'react';
-import { useAuthStore, useTransactionStore, useCategoryStore } from '@/stores';
+import { useAuthStore, useTransactionStore, useCategoryStore, useModalStore } from '@/stores';
 import { useTransactions } from '@/hooks/useTransactions';
 import FilterPanel from '@/components/transactions/FilterPanel';
 import TransactionList from '@/components/transactions/TransactionList';
@@ -34,6 +34,7 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
     oldestTransactionDate,
   } = useTransactionStore();
 
+  const transactionVersion = useModalStore((state) => state.transactionVersion);
   const transactionsEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -69,6 +70,13 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
     observer.observe(transactionsEndRef.current);
     return () => observer.disconnect();
   }, [hasMoreTransactions, isLoadingAllTransactions, loadMoreTransactions]);
+
+  // 거래 변경 시 자동 갱신
+  useEffect(() => {
+    if (transactionVersion > 0) {
+      refreshAllTransactions();
+    }
+  }, [transactionVersion, refreshAllTransactions]);
 
   // Summary calculation
   const allTransactionsSummary = useMemo(() => {

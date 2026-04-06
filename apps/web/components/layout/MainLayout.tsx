@@ -3,11 +3,9 @@
 import { useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { useAuthStore, useAppStore, useModalStore, useCategoryStore } from '@/stores';
+import { useAuthStore, useAppStore, useModalStore, useCategoryStore, useTransactionStore } from '@/stores';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useTransactionHandlers } from '@/hooks/useTransactionHandlers';
-import { useTransactions } from '@/hooks/useTransactions';
-import { useTransactionStore } from '@/stores';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import FAB from '@/components/layout/FAB';
@@ -31,9 +29,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   // App store
   const { currentDate, goToPreviousMonth, goToNextMonth, goToMonth, setIsMobile } = useAppStore();
 
-  // Transaction store
-  const { oldestTransactionDate, filterType, filterCategories, searchKeyword, sortOrder, dateRange, amountRange } =
-    useTransactionStore();
+  // Transaction store (Header용 최소 데이터만)
+  const oldestTransactionDate = useTransactionStore((state) => state.oldestTransactionDate);
 
   // Modal store
   const {
@@ -53,21 +50,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
   // Hooks
   const { refreshData } = useDashboardData();
 
-  const { refresh: refreshAllTransactions } = useTransactions({
-    userId,
-    filterType,
-    filterCategories,
-    searchKeyword,
-    sortOrder,
-    activeTab: pathname === '/transactions' ? 'transactions' : 'dashboard',
-    dateRange,
-    amountRange,
-  });
-
   const { handleSubmitTransaction, handleEditTransaction, handleDeleteTransaction, handleDeleteSavingsTransaction } =
     useTransactionHandlers({
       onSuccess: refreshData,
-      onAllTransactionsRefresh: pathname === '/transactions' ? refreshAllTransactions : undefined,
     });
 
   // Initialize auth on mount

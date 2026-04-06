@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { formatNumber } from '@/utils/formatters';
@@ -209,14 +209,20 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
   };
 
   const canAddGroup = groups.length < MAX_GROUPS;
-  const totalExpense = groups.reduce((sum, g) => sum + g.totalExpense, 0);
-  const totalIncome = groups.reduce((sum, g) => sum + g.totalIncome, 0);
 
-  const getIconComponent = (iconName: string | null) => {
+  const { totalExpense, totalIncome, totalTransactions, totalIncomeCount, totalExpenseCount } = useMemo(() => ({
+    totalExpense: groups.reduce((sum, g) => sum + g.totalExpense, 0),
+    totalIncome: groups.reduce((sum, g) => sum + g.totalIncome, 0),
+    totalTransactions: groups.reduce((sum, g) => sum + g.transactionCount, 0),
+    totalIncomeCount: groups.reduce((sum, g) => sum + g.incomeCount, 0),
+    totalExpenseCount: groups.reduce((sum, g) => sum + g.expenseCount, 0),
+  }), [groups]);
+
+  const getIconComponent = useCallback((iconName: string | null) => {
     return GROUP_ICON_MAP[iconName || 'folder'] || MdFolder;
-  };
+  }, []);
 
-  const selectedGroup = groups.find((g) => g.id === selectedGroupId);
+  const selectedGroup = useMemo(() => groups.find((g) => g.id === selectedGroupId), [groups, selectedGroupId]);
 
   return (
     <div className="animate-[fadeIn_0.5s_ease-out]">
@@ -228,7 +234,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
             {groups.length}<span className="text-base sm:text-lg text-text-muted font-normal">개</span>
           </p>
           <p className="text-xs text-text-muted mt-1">
-            총 {groups.reduce((sum, g) => sum + g.transactionCount, 0)}건의 거래
+            총 {totalTransactions}건의 거래
           </p>
         </div>
 
@@ -238,7 +244,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
             <span className="mr-0.5">₩</span>{formatNumber(totalIncome)}
           </p>
           <p className="text-xs text-text-muted mt-1">
-            {groups.reduce((sum, g) => sum + g.incomeCount, 0)}건
+            {totalIncomeCount}건
           </p>
         </div>
 
@@ -248,7 +254,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
             <span className="mr-0.5">₩</span>{formatNumber(totalExpense)}
           </p>
           <p className="text-xs text-text-muted mt-1">
-            {groups.reduce((sum, g) => sum + g.expenseCount, 0)}건
+            {totalExpenseCount}건
           </p>
         </div>
 
@@ -258,7 +264,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
             {totalIncome - totalExpense >= 0 ? '+' : '-'}<span className="mr-0.5">₩</span>{formatNumber(Math.abs(totalIncome - totalExpense))}
           </p>
           <p className="text-xs text-text-muted mt-1">
-            {groups.reduce((sum, g) => sum + g.transactionCount, 0)}건
+            {totalTransactions}건
           </p>
         </div>
       </div>

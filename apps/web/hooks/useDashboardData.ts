@@ -6,30 +6,19 @@ import { useAuthStore, useAppStore, useTransactionStore, useCategoryStore } from
 export function useDashboardData() {
   const userId = useAuthStore((state) => state.userId);
   const currentDate = useAppStore((state) => state.currentDate);
-
-  const {
-    setRecentTransactions,
-    setSummary,
-    setTodaySummary,
-    setLastMonthBalance,
-    setOldestTransactionDate,
-    setIsLoadingTransactions,
-    setIsLoadingSummary,
-    setIsLoadingTodaySummary,
-  } = useTransactionStore();
-
-  const { fetchCategories } = useCategoryStore();
+  const fetchCategories = useCategoryStore((state) => state.fetchCategories);
 
   // Initial data loading
   useEffect(() => {
     if (!userId) return;
 
-    const fetchInitialData = async () => {
-      setIsLoadingTransactions(true);
-      setIsLoadingTodaySummary(true);
+    const store = useTransactionStore.getState();
+    store.setIsLoadingTransactions(true);
+    store.setIsLoadingTodaySummary(true);
 
+    const fetchInitialData = async () => {
       try {
-        const [categoriesPromise, oldestDateRes, recentRes, todayRes] = await Promise.all([
+        const [, oldestDateRes, recentRes, todayRes] = await Promise.all([
           fetchCategories(userId),
           fetch(`/api/transactions/oldest-date?userId=${userId}`),
           fetch(`/api/transactions/recent?userId=${userId}&limit=10`),
@@ -42,38 +31,40 @@ export function useDashboardData() {
           todayRes.json(),
         ]);
 
+        const s = useTransactionStore.getState();
         if (oldestDateData.success && oldestDateData.data.year && oldestDateData.data.month) {
-          setOldestTransactionDate({
+          s.setOldestTransactionDate({
             year: oldestDateData.data.year,
             month: oldestDateData.data.month,
           });
         }
 
         if (recentData.success) {
-          setRecentTransactions(recentData.data);
+          s.setRecentTransactions(recentData.data);
         }
 
         if (todayData.success) {
-          setTodaySummary(todayData.data);
+          s.setTodaySummary(todayData.data);
         }
       } catch (error) {
         console.error('Failed to fetch initial data:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
-        setIsLoadingTransactions(false);
-        setIsLoadingTodaySummary(false);
+        const s = useTransactionStore.getState();
+        s.setIsLoadingTransactions(false);
+        s.setIsLoadingTodaySummary(false);
       }
     };
 
     fetchInitialData();
-  }, [userId, fetchCategories, setRecentTransactions, setTodaySummary, setOldestTransactionDate, setIsLoadingTransactions, setIsLoadingTodaySummary]);
+  }, [userId, fetchCategories]);
 
   // Summary data loading (when month changes)
   useEffect(() => {
     if (!userId) return;
 
-    const fetchSummary = async () => {
-      setIsLoadingSummary(true);
+    useTransactionStore.getState().setIsLoadingSummary(true);
 
+    const fetchSummary = async () => {
       try {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth() + 1;
@@ -90,22 +81,23 @@ export function useDashboardData() {
           lastRes.json(),
         ]);
 
+        const s = useTransactionStore.getState();
         if (currentData.success) {
-          setSummary(currentData.data);
+          s.setSummary(currentData.data);
         }
 
         if (lastData.success) {
-          setLastMonthBalance(lastData.data.summary.balance || 0);
+          s.setLastMonthBalance(lastData.data.summary.balance || 0);
         }
       } catch (error) {
         console.error('Failed to fetch summary:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
-        setIsLoadingSummary(false);
+        useTransactionStore.getState().setIsLoadingSummary(false);
       }
     };
 
     fetchSummary();
-  }, [userId, currentDate, setSummary, setLastMonthBalance, setIsLoadingSummary]);
+  }, [userId, currentDate]);
 
   // Refresh data function
   const refreshData = useCallback(async () => {
@@ -126,18 +118,19 @@ export function useDashboardData() {
       todayRes.json(),
     ]);
 
+    const s = useTransactionStore.getState();
     if (recentData.success) {
-      setRecentTransactions(recentData.data);
+      s.setRecentTransactions(recentData.data);
     }
 
     if (summaryData.success) {
-      setSummary(summaryData.data);
+      s.setSummary(summaryData.data);
     }
 
     if (todayData.success) {
-      setTodaySummary(todayData.data);
+      s.setTodaySummary(todayData.data);
     }
-  }, [userId, currentDate, setRecentTransactions, setSummary, setTodaySummary]);
+  }, [userId, currentDate]);
 
   return { refreshData };
 }

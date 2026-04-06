@@ -69,6 +69,7 @@ model Transaction {
 
   @@index([userId, type])
   @@index([userId, deletedAt, date])
+  @@index([userId, date, type])
   @@index([savingsGoalId])
   @@index([groupId])
 }
@@ -144,6 +145,7 @@ model TransactionGroup {
 
   @@unique([userId, name])
   @@index([userId, deletedAt])
+  @@index([userId, createdAt])
 }
 
 enum TransactionType {
