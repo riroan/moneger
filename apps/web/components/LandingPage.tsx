@@ -785,9 +785,9 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              <h2 style={{ fontSize: '32px', fontWeight: 700, marginBottom: '16px' }}>지금 바로 시작하세요</h2>
+              <h2 style={{ fontSize: '32px', fontWeight: 700, marginBottom: '16px' }}>내 돈의 흐름을 한눈에</h2>
               <p style={{ color: theme.textMuted, marginBottom: '32px', maxWidth: '400px', margin: '0 auto 32px', transition: 'color 0.3s ease' }}>
-                간단한 회원가입 후 모든 기능을 무료로 이용하세요.
+                30초 회원가입. 카드 등록 없이 무료로 시작하세요.
               </p>
 
               <Link href="/login" style={{ ...styles.primaryButton, display: 'inline-flex' }}>
