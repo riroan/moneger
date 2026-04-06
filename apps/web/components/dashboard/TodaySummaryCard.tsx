@@ -137,7 +137,8 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
       {/* 거래 없음 메시지 */}
       {!hasExpense && !hasIncome && !hasSavings && (
         <div className="text-center text-text-muted text-xs sm:text-sm mt-2">
-          오늘 거래 내역이 없습니다
+          오늘 거래 내역이 없습니다<br />
+          <span className="text-[10px] sm:text-xs">+ 버튼으로 내역을 추가해보세요</span>
         </div>
       )}
     </div>
