@@ -377,18 +377,21 @@ const LandingPage = () => {
     },
     featureGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(4, 1fr)',
+      gridTemplateColumns: 'repeat(2, 1fr)',
       gap: '16px',
     },
     featureCard: {
       background: `linear-gradient(145deg, ${theme.bgCard}, ${theme.bgCardAlt})`,
       border: `1px solid ${theme.border}`,
       borderRadius: '20px',
-      padding: '20px',
+      padding: '24px',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
       position: 'relative' as const,
       overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: '20px',
     },
     footer: {
       borderTop: `1px solid ${theme.border}`,
@@ -753,15 +756,14 @@ const LandingPage = () => {
                 }}
                 onMouseEnter={() => setActiveFeature(idx)}
               >
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', backgroundColor: feature.iconBgColor, color: feature.iconColor }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: feature.iconBgColor, color: feature.iconColor }}>
                   {feature.icon}
                 </div>
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '20px', fontWeight: 700 }}>{feature.prefix}{feature.stat}</div>
-                  <div style={{ fontSize: '10px', color: theme.textVeryMuted, transition: 'color 0.3s ease' }}>{feature.statLabel}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '4px' }}>{feature.title}</h3>
+                  <div style={{ fontSize: '22px', fontWeight: 700, marginBottom: '6px' }}>{feature.prefix}{feature.stat}</div>
+                  <p style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.5, transition: 'color 0.3s ease' }}>{feature.description}</p>
                 </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>{feature.title}</h3>
-                <p style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.5, transition: 'color 0.3s ease' }}>{feature.description}</p>
                 {/* 색상 밑줄 */}
                 <div style={{ ...styles.statCardLine, background: `linear-gradient(90deg, ${feature.underlineColor}, ${feature.underlineColor}80)` }} />
               </div>
