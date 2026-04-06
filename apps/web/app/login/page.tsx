@@ -238,6 +238,7 @@ export default function LoginPage() {
             alt="MONEGER"
             width={64}
             height={64}
+            loading="eager"
             className="w-12 h-12 sm:w-16 sm:h-16 rounded-[12px] sm:rounded-[18px] shadow-[0_8px_32px_var(--glow-mint)]"
           />
         </div>

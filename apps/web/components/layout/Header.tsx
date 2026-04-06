@@ -116,6 +116,7 @@ export default function Header({
           alt="MONEGER"
           width={48}
           height={48}
+          loading="eager"
           className="w-10 h-10 sm:w-12 sm:h-12 rounded-[12px] sm:rounded-[14px] shadow-[0_8px_32px_var(--glow-mint)]"
         />
         <span className="hidden sm:block text-xl sm:text-2xl font-bold bg-gradient-to-br from-text-primary to-text-secondary bg-clip-text text-transparent tracking-tight">
