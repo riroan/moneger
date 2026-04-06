@@ -1,16 +1,13 @@
 import { NextRequest } from 'next/server';
 import { PUT, PATCH, DELETE } from '../[id]/route';
-import { prisma } from '@/lib/prisma';
+import * as savingsService from '@/lib/services/savings.service';
 
-// Prisma mock
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    savingsGoal: {
-      findFirst: jest.fn(),
-      update: jest.fn(),
-      updateMany: jest.fn(),
-    },
-  },
+// Mock savings service
+jest.mock('@/lib/services/savings.service', () => ({
+  findSavingsGoal: jest.fn(),
+  updateSavingsGoalWithPrimary: jest.fn(),
+  togglePrimarySavingsGoal: jest.fn(),
+  deleteSavingsGoal: jest.fn(),
 }));
 
 describe('PUT /api/savings/[id]', () => {
@@ -32,8 +29,8 @@ describe('PUT /api/savings/[id]', () => {
       targetAmount: 3000000,
     };
 
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(existingGoal);
-    (prisma.savingsGoal.update as jest.Mock).mockResolvedValue(updatedGoal);
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(existingGoal);
+    (savingsService.updateSavingsGoalWithPrimary as jest.Mock).mockResolvedValue(updatedGoal);
 
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'PUT',
@@ -52,12 +49,11 @@ describe('PUT /api/savings/[id]', () => {
     expect(data.data.name).toBe('수정된 목표');
   });
 
-  it('대표 목표로 설정하면 다른 목표들의 isPrimary를 false로 변경해야 함', async () => {
+  it('대표 목표로 설정하면 서비스에 isPrimary를 전달해야 함', async () => {
     const existingGoal = { id: 'savings-1', userId: 'user-1' };
 
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(existingGoal);
-    (prisma.savingsGoal.updateMany as jest.Mock).mockResolvedValue({ count: 2 });
-    (prisma.savingsGoal.update as jest.Mock).mockResolvedValue({ ...existingGoal, isPrimary: true });
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(existingGoal);
+    (savingsService.updateSavingsGoalWithPrimary as jest.Mock).mockResolvedValue({ ...existingGoal, isPrimary: true });
 
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'PUT',
@@ -69,14 +65,15 @@ describe('PUT /api/savings/[id]', () => {
 
     await PUT(request, { params: mockParams });
 
-    expect(prisma.savingsGoal.updateMany).toHaveBeenCalledWith({
-      where: { userId: 'user-1', deletedAt: null, id: { not: 'savings-1' } },
-      data: { isPrimary: false },
-    });
+    expect(savingsService.updateSavingsGoalWithPrimary).toHaveBeenCalledWith(
+      'savings-1',
+      'user-1',
+      expect.objectContaining({ isPrimary: true }),
+    );
   });
 
   it('존재하지 않는 저축 목표는 404 에러를 반환해야 함', async () => {
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(null);
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/savings/invalid-id', {
       method: 'PUT',
@@ -117,9 +114,8 @@ describe('PATCH /api/savings/[id]', () => {
   it('대표 저축 목표를 설정해야 함', async () => {
     const existingGoal = { id: 'savings-1', userId: 'user-1', isPrimary: false };
 
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(existingGoal);
-    (prisma.savingsGoal.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
-    (prisma.savingsGoal.update as jest.Mock).mockResolvedValue({ ...existingGoal, isPrimary: true });
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(existingGoal);
+    (savingsService.togglePrimarySavingsGoal as jest.Mock).mockResolvedValue({ ...existingGoal, isPrimary: true });
 
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'PATCH',
@@ -134,14 +130,14 @@ describe('PATCH /api/savings/[id]', () => {
 
     expect(response.status).toBe(200);
     expect(data.data.isPrimary).toBe(true);
-    expect(prisma.savingsGoal.updateMany).toHaveBeenCalled();
+    expect(savingsService.togglePrimarySavingsGoal).toHaveBeenCalledWith('savings-1', 'user-1', true);
   });
 
   it('대표 저축 목표를 해제해야 함', async () => {
     const existingGoal = { id: 'savings-1', userId: 'user-1', isPrimary: true };
 
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(existingGoal);
-    (prisma.savingsGoal.update as jest.Mock).mockResolvedValue({ ...existingGoal, isPrimary: false });
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(existingGoal);
+    (savingsService.togglePrimarySavingsGoal as jest.Mock).mockResolvedValue({ ...existingGoal, isPrimary: false });
 
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'PATCH',
@@ -156,11 +152,10 @@ describe('PATCH /api/savings/[id]', () => {
 
     expect(response.status).toBe(200);
     expect(data.data.isPrimary).toBe(false);
-    expect(prisma.savingsGoal.updateMany).not.toHaveBeenCalled();
   });
 
   it('존재하지 않는 저축 목표는 404 에러를 반환해야 함', async () => {
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(null);
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/savings/invalid-id', {
       method: 'PATCH',
@@ -187,8 +182,8 @@ describe('DELETE /api/savings/[id]', () => {
   it('저축 목표를 소프트 삭제해야 함', async () => {
     const existingGoal = { id: 'savings-1', userId: 'user-1' };
 
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(existingGoal);
-    (prisma.savingsGoal.update as jest.Mock).mockResolvedValue({ ...existingGoal, deletedAt: new Date() });
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(existingGoal);
+    (savingsService.deleteSavingsGoal as jest.Mock).mockResolvedValue({ ...existingGoal, deletedAt: new Date() });
 
     const url = new URL('http://localhost:3000/api/savings/savings-1');
     url.searchParams.set('userId', 'user-1');
@@ -200,14 +195,11 @@ describe('DELETE /api/savings/[id]', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(prisma.savingsGoal.update).toHaveBeenCalledWith({
-      where: { id: 'savings-1' },
-      data: { deletedAt: expect.any(Date) },
-    });
+    expect(savingsService.deleteSavingsGoal).toHaveBeenCalledWith('savings-1');
   });
 
   it('존재하지 않는 저축 목표는 404 에러를 반환해야 함', async () => {
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(null);
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(null);
 
     const url = new URL('http://localhost:3000/api/savings/invalid-id');
     url.searchParams.set('userId', 'user-1');
@@ -234,7 +226,7 @@ describe('DELETE /api/savings/[id]', () => {
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
-    (prisma.savingsGoal.findFirst as jest.Mock).mockRejectedValue(new Error('Database error'));
+    (savingsService.findSavingsGoal as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/savings/savings-1');
     url.searchParams.set('userId', 'user-1');

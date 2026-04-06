@@ -60,10 +60,10 @@ const mockTodaySummary = {
 const mockSummary = {
   success: true,
   data: {
-    summary: { totalIncome: 100000, totalExpense: 50000, netAmount: 50000, balance: 50000 },
+    summary: { totalIncome: 100000, totalExpense: 50000, totalSavings: 0, netAmount: 50000, balance: 50000, carryOverBalance: 0 },
     categories: [],
     budget: { amount: 200000, used: 50000, remaining: 150000, usagePercent: 25 },
-    transactionCount: { income: 1, expense: 2 },
+    transactionCount: { income: 1, expense: 2, total: 3 },
     savings: { totalAmount: 0, count: 0, targetAmount: 0, primaryGoal: null },
   },
 };
@@ -144,7 +144,7 @@ describe('HomePage', () => {
 
     await waitFor(() => {
       // Header의 logo가 포함되어 있어야 함 (alt="MONEGER")
-      expect(screen.getByAltText('MONEGER')).toBeInTheDocument();
+      expect(screen.getAllByAltText('MONEGER').length).toBeGreaterThan(0);
     }, { timeout: 3000 });
   }, 10000);
 
@@ -184,7 +184,7 @@ describe('HomePage', () => {
     await waitFor(() => {
       // 로그인 상태이므로 MainLayout이 렌더링되어야 함
       // Header의 logo가 포함되어 있어야 함 (alt="MONEGER")
-      expect(screen.getByAltText('MONEGER')).toBeInTheDocument();
+      expect(screen.getAllByAltText('MONEGER').length).toBeGreaterThan(0);
     }, { timeout: 3000 });
   });
 });

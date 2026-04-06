@@ -8,8 +8,13 @@ jest.mock('@/lib/prisma', () => ({
     budget: {
       findMany: jest.fn(),
       upsert: jest.fn(),
+      create: jest.fn(),
       updateMany: jest.fn(),
     },
+    category: {
+      findMany: jest.fn(),
+    },
+    $transaction: jest.fn(),
   },
 }));
 
@@ -31,6 +36,7 @@ describe('GET /api/budgets', () => {
     ];
 
     (prisma.budget.findMany as jest.Mock).mockResolvedValue(mockBudgets);
+    (prisma.category.findMany as jest.Mock).mockResolvedValue([]);
 
     const url = new URL('http://localhost:3000/api/budgets');
     url.searchParams.set('userId', 'user-1');

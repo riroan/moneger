@@ -11,21 +11,32 @@ jest.mock('next/navigation', () => ({
 // Mock fetch
 const mockFetch = global.fetch as jest.Mock;
 
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: jest.fn((key: string) => store[key] ?? null),
+    setItem: jest.fn((key: string, value: string) => { store[key] = value; }),
+    removeItem: jest.fn((key: string) => { delete store[key]; }),
+    clear: jest.fn(() => { store = {}; }),
+    _reset: () => { store = {}; },
+  };
+})();
+
+Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+
 describe('LoginPage', () => {
   let mockPush: jest.Mock;
-  let localStorageSpy: jest.SpyInstance;
 
   beforeEach(() => {
     mockPush = jest.fn();
     (useRouter as jest.Mock).mockReturnValue({
       push: mockPush,
+      replace: jest.fn(),
     });
-    // Spy on localStorage.setItem
-    localStorageSpy = jest.spyOn(Storage.prototype, 'setItem');
-  });
-
-  afterEach(() => {
-    localStorageSpy.mockRestore();
+    localStorageMock._reset();
+    localStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
   });
 
   it('로그인 폼이 렌더링되어야 함', () => {
@@ -93,9 +104,9 @@ describe('LoginPage', () => {
     });
 
     // localStorage에 userId가 저장되었는지 확인
-    expect(localStorageSpy).toHaveBeenCalledWith('userId', '1');
-    expect(localStorageSpy).toHaveBeenCalledWith('userName', '테스트 사용자');
-    expect(localStorageSpy).toHaveBeenCalledWith('userEmail', 'test@example.com');
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('userId', '1');
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('userName', '테스트 사용자');
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('userEmail', 'test@example.com');
   });
 
   it('로그인 실패 시 에러 메시지를 표시해야 함', async () => {
@@ -209,6 +220,11 @@ describe('LoginPage', () => {
     await user.type(emailInput, 'new@example.com');
     await user.type(passwordInputs[0], 'Password123!');
     await user.type(passwordInputs[1], 'Password123!');
+
+    // 약관 동의 체크
+    const checkboxes = screen.getAllByRole('checkbox');
+    await user.click(checkboxes[0]); // 이용약관
+    await user.click(checkboxes[1]); // 개인정보 처리방침
 
     // 회원가입 버튼 클릭
     const signupButton = screen.getByRole('button', { name: '회원가입' });

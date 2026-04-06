@@ -1,20 +1,15 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../route';
-import { prisma } from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
+import * as authService from '@/lib/services/auth.service';
 
-// Prisma mock
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    user: {
-      findFirst: jest.fn(),
-    },
-  },
-}));
-
-// bcrypt mock
-jest.mock('bcryptjs', () => ({
-  compare: jest.fn(),
+// Mock auth service
+jest.mock('@/lib/services/auth.service', () => ({
+  findUserByEmail: jest.fn(),
+  verifyPassword: jest.fn(),
+  excludePassword: jest.fn((user: Record<string, unknown>) => {
+    const { password: _, ...rest } = user;
+    return rest;
+  }),
 }));
 
 describe('POST /api/auth/login', () => {
@@ -33,8 +28,8 @@ describe('POST /api/auth/login', () => {
       deletedAt: null,
     };
 
-    (prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser);
-    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+    (authService.findUserByEmail as jest.Mock).mockResolvedValue(mockUser);
+    (authService.verifyPassword as jest.Mock).mockResolvedValue(true);
 
     const request = new NextRequest('http://localhost:3000/api/auth/login', {
       method: 'POST',
@@ -58,7 +53,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('존재하지 않는 이메일로 로그인 시 401 에러를 반환해야 함', async () => {
-    (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
+    (authService.findUserByEmail as jest.Mock).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/auth/login', {
       method: 'POST',
@@ -86,8 +81,8 @@ describe('POST /api/auth/login', () => {
       deletedAt: null,
     };
 
-    (prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser);
-    (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+    (authService.findUserByEmail as jest.Mock).mockResolvedValue(mockUser);
+    (authService.verifyPassword as jest.Mock).mockResolvedValue(false);
 
     const request = new NextRequest('http://localhost:3000/api/auth/login', {
       method: 'POST',
@@ -135,7 +130,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
-    (prisma.user.findFirst as jest.Mock).mockRejectedValue(new Error('Database error'));
+    (authService.findUserByEmail as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const request = new NextRequest('http://localhost:3000/api/auth/login', {
       method: 'POST',
@@ -149,6 +144,6 @@ describe('POST /api/auth/login', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('로그인 처리 중 오류가 발생했습니다');
+    expect(data.error).toBe('Failed to login');
   });
 });

@@ -1,15 +1,24 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../[id]/deposit/route';
 import { prisma } from '@/lib/prisma';
+import * as savingsService from '@/lib/services/savings.service';
+import * as dailyBalanceService from '@/lib/services/daily-balance.service';
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
   prisma: {
-    savingsGoal: {
-      findFirst: jest.fn(),
-    },
     $transaction: jest.fn(),
   },
+}));
+
+// Mock services
+jest.mock('@/lib/services/savings.service', () => ({
+  findSavingsGoal: jest.fn(),
+  depositToSavingsGoal: jest.fn(),
+}));
+
+jest.mock('@/lib/services/daily-balance.service', () => ({
+  updateDailyBalanceInTransaction: jest.fn(),
 }));
 
 describe('POST /api/savings/[id]/deposit', () => {
@@ -28,29 +37,17 @@ describe('POST /api/savings/[id]/deposit', () => {
   };
 
   it('저축 목표에 입금하고 거래 내역을 생성해야 함', async () => {
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(mockSavingsGoal);
-    (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
-      const tx = {
-        savingsGoal: {
-          update: jest.fn().mockResolvedValue({
-            ...mockSavingsGoal,
-            currentAmount: 600000, // 500000 + 100000
-          }),
-        },
-        transaction: {
-          create: jest.fn().mockResolvedValue({
-            id: 'tx-1',
-            amount: 100000,
-            type: 'EXPENSE',
-            description: '여행 자금 저축',
-            savingsGoalId: 'savings-1',
-          }),
-          aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
-        },
-        dailyBalance: {
-          upsert: jest.fn().mockResolvedValue({}),
-        },
-      };
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(mockSavingsGoal);
+
+    const updatedGoal = { ...mockSavingsGoal, currentAmount: 600000 };
+    const mockTransaction = { id: 'tx-1', amount: 100000, type: 'EXPENSE' };
+
+    (prisma.$transaction as jest.Mock).mockImplementation(async (callback: Function) => {
+      const tx = {};
+      (savingsService.depositToSavingsGoal as jest.Mock).mockResolvedValue({
+        updatedGoal,
+        transaction: mockTransaction,
+      });
       return callback(tx);
     });
 
@@ -119,7 +116,7 @@ describe('POST /api/savings/[id]/deposit', () => {
   });
 
   it('존재하지 않는 저축 목표는 404 에러를 반환해야 함', async () => {
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(null);
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/savings/invalid-id/deposit', {
       method: 'POST',
@@ -152,7 +149,7 @@ describe('POST /api/savings/[id]/deposit', () => {
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(mockSavingsGoal);
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(mockSavingsGoal);
     (prisma.$transaction as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1/deposit', {
@@ -171,25 +168,14 @@ describe('POST /api/savings/[id]/deposit', () => {
   });
 
   it('트랜잭션 내에서 DailyBalance가 업데이트되어야 함', async () => {
-    (prisma.savingsGoal.findFirst as jest.Mock).mockResolvedValue(mockSavingsGoal);
+    (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(mockSavingsGoal);
 
-    let dailyBalanceUpdated = false;
-    (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
-      const tx = {
-        savingsGoal: {
-          update: jest.fn().mockResolvedValue(mockSavingsGoal),
-        },
-        transaction: {
-          create: jest.fn().mockResolvedValue({ id: 'tx-1' }),
-          aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
-        },
-        dailyBalance: {
-          upsert: jest.fn().mockImplementation(() => {
-            dailyBalanceUpdated = true;
-            return Promise.resolve({});
-          }),
-        },
-      };
+    (prisma.$transaction as jest.Mock).mockImplementation(async (callback: Function) => {
+      const tx = {};
+      (savingsService.depositToSavingsGoal as jest.Mock).mockResolvedValue({
+        updatedGoal: mockSavingsGoal,
+        transaction: { id: 'tx-1' },
+      });
       return callback(tx);
     });
 
@@ -203,6 +189,6 @@ describe('POST /api/savings/[id]/deposit', () => {
 
     await POST(request, { params: mockParams });
 
-    expect(dailyBalanceUpdated).toBe(true);
+    expect(dailyBalanceService.updateDailyBalanceInTransaction).toHaveBeenCalled();
   });
 });

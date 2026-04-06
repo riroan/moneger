@@ -62,6 +62,7 @@ describe('POST /api/transactions', () => {
           aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
         },
         dailyBalance: {
+          findUnique: jest.fn().mockResolvedValue(null),
           upsert: jest.fn().mockResolvedValue({}),
         },
       };

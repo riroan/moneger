@@ -7,6 +7,7 @@ jest.mock('@/lib/prisma', () => ({
   prisma: {
     transaction: {
       findMany: jest.fn(),
+      count: jest.fn(),
     },
   },
 }));
@@ -58,6 +59,7 @@ describe('GET /api/transactions/recent', () => {
       },
     ];
 
+    (prisma.transaction.count as jest.Mock).mockResolvedValue(2);
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue(mockTransactions);
 
     const url = new URL('http://localhost:3000/api/transactions/recent');
@@ -90,6 +92,7 @@ describe('GET /api/transactions/recent', () => {
         date: 'desc',
       },
       take: 10,
+      skip: 0,
     });
   });
 
@@ -104,6 +107,7 @@ describe('GET /api/transactions/recent', () => {
   });
 
   it('limit 파라미터를 지정할 수 있어야 함', async () => {
+    (prisma.transaction.count as jest.Mock).mockResolvedValue(0);
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
 
     const url = new URL('http://localhost:3000/api/transactions/recent');
@@ -144,6 +148,7 @@ describe('GET /api/transactions/recent', () => {
         category: { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
       },
     ];
+    (prisma.transaction.count as jest.Mock).mockResolvedValue(1);
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue(mockTransactions);
 
     const url = new URL('http://localhost:3000/api/transactions/recent');
@@ -164,6 +169,7 @@ describe('GET /api/transactions/recent', () => {
   });
 
   it('limit이 100을 초과하면 100으로 제한되어야 함', async () => {
+    (prisma.transaction.count as jest.Mock).mockResolvedValue(0);
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
 
     const url = new URL('http://localhost:3000/api/transactions/recent');

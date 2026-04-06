@@ -1,21 +1,25 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../route';
 import { prisma } from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
+import * as authService from '@/lib/services/auth.service';
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
-      findFirst: jest.fn(),
       create: jest.fn(),
     },
   },
 }));
 
-// bcrypt mock
-jest.mock('bcryptjs', () => ({
-  hash: jest.fn(),
+// Mock auth service
+jest.mock('@/lib/services/auth.service', () => ({
+  findUserByEmail: jest.fn(),
+  hashPassword: jest.fn(),
+  excludePassword: jest.fn((user: Record<string, unknown>) => {
+    const { password: _, ...rest } = user;
+    return rest;
+  }),
 }));
 
 describe('POST /api/auth/signup', () => {
@@ -34,8 +38,8 @@ describe('POST /api/auth/signup', () => {
       deletedAt: null,
     };
 
-    (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
-    (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password');
+    (authService.findUserByEmail as jest.Mock).mockResolvedValue(null);
+    (authService.hashPassword as jest.Mock).mockResolvedValue('hashed_password');
     (prisma.user.create as jest.Mock).mockResolvedValue(mockUser);
 
     const request = new NextRequest('http://localhost:3000/api/auth/signup', {
@@ -71,7 +75,7 @@ describe('POST /api/auth/signup', () => {
       deletedAt: null,
     };
 
-    (prisma.user.findFirst as jest.Mock).mockResolvedValue(existingUser);
+    (authService.findUserByEmail as jest.Mock).mockResolvedValue(existingUser);
 
     const request = new NextRequest('http://localhost:3000/api/auth/signup', {
       method: 'POST',
@@ -122,7 +126,7 @@ describe('POST /api/auth/signup', () => {
   });
 
   it('비밀번호가 6자 미만이면 400 에러를 반환해야 함', async () => {
-    (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
+    (authService.findUserByEmail as jest.Mock).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/auth/signup', {
       method: 'POST',
@@ -141,7 +145,7 @@ describe('POST /api/auth/signup', () => {
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
-    (prisma.user.findFirst as jest.Mock).mockRejectedValue(new Error('Database error'));
+    (authService.findUserByEmail as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const request = new NextRequest('http://localhost:3000/api/auth/signup', {
       method: 'POST',
@@ -156,6 +160,6 @@ describe('POST /api/auth/signup', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('회원가입 처리 중 오류가 발생했습니다');
+    expect(data.error).toBe('Failed to signup');
   });
 });

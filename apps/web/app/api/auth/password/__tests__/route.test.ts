@@ -1,22 +1,22 @@
 import { NextRequest } from 'next/server';
 import { PATCH } from '../route';
 import { prisma } from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
+import * as authService from '@/lib/services/auth.service';
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
-      findFirst: jest.fn(),
       update: jest.fn(),
     },
   },
 }));
 
-// bcrypt mock
-jest.mock('bcryptjs', () => ({
-  compare: jest.fn(),
-  hash: jest.fn(),
+// Mock auth service
+jest.mock('@/lib/services/auth.service', () => ({
+  findUserById: jest.fn(),
+  verifyPassword: jest.fn(),
+  hashPassword: jest.fn(),
 }));
 
 describe('PATCH /api/auth/password', () => {
@@ -33,9 +33,9 @@ describe('PATCH /api/auth/password', () => {
   };
 
   it('비밀번호를 성공적으로 변경해야 함', async () => {
-    (prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser);
-    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-    (bcrypt.hash as jest.Mock).mockResolvedValue('newHashedPassword');
+    (authService.findUserById as jest.Mock).mockResolvedValue(mockUser);
+    (authService.verifyPassword as jest.Mock).mockResolvedValue(true);
+    (authService.hashPassword as jest.Mock).mockResolvedValue('newHashedPassword');
     (prisma.user.update as jest.Mock).mockResolvedValue({
       ...mockUser,
       password: 'newHashedPassword',
@@ -93,7 +93,7 @@ describe('PATCH /api/auth/password', () => {
   });
 
   it('사용자를 찾을 수 없으면 404 에러를 반환해야 함', async () => {
-    (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
+    (authService.findUserById as jest.Mock).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/auth/password', {
       method: 'PATCH',
@@ -112,8 +112,8 @@ describe('PATCH /api/auth/password', () => {
   });
 
   it('현재 비밀번호가 틀리면 401 에러를 반환해야 함', async () => {
-    (prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser);
-    (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+    (authService.findUserById as jest.Mock).mockResolvedValue(mockUser);
+    (authService.verifyPassword as jest.Mock).mockResolvedValue(false);
 
     const request = new NextRequest('http://localhost:3000/api/auth/password', {
       method: 'PATCH',
@@ -132,7 +132,7 @@ describe('PATCH /api/auth/password', () => {
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
-    (prisma.user.findFirst as jest.Mock).mockRejectedValue(new Error('Database error'));
+    (authService.findUserById as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const request = new NextRequest('http://localhost:3000/api/auth/password', {
       method: 'PATCH',
@@ -147,6 +147,6 @@ describe('PATCH /api/auth/password', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('비밀번호 변경 중 오류가 발생했습니다');
+    expect(data.error).toBe('Failed to change password');
   });
 });

@@ -16,8 +16,8 @@ describe('useCategoryStore', () => {
   describe('setCategories', () => {
     it('should set categories', () => {
       const categories = [
-        { id: 'cat-1', name: '식비', type: 'EXPENSE' as const, color: '#EF4444', icon: '🍽️', userId: 'user-1' },
-        { id: 'cat-2', name: '교통비', type: 'EXPENSE' as const, color: '#3B82F6', icon: '🚗', userId: 'user-1' },
+        { id: 'cat-1', name: '식비', type: 'EXPENSE' as const, color: '#EF4444', icon: '🍽️', userId: 'user-1', defaultBudget: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
+        { id: 'cat-2', name: '교통비', type: 'EXPENSE' as const, color: '#3B82F6', icon: '🚗', userId: 'user-1', defaultBudget: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
       ];
 
       useCategoryStore.getState().setCategories(categories);
@@ -27,10 +27,10 @@ describe('useCategoryStore', () => {
 
     it('should replace existing categories', () => {
       const initialCategories = [
-        { id: 'cat-1', name: '식비', type: 'EXPENSE' as const, color: '#EF4444', icon: '🍽️', userId: 'user-1' },
+        { id: 'cat-1', name: '식비', type: 'EXPENSE' as const, color: '#EF4444', icon: '🍽️', userId: 'user-1', defaultBudget: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
       ];
       const newCategories = [
-        { id: 'cat-2', name: '교통비', type: 'EXPENSE' as const, color: '#3B82F6', icon: '🚗', userId: 'user-1' },
+        { id: 'cat-2', name: '교통비', type: 'EXPENSE' as const, color: '#3B82F6', icon: '🚗', userId: 'user-1', defaultBudget: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
       ];
 
       useCategoryStore.setState({ categories: initialCategories });
@@ -136,7 +136,7 @@ describe('useCategoryStore', () => {
 
       await useCategoryStore.getState().fetchCategories('user-1');
 
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch categories:', expect.any(Error));
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch categories:', 'Network error');
       expect(useCategoryStore.getState().isLoading).toBe(false);
 
       consoleSpy.mockRestore();

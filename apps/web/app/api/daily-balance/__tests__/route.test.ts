@@ -1,18 +1,12 @@
 import { NextRequest } from 'next/server';
 import { GET, POST } from '../route';
-import { prisma } from '@/lib/prisma';
+import * as dailyBalanceService from '@/lib/services/daily-balance.service';
 
-// Prisma mock
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    dailyBalance: {
-      upsert: jest.fn(),
-      findMany: jest.fn(),
-    },
-    transaction: {
-      findMany: jest.fn(),
-    },
-  },
+// Mock daily-balance service
+jest.mock('@/lib/services/daily-balance.service', () => ({
+  saveDailyBalance: jest.fn(),
+  getRecentDailyBalances: jest.fn(),
+  getMonthlyDailyBalances: jest.fn(),
 }));
 
 describe('POST /api/daily-balance', () => {
@@ -30,7 +24,7 @@ describe('POST /api/daily-balance', () => {
       expense: 50000,
     };
 
-    (prisma.dailyBalance.upsert as jest.Mock).mockResolvedValue(mockDailyBalance);
+    (dailyBalanceService.saveDailyBalance as jest.Mock).mockResolvedValue(mockDailyBalance);
 
     const request = new NextRequest('http://localhost:3000/api/daily-balance', {
       method: 'POST',
@@ -84,7 +78,7 @@ describe('POST /api/daily-balance', () => {
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
-    (prisma.dailyBalance.upsert as jest.Mock).mockRejectedValue(new Error('Database error'));
+    (dailyBalanceService.saveDailyBalance as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const request = new NextRequest('http://localhost:3000/api/daily-balance', {
       method: 'POST',
@@ -99,7 +93,7 @@ describe('POST /api/daily-balance', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('일별 잔액 저장 중 오류가 발생했습니다');
+    expect(data.error).toBe('Failed to save daily balance');
   });
 });
 
@@ -114,7 +108,7 @@ describe('GET /api/daily-balance', () => {
       { id: 'db-2', userId: 'user-1', date: new Date('2024-01-15'), balance: 100000, income: 50000, expense: 30000 },
     ];
 
-    (prisma.dailyBalance.findMany as jest.Mock).mockResolvedValue(mockBalances);
+    (dailyBalanceService.getRecentDailyBalances as jest.Mock).mockResolvedValue(mockBalances);
 
     const url = new URL('http://localhost:3000/api/daily-balance');
     url.searchParams.set('userId', 'user-1');
@@ -127,28 +121,6 @@ describe('GET /api/daily-balance', () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data).toHaveLength(2);
-  });
-
-  it('데이터가 없으면 거래 데이터로부터 계산해야 함', async () => {
-    const mockTransactions = [
-      { id: 'tx-1', type: 'INCOME', amount: 100000, date: new Date('2024-01-14') },
-      { id: 'tx-2', type: 'EXPENSE', amount: 30000, date: new Date('2024-01-14') },
-    ];
-
-    (prisma.dailyBalance.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.transaction.findMany as jest.Mock).mockResolvedValue(mockTransactions);
-
-    const url = new URL('http://localhost:3000/api/daily-balance');
-    url.searchParams.set('userId', 'user-1');
-    url.searchParams.set('days', '5');
-
-    const request = new NextRequest(url);
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.message).toBe('거래 데이터로부터 계산된 잔액입니다');
   });
 
   it('userId가 없으면 400 에러를 반환해야 함', async () => {
@@ -164,7 +136,7 @@ describe('GET /api/daily-balance', () => {
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
-    (prisma.dailyBalance.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
+    (dailyBalanceService.getRecentDailyBalances as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/daily-balance');
     url.searchParams.set('userId', 'user-1');
@@ -174,6 +146,6 @@ describe('GET /api/daily-balance', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('일별 잔액 조회 중 오류가 발생했습니다');
+    expect(data.error).toBe('Failed to fetch daily balance');
   });
 });

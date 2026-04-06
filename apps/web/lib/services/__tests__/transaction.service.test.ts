@@ -26,6 +26,7 @@ jest.mock('@/lib/prisma', () => ({
       update: jest.fn(),
     },
     dailyBalance: {
+      findUnique: jest.fn(),
       upsert: jest.fn(),
     },
     $transaction: jest.fn(),
@@ -61,6 +62,7 @@ describe('transaction.service', () => {
             aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 10000 } }),
           },
           dailyBalance: {
+            findUnique: jest.fn().mockResolvedValue(null),
             upsert: jest.fn().mockResolvedValue({}),
           },
         };
@@ -88,6 +90,7 @@ describe('transaction.service', () => {
             aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
           },
           dailyBalance: {
+            findUnique: jest.fn().mockResolvedValue(null),
             upsert: jest.fn().mockResolvedValue({}),
           },
         };
@@ -115,6 +118,7 @@ describe('transaction.service', () => {
             aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
           },
           dailyBalance: {
+            findUnique: jest.fn().mockResolvedValue(null),
             upsert: jest.fn().mockResolvedValue({}),
           },
           savingsGoal: {
@@ -148,6 +152,7 @@ describe('transaction.service', () => {
             aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
           },
           dailyBalance: {
+            findUnique: jest.fn().mockResolvedValue(null),
             upsert: jest.fn().mockImplementation(() => {
               dailyBalanceUpdateCount++;
               return Promise.resolve({});
@@ -182,6 +187,7 @@ describe('transaction.service', () => {
             aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
           },
           dailyBalance: {
+            findUnique: jest.fn().mockResolvedValue(null),
             upsert: jest.fn().mockResolvedValue({}),
           },
           savingsGoal: {
@@ -215,6 +221,7 @@ describe('transaction.service', () => {
             aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
           },
           dailyBalance: {
+            findUnique: jest.fn().mockResolvedValue(null),
             upsert: jest.fn().mockResolvedValue({}),
           },
           savingsGoal: {
@@ -245,6 +252,7 @@ describe('transaction.service', () => {
             aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
           },
           dailyBalance: {
+            findUnique: jest.fn().mockResolvedValue(null),
             upsert: jest.fn().mockResolvedValue({}),
           },
           savingsGoal: {

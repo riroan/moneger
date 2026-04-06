@@ -1,24 +1,10 @@
 import { NextRequest } from 'next/server';
 import { GET } from '../route';
-import { prisma } from '@/lib/prisma';
+import * as summaryService from '@/lib/services/summary.service';
 
-// Prisma mock
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    transaction: {
-      aggregate: jest.fn(),
-      groupBy: jest.fn(),
-    },
-    budget: {
-      findMany: jest.fn(),
-    },
-    category: {
-      findMany: jest.fn(),
-    },
-    savingsGoal: {
-      findMany: jest.fn(),
-    },
-  },
+// Mock summary service
+jest.mock('@/lib/services/summary.service', () => ({
+  getTransactionSummary: jest.fn(),
 }));
 
 describe('GET /api/transactions/summary', () => {
@@ -27,38 +13,30 @@ describe('GET /api/transactions/summary', () => {
   });
 
   it('월별 거래 요약을 성공적으로 반환해야 함', async () => {
-    // aggregate mocks for income, expense, and monthly savings
-    (prisma.transaction.aggregate as jest.Mock)
-      .mockResolvedValueOnce({ _sum: { amount: 100000 } }) // income
-      .mockResolvedValueOnce({ _sum: { amount: 50000 } }) // expense
-      .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: 0 }); // monthly savings
-
-    // groupBy mocks for category stats and transaction counts
-    (prisma.transaction.groupBy as jest.Mock)
-      .mockResolvedValueOnce([ // category stats
-        { categoryId: 'cat-2', _sum: { amount: 50000 }, _count: 2 },
-      ])
-      .mockResolvedValueOnce([ // transaction counts
-        { type: 'INCOME', _count: 1 },
-        { type: 'EXPENSE', _count: 2 },
-      ]);
-
-    // savingsGoal mock
-    (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
-
-    (prisma.category.findMany as jest.Mock).mockResolvedValue([
-      { id: 'cat-2', name: '식비', color: '#EF4444', icon: '🍽️', defaultBudget: null },
-    ]);
-
-    // 전체 예산 (categoryId: null)을 포함하여 반환
-    (prisma.budget.findMany as jest.Mock).mockResolvedValue([
-      {
-        id: 'budget-1',
-        amount: 200000,
-        month: new Date('2024-01-01'),
-        categoryId: null,
+    const mockSummary = {
+      period: { year: 2024, month: 1 },
+      summary: {
+        totalIncome: 100000,
+        totalExpense: 50000,
+        totalSavings: 0,
+        netAmount: 50000,
+        balance: 50000,
+        carryOverBalance: 0,
       },
-    ]);
+      budget: {
+        amount: 200000,
+        used: 50000,
+        remaining: 150000,
+        usagePercent: 25,
+      },
+      categories: [
+        { id: 'cat-2', name: '식비', icon: '🍽️', color: '#EF4444', count: 2, total: 50000 },
+      ],
+      transactionCount: { income: 1, expense: 2, total: 3 },
+      savings: { totalAmount: 0, count: 0, targetAmount: 0, primaryGoal: null },
+    };
+
+    (summaryService.getTransactionSummary as jest.Mock).mockResolvedValue(mockSummary);
 
     const url = new URL('http://localhost:3000/api/transactions/summary');
     url.searchParams.set('userId', 'user-1');
@@ -81,31 +59,27 @@ describe('GET /api/transactions/summary', () => {
   });
 
   it('카테고리별 통계를 금액순으로 정렬해야 함', async () => {
-    (prisma.transaction.aggregate as jest.Mock)
-      .mockResolvedValueOnce({ _sum: { amount: 0 } }) // income
-      .mockResolvedValueOnce({ _sum: { amount: 60000 } }) // expense
-      .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: 0 }); // monthly savings
+    const mockSummary = {
+      period: { year: 2024, month: 1 },
+      summary: {
+        totalIncome: 0,
+        totalExpense: 60000,
+        totalSavings: 0,
+        netAmount: -60000,
+        balance: -60000,
+        carryOverBalance: 0,
+      },
+      budget: { amount: 0, used: 60000, remaining: 0, usagePercent: 0 },
+      categories: [
+        { id: 'cat-2', name: '식비', icon: '🍽️', color: '#EF4444', count: 1, total: 30000 },
+        { id: 'cat-3', name: '쇼핑', icon: '🛍️', color: '#EC4899', count: 1, total: 20000 },
+        { id: 'cat-1', name: '교통비', icon: '🚗', color: '#F59E0B', count: 1, total: 10000 },
+      ],
+      transactionCount: { income: 0, expense: 3, total: 3 },
+      savings: { totalAmount: 0, count: 0, targetAmount: 0, primaryGoal: null },
+    };
 
-    (prisma.transaction.groupBy as jest.Mock)
-      .mockResolvedValueOnce([
-        { categoryId: 'cat-1', _sum: { amount: 10000 }, _count: 1 },
-        { categoryId: 'cat-2', _sum: { amount: 30000 }, _count: 1 },
-        { categoryId: 'cat-3', _sum: { amount: 20000 }, _count: 1 },
-      ])
-      .mockResolvedValueOnce([
-        { type: 'EXPENSE', _count: 3 },
-      ]);
-
-    // savingsGoal mock
-    (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
-
-    (prisma.category.findMany as jest.Mock).mockResolvedValue([
-      { id: 'cat-1', name: '교통비', color: '#F59E0B', icon: '🚗', defaultBudget: null },
-      { id: 'cat-2', name: '식비', color: '#EF4444', icon: '🍽️', defaultBudget: null },
-      { id: 'cat-3', name: '쇼핑', color: '#EC4899', icon: '🛍️', defaultBudget: null },
-    ]);
-
-    (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
+    (summaryService.getTransactionSummary as jest.Mock).mockResolvedValue(mockSummary);
 
     const url = new URL('http://localhost:3000/api/transactions/summary');
     url.searchParams.set('userId', 'user-1');
@@ -152,7 +126,7 @@ describe('GET /api/transactions/summary', () => {
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
-    (prisma.transaction.aggregate as jest.Mock).mockRejectedValue(
+    (summaryService.getTransactionSummary as jest.Mock).mockRejectedValue(
       new Error('Database error')
     );
 

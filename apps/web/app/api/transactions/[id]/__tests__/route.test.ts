@@ -48,6 +48,7 @@ describe('PATCH /api/transactions/[id]', () => {
           aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
         },
         dailyBalance: {
+          findUnique: jest.fn().mockResolvedValue(null),
           upsert: jest.fn().mockResolvedValue({}),
         },
       });
@@ -198,6 +199,7 @@ describe('DELETE /api/transactions/[id]', () => {
           aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
         },
         dailyBalance: {
+          findUnique: jest.fn().mockResolvedValue(null),
           upsert: jest.fn().mockResolvedValue({}),
         },
       });
