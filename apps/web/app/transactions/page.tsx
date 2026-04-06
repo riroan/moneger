@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useModalStore } from '@/stores';
-import { useDashboardData } from '@/hooks/useDashboardData';
 import MainLayout from '@/components/layout/MainLayout';
 import TransactionsTab from '@/components/tabs/TransactionsTab';
 import type { TransactionWithCategory } from '@/types';
@@ -19,6 +18,12 @@ export default function TransactionsPage() {
     setIsInitialized(true);
   }, [initAuth]);
 
+  useEffect(() => {
+    if (isInitialized && !isAuthLoading && !userId) {
+      router.push('/');
+    }
+  }, [isInitialized, isAuthLoading, userId, router]);
+
   const handleTransactionClick = (tx: TransactionWithCategory) => {
     if (tx.savingsGoalId) {
       openSavingsTransactionModal(tx);
@@ -27,12 +32,7 @@ export default function TransactionsPage() {
     }
   };
 
-  if (!isInitialized || isAuthLoading) {
-    return null;
-  }
-
-  if (!userId) {
-    router.push('/');
+  if (!isInitialized || isAuthLoading || !userId) {
     return null;
   }
 

@@ -120,10 +120,13 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  if (!isInitialized || isAuthLoading) return null;
+  useEffect(() => {
+    if (isInitialized && !isAuthLoading && !userId) {
+      router.push('/');
+    }
+  }, [isInitialized, isAuthLoading, userId, router]);
 
-  if (!userId) {
-    router.push('/');
+  if (!isInitialized || isAuthLoading || !userId) {
     return null;
   }
 

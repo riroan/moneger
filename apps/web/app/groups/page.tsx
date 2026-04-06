@@ -18,12 +18,13 @@ export default function GroupsPage() {
     setIsInitialized(true);
   }, [initAuth]);
 
-  if (!isInitialized || isAuthLoading) {
-    return null;
-  }
+  useEffect(() => {
+    if (isInitialized && !isAuthLoading && !userId) {
+      router.push('/');
+    }
+  }, [isInitialized, isAuthLoading, userId, router]);
 
-  if (!userId) {
-    router.push('/');
+  if (!isInitialized || isAuthLoading || !userId) {
     return null;
   }
 
