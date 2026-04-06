@@ -11,6 +11,7 @@ interface CreateTransactionInput {
   amount: number;
   description?: string | null;
   categoryId?: string | null;
+  groupId?: string | null;
   date?: Date;
 }
 
@@ -19,6 +20,7 @@ interface UpdateTransactionInput {
   amount?: number;
   description?: string | null;
   categoryId?: string | null;
+  groupId?: string | null;
   date?: Date;
 }
 
@@ -39,6 +41,7 @@ interface GetTransactionsInput {
   minAmount?: number;
   maxAmount?: number;
   savingsOnly?: boolean;
+  groupId?: string;
 }
 
 // 정렬 옵션 매핑 (모듈 레벨 상수)
@@ -53,7 +56,7 @@ const TRANSACTION_ORDER_BY: Record<string, Prisma.TransactionOrderByWithRelation
  * 거래 생성
  */
 export async function createTransaction(input: CreateTransactionInput) {
-  const { userId, type, amount, description, categoryId, date } = input;
+  const { userId, type, amount, description, categoryId, groupId, date } = input;
 
   return prisma.$transaction(async (tx) => {
     const transaction = await tx.transaction.create({
@@ -63,6 +66,7 @@ export async function createTransaction(input: CreateTransactionInput) {
         amount,
         description: description || null,
         categoryId: categoryId || null,
+        groupId: groupId || null,
         date: date || new Date(),
       },
       include: { category: { select: CATEGORY_SELECT } },
@@ -90,6 +94,9 @@ export async function updateTransaction(
   if (input.description !== undefined) updateData.description = input.description || null;
   if (input.categoryId !== undefined) {
     updateData.category = input.categoryId ? { connect: { id: input.categoryId } } : { disconnect: true };
+  }
+  if (input.groupId !== undefined) {
+    updateData.group = input.groupId ? { connect: { id: input.groupId } } : { disconnect: true };
   }
   if (input.date !== undefined) updateData.date = input.date;
 
@@ -200,6 +207,7 @@ function buildTransactionWhere(input: GetTransactionsInput): Prisma.TransactionW
 
   if (categoryIds?.length) where.categoryId = { in: categoryIds };
   if (search) where.description = { contains: search, mode: 'insensitive' };
+  if (input.groupId) where.groupId = input.groupId;
 
   // 저축 전용 필터
   if (input.savingsOnly) {

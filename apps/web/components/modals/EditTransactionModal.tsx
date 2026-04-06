@@ -12,6 +12,7 @@ interface EditTransactionModalProps {
   onSubmit: (data: TransactionFormData) => Promise<void>;
   onDelete: () => void;
   categories: Category[];
+  userId: string;
   isSubmitting: boolean;
 }
 
@@ -22,6 +23,7 @@ export default function EditTransactionModal({
   onSubmit,
   onDelete,
   categories,
+  userId,
   isSubmitting,
 }: EditTransactionModalProps) {
   if (!isOpen || !transaction) return null;
@@ -32,6 +34,7 @@ export default function EditTransactionModal({
         mode="edit"
         initialTransaction={transaction}
         categories={categories}
+        userId={userId}
         isSubmitting={isSubmitting}
         onSubmit={onSubmit}
         onCancel={onClose}

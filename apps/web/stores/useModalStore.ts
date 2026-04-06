@@ -8,6 +8,7 @@ interface ModalState {
   isSavingsTransactionModalOpen: boolean;
   editingTransaction: TransactionWithCategory | null;
   isSubmitting: boolean;
+  transactionVersion: number;
 }
 
 interface ModalActions {
@@ -22,6 +23,7 @@ interface ModalActions {
   closeAllModals: () => void;
   setEditingTransaction: (transaction: TransactionWithCategory | null) => void;
   setSubmitting: (isSubmitting: boolean) => void;
+  notifyTransactionChange: () => void;
 }
 
 type ModalStore = ModalState & ModalActions;
@@ -33,6 +35,7 @@ export const useModalStore = create<ModalStore>((set) => ({
   isSavingsTransactionModalOpen: false,
   editingTransaction: null,
   isSubmitting: false,
+  transactionVersion: 0,
 
   openTransactionModal: () => set({ isTransactionModalOpen: true }),
   closeTransactionModal: () => set({ isTransactionModalOpen: false }),
@@ -68,4 +71,5 @@ export const useModalStore = create<ModalStore>((set) => ({
 
   setEditingTransaction: (transaction) => set({ editingTransaction: transaction }),
   setSubmitting: (isSubmitting) => set({ isSubmitting }),
+  notifyTransactionChange: () => set((state) => ({ transactionVersion: state.transactionVersion + 1 })),
 }));

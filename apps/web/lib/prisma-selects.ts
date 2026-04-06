@@ -61,5 +61,17 @@ export const TRANSACTION_SELECT = {
   date: true,
   categoryId: true,
   savingsGoalId: true,
+  groupId: true,
   userId: true,
+} as const;
+
+/**
+ * 거래 그룹 기본 정보 Select
+ */
+export const GROUP_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  icon: true,
+  color: true,
 } as const;

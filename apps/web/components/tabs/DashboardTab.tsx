@@ -7,6 +7,7 @@ import { useFilterHandlers } from '@/hooks/useFilterHandlers';
 import SummaryCards from '@/components/dashboard/SummaryCards';
 import TodaySummaryCard from '@/components/dashboard/TodaySummaryCard';
 import SavingsCard from '@/components/dashboard/SavingsCard';
+import GroupsCard from '@/components/dashboard/GroupsCard';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import { MdPieChart, MdHistory, MdCalendarMonth } from 'react-icons/md';
 import type { TransactionWithCategory, CategoryChartData } from '@/types';
@@ -36,12 +37,14 @@ interface DashboardTabProps {
   onTransactionClick: (tx: TransactionWithCategory) => void;
   onViewAllTransactions: () => void;
   onViewSavings: () => void;
+  onViewGroups: () => void;
 }
 
 export default function DashboardTab({
   onTransactionClick,
   onViewAllTransactions,
   onViewSavings,
+  onViewGroups,
 }: DashboardTabProps) {
   const isMobile = useAppStore((state) => state.isMobile);
   const currentDate = useAppStore((state) => state.currentDate);
@@ -138,9 +141,24 @@ export default function DashboardTab({
         onSavingsClick={onViewSavings}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[330px_1fr_380px] gap-4">
+        {/* 왼쪽: 요약 카드 */}
+        <div className="flex flex-col order-1 gap-4">
+          <TodaySummaryCard data={todaySummary} isLoading={isLoadingTodaySummary} />
+
+          <SavingsCard
+            savingsGoal={summary?.savings?.targetAmount || 0}
+            currentSavings={summary?.savings?.totalAmount || 0}
+            primaryGoal={summary?.savings?.primaryGoal}
+            onViewAll={onViewSavings}
+          />
+
+          <GroupsCard userId={userId || ''} onViewAll={onViewGroups} />
+        </div>
+
+        {/* 가운데: 차트/캘린더 */}
         <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-2 lg:order-1 p-4"
+          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-2 p-4"
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
@@ -189,41 +207,31 @@ export default function DashboardTab({
           )}
         </div>
 
-        <div className="flex flex-col order-1 lg:order-2 gap-4">
-          <TodaySummaryCard data={todaySummary} isLoading={isLoadingTodaySummary} />
-
-          <SavingsCard
-            savingsGoal={summary?.savings?.targetAmount || 0}
-            currentSavings={summary?.savings?.totalAmount || 0}
-            primaryGoal={summary?.savings?.primaryGoal}
-            onViewAll={onViewSavings}
-          />
-
-          <div
-            className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] p-4"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                <MdHistory className="text-lg sm:text-xl text-accent-mint" /> 최근 내역
-              </h2>
-              <button
-                onClick={onViewAllTransactions}
-                className="text-xs sm:text-sm text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
-              >
-                전체보기 →
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {isLoadingTransactions ? (
-                <div className="text-center text-text-muted py-6">로딩 중...</div>
-              ) : recentTransactions.length > 0 ? (
-                recentTransactions.slice(0, isMobile ? 5 : 10).map((tx) => (
-                  <TransactionItem key={tx.id} transaction={tx} onClick={() => onTransactionClick(tx)} />
-                ))
-              ) : (
-                <div className="text-center text-text-muted py-6">거래 내역이 없습니다</div>
-              )}
-            </div>
+        {/* 오른쪽: 최근 내역 */}
+        <div
+          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-3 p-4"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <MdHistory className="text-lg sm:text-xl text-accent-mint" /> 최근 내역
+            </h2>
+            <button
+              onClick={onViewAllTransactions}
+              className="text-xs sm:text-sm text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+            >
+              전체보기 →
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {isLoadingTransactions ? (
+              <div className="text-center text-text-muted py-6">로딩 중...</div>
+            ) : recentTransactions.length > 0 ? (
+              recentTransactions.slice(0, isMobile ? 5 : 10).map((tx) => (
+                <TransactionItem key={tx.id} transaction={tx} onClick={() => onTransactionClick(tx)} />
+              ))
+            ) : (
+              <div className="text-center text-text-muted py-6">거래 내역이 없습니다</div>
+            )}
           </div>
         </div>
       </div>

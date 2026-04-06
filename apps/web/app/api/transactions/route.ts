@@ -40,6 +40,7 @@ export const GET = apiHandler('fetch transactions', async (request: NextRequest)
     minAmount: searchParams.get('minAmount') ? parseInt(searchParams.get('minAmount')!) : undefined,
     maxAmount: searchParams.get('maxAmount') ? parseInt(searchParams.get('maxAmount')!) : undefined,
     savingsOnly: searchParams.get('savingsOnly') === 'true',
+    groupId: searchParams.get('groupId') || undefined,
   });
 
   return paginatedResponse(result.data, result.count, result.nextCursor, result.hasMore);
@@ -48,7 +49,7 @@ export const GET = apiHandler('fetch transactions', async (request: NextRequest)
 // POST /api/transactions - 거래 생성
 export const POST = apiHandler('create transaction', async (request: NextRequest) => {
   const body = await request.json();
-  const { userId, type, amount, description, categoryId, date } = body;
+  const { userId, type, amount, description, categoryId, groupId, date } = body;
 
   // 유효성 검사
   const userIdError = validateUserId(userId);
@@ -74,6 +75,7 @@ export const POST = apiHandler('create transaction', async (request: NextRequest
     amount: parseFloat(amount),
     description,
     categoryId,
+    groupId: groupId || null,
     date: date ? new Date(date) : undefined,
   });
 

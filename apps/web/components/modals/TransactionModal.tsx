@@ -10,6 +10,7 @@ interface TransactionModalProps {
   onClose: () => void;
   onSubmit: (data: TransactionFormData) => Promise<void>;
   categories: Category[];
+  userId: string;
   isSubmitting: boolean;
 }
 
@@ -18,6 +19,7 @@ export default function TransactionModal({
   onClose,
   onSubmit,
   categories,
+  userId,
   isSubmitting,
 }: TransactionModalProps) {
   if (!isOpen) return null;
@@ -27,6 +29,7 @@ export default function TransactionModal({
       <TransactionForm
         mode="add"
         categories={categories}
+        userId={userId}
         isSubmitting={isSubmitting}
         onSubmit={onSubmit}
         onCancel={onClose}

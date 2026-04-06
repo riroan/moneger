@@ -121,13 +121,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <Footer />
       </div>
 
-      <FAB onClick={openTransactionModal} visible={pathname !== '/savings'} />
+      <FAB onClick={openTransactionModal} visible={pathname !== '/savings' && pathname !== '/groups'} />
 
       <TransactionModal
         isOpen={isTransactionModalOpen}
         onClose={useModalStore.getState().closeTransactionModal}
         onSubmit={handleSubmitTransaction}
         categories={categories}
+        userId={userId}
         isSubmitting={isSubmitting}
       />
 
@@ -138,6 +139,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         onSubmit={handleEditTransaction}
         onDelete={openDeleteConfirm}
         categories={categories}
+        userId={userId}
         isSubmitting={isSubmitting}
       />
 

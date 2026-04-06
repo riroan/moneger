@@ -36,6 +36,10 @@ export default function Home() {
     router.push('/savings');
   };
 
+  const handleViewGroups = () => {
+    router.push('/groups');
+  };
+
   if (!isInitialized || isAuthLoading) {
     return null;
   }
@@ -50,6 +54,7 @@ export default function Home() {
         onTransactionClick={handleTransactionClick}
         onViewAllTransactions={handleViewAllTransactions}
         onViewSavings={handleViewSavings}
+        onViewGroups={handleViewGroups}
       />
     </MainLayout>
   );

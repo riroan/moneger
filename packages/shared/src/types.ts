@@ -47,6 +47,7 @@ export interface TransactionWithCategory {
   categoryId: string | null;
   category: CategoryWithSelect | null;
   savingsGoalId?: string | null;
+  groupId?: string | null;
 }
 
 // Budget Types
@@ -138,6 +139,31 @@ export interface TodaySummary {
     total: number;
     count: number;
   };
+}
+
+// Transaction Group Types
+export interface TransactionGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  userId: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  deletedAt: Date | string | null;
+}
+
+export interface TransactionGroupSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  totalIncome: number;
+  totalExpense: number;
+  netAmount: number;
+  transactionCount: number;
 }
 
 // Daily Balance Types

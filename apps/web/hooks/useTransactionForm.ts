@@ -9,6 +9,7 @@ export interface TransactionFormState {
   amount: string;
   description: string;
   selectedCategory: string;
+  selectedGroup: string;
 }
 
 export interface TransactionFormErrors {
@@ -22,6 +23,7 @@ export interface TransactionFormData {
   amount: number;
   description: string;
   categoryId: string;
+  groupId: string;
 }
 
 interface UseTransactionFormOptions {
@@ -37,6 +39,7 @@ export function useTransactionForm(options: UseTransactionFormOptions = {}) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('');
 
   // Error state
   const [amountError, setAmountError] = useState('');
@@ -50,6 +53,7 @@ export function useTransactionForm(options: UseTransactionFormOptions = {}) {
       setAmount(initialTransaction.amount.toLocaleString('ko-KR'));
       setDescription(initialTransaction.description || '');
       setSelectedCategory(initialTransaction.categoryId || '');
+      setSelectedGroup(initialTransaction.groupId || '');
     }
   }, [initialTransaction, mode]);
 
@@ -95,6 +99,10 @@ export function useTransactionForm(options: UseTransactionFormOptions = {}) {
     setCategoryError('');
   }, []);
 
+  const handleGroupChange = useCallback((groupId: string) => {
+    setSelectedGroup(groupId);
+  }, []);
+
   const handleTypeChange = useCallback((newType: 'INCOME' | 'EXPENSE') => {
     setType(newType);
     setSelectedCategory(''); // Reset category when type changes
@@ -127,14 +135,16 @@ export function useTransactionForm(options: UseTransactionFormOptions = {}) {
       amount: parseInt(amount.replace(/,/g, '')),
       description: description.trim(),
       categoryId: selectedCategory,
+      groupId: selectedGroup,
     };
-  }, [type, amount, description, selectedCategory]);
+  }, [type, amount, description, selectedCategory, selectedGroup]);
 
   const reset = useCallback(() => {
     setType('EXPENSE');
     setAmount('');
     setDescription('');
     setSelectedCategory('');
+    setSelectedGroup('');
     setAmountError('');
     setDescriptionError('');
     setCategoryError('');
@@ -147,6 +157,7 @@ export function useTransactionForm(options: UseTransactionFormOptions = {}) {
       amount,
       description,
       selectedCategory,
+      selectedGroup,
     },
     // Errors
     errors: {
@@ -160,6 +171,7 @@ export function useTransactionForm(options: UseTransactionFormOptions = {}) {
       setAmount: handleAmountChange,
       setDescription: handleDescriptionChange,
       setCategory: handleCategoryChange,
+      setGroup: handleGroupChange,
     },
     // Actions
     validate,

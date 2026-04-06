@@ -109,4 +109,5 @@ export const API_ENDPOINTS = {
   SAVINGS: '/api/savings',
   SUMMARY: '/api/summary',
   AUTH: '/api/auth',
+  GROUPS: '/api/groups',
 } as const;

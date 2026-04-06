@@ -17,7 +17,7 @@ import {
 // PATCH /api/transactions/[id] - 거래 수정
 export const PATCH = apiHandlerWithParams<{ id: string }>('update transaction', async (request: NextRequest, { id }) => {
   const body = await request.json();
-  const { userId, type, amount, description, categoryId, date } = body;
+  const { userId, type, amount, description, categoryId, groupId, date } = body;
 
   // 유효성 검사
   const userIdError = validateUserId(userId);
@@ -59,6 +59,7 @@ export const PATCH = apiHandlerWithParams<{ id: string }>('update transaction', 
       amount: amount !== undefined ? parseFloat(amount) : undefined,
       description,
       categoryId,
+      groupId,
       date: date ? new Date(date) : undefined,
     },
     {

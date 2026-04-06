@@ -25,7 +25,8 @@ model User {
   categories     Category[]
   budgets        Budget[]
   dailyBalances  DailyBalance[]
-  savingsGoals   SavingsGoal[]
+  savingsGoals       SavingsGoal[]
+  transactionGroups  TransactionGroup[]
 }
 
 model Category {
@@ -58,6 +59,8 @@ model Transaction {
   category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   savingsGoalId String?
   savingsGoal   SavingsGoal?    @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
+  groupId       String?
+  group         TransactionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   userId        String
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime        @default(now())
@@ -67,6 +70,7 @@ model Transaction {
   @@index([userId, type])
   @@index([userId, deletedAt, date])
   @@index([savingsGoalId])
+  @@index([groupId])
 }
 
 model Budget {
@@ -121,6 +125,24 @@ model SavingsGoal {
 
   transactions Transaction[]
 
+  @@index([userId, deletedAt])
+}
+
+model TransactionGroup {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  transactions Transaction[]
+
+  @@unique([userId, name])
   @@index([userId, deletedAt])
 }
 

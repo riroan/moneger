@@ -22,6 +22,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
     closeEditModal,
     closeDeleteConfirm,
     closeSavingsTransactionModal,
+    notifyTransactionChange,
   } = useModalStore();
 
   const handleSubmitTransaction = useCallback(async (data: TransactionFormData) => {
@@ -41,6 +42,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
       }
 
       closeTransactionModal();
+      notifyTransactionChange();
       if (onSuccess) await onSuccess();
       if (onAllTransactionsRefresh) onAllTransactionsRefresh();
     } catch (error) {
@@ -48,7 +50,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
     } finally {
       setSubmitting(false);
     }
-  }, [userId, setSubmitting, closeTransactionModal, onSuccess, onAllTransactionsRefresh, showToast]);
+  }, [userId, setSubmitting, closeTransactionModal, notifyTransactionChange, onSuccess, onAllTransactionsRefresh, showToast]);
 
   const handleEditTransaction = useCallback(async (data: TransactionFormData) => {
     if (!userId || !editingTransaction) return;
@@ -67,6 +69,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
       }
 
       closeEditModal();
+      notifyTransactionChange();
       if (onSuccess) await onSuccess();
       if (onAllTransactionsRefresh) onAllTransactionsRefresh();
     } catch (error) {
@@ -74,7 +77,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
     } finally {
       setSubmitting(false);
     }
-  }, [userId, editingTransaction, setSubmitting, closeEditModal, onSuccess, onAllTransactionsRefresh, showToast]);
+  }, [userId, editingTransaction, setSubmitting, closeEditModal, notifyTransactionChange, onSuccess, onAllTransactionsRefresh, showToast]);
 
   const handleDeleteTransaction = useCallback(async () => {
     if (!userId || !editingTransaction) return;
@@ -94,6 +97,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
 
       closeDeleteConfirm();
       closeEditModal();
+      notifyTransactionChange();
       if (onSuccess) await onSuccess();
       if (onAllTransactionsRefresh) onAllTransactionsRefresh();
     } catch (error) {
@@ -101,7 +105,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
     } finally {
       setSubmitting(false);
     }
-  }, [userId, editingTransaction, setSubmitting, closeDeleteConfirm, closeEditModal, onSuccess, onAllTransactionsRefresh, showToast]);
+  }, [userId, editingTransaction, setSubmitting, closeDeleteConfirm, closeEditModal, notifyTransactionChange, onSuccess, onAllTransactionsRefresh, showToast]);
 
   const handleDeleteSavingsTransaction = useCallback(async () => {
     if (!userId || !editingTransaction) return;
@@ -120,6 +124,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
       }
 
       closeSavingsTransactionModal();
+      notifyTransactionChange();
       if (onSuccess) await onSuccess();
       if (onAllTransactionsRefresh) onAllTransactionsRefresh();
       showToast('저축 내역이 삭제되었습니다', 'success');
@@ -128,7 +133,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
     } finally {
       setSubmitting(false);
     }
-  }, [userId, editingTransaction, setSubmitting, closeSavingsTransactionModal, onSuccess, onAllTransactionsRefresh, showToast]);
+  }, [userId, editingTransaction, setSubmitting, closeSavingsTransactionModal, notifyTransactionChange, onSuccess, onAllTransactionsRefresh, showToast]);
 
   return {
     handleSubmitTransaction,

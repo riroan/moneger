@@ -4,12 +4,14 @@ import { useEffect } from 'react';
 import { useTransactionForm, type TransactionFormData } from '@/hooks/useTransactionForm';
 import AmountInput from './AmountInput';
 import CategoryDropdown from './CategoryDropdown';
+import GroupDropdown from './GroupDropdown';
 import type { Category, TransactionWithCategory } from '@/types';
 
 interface TransactionFormProps {
   mode: 'add' | 'edit';
   initialTransaction?: TransactionWithCategory | null;
   categories: Category[];
+  userId: string;
   isSubmitting: boolean;
   onSubmit: (data: TransactionFormData) => Promise<void>;
   onCancel: () => void;
@@ -20,6 +22,7 @@ export default function TransactionForm({
   mode,
   initialTransaction,
   categories,
+  userId,
   isSubmitting,
   onSubmit,
   onCancel,
@@ -142,6 +145,13 @@ export default function TransactionForm({
         onSelect={setters.setCategory}
         type={formState.type}
         error={errors.categoryError}
+      />
+
+      {/* Group Dropdown */}
+      <GroupDropdown
+        userId={userId}
+        selectedId={formState.selectedGroup}
+        onSelect={setters.setGroup}
       />
 
       {/* Action Buttons */}
