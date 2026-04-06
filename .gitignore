@@ -69,3 +69,4 @@ logs
 # database
 *.db
 *.db-journal
+.gstack/
