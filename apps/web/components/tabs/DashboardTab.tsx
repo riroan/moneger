@@ -6,6 +6,8 @@ import { useAppStore, useTransactionStore, useCategoryStore, useAuthStore } from
 import { useFilterHandlers } from '@/hooks/useFilterHandlers';
 import SummaryCards from '@/components/dashboard/SummaryCards';
 import TodaySummaryCard from '@/components/dashboard/TodaySummaryCard';
+import CommittedSpendingCard from '@/components/dashboard/CommittedSpendingCard';
+import RecurringAlertBanner from '@/components/dashboard/RecurringAlertBanner';
 import SavingsCard from '@/components/dashboard/SavingsCard';
 import GroupsCard from '@/components/dashboard/GroupsCard';
 import TransactionItem from '@/components/transactions/TransactionItem';
@@ -38,6 +40,7 @@ interface DashboardTabProps {
   onViewAllTransactions: () => void;
   onViewSavings: () => void;
   onViewGroups: () => void;
+  onViewRecurring?: () => void;
 }
 
 export default function DashboardTab({
@@ -45,6 +48,7 @@ export default function DashboardTab({
   onViewAllTransactions,
   onViewSavings,
   onViewGroups,
+  onViewRecurring,
 }: DashboardTabProps) {
   const isMobile = useAppStore((state) => state.isMobile);
   const currentDate = useAppStore((state) => state.currentDate);
@@ -140,10 +144,14 @@ export default function DashboardTab({
         onSavingsClick={onViewSavings}
       />
 
+      <RecurringAlertBanner />
+
       <div className="grid grid-cols-1 lg:grid-cols-[330px_1fr_380px] gap-4">
         {/* 왼쪽: 요약 카드 */}
         <div className="flex flex-col order-1 gap-4">
           <TodaySummaryCard data={todaySummary} isLoading={isLoadingTodaySummary} />
+
+          <CommittedSpendingCard onManage={onViewRecurring} />
 
           <SavingsCard
             savingsGoal={summary?.savings?.targetAmount || 0}

@@ -27,6 +27,7 @@ model User {
   dailyBalances  DailyBalance[]
   savingsGoals       SavingsGoal[]
   transactionGroups  TransactionGroup[]
+  recurringExpenses  RecurringExpense[]
 }
 
 model Category {
@@ -42,8 +43,9 @@ model Category {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  transactions Transaction[]
-  budgets      Budget[]
+  transactions      Transaction[]
+  budgets           Budget[]
+  recurringExpenses RecurringExpense[]
 
   @@unique([userId, name, type])
   @@index([userId, deletedAt])
@@ -59,10 +61,12 @@ model Transaction {
   category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   savingsGoalId String?
   savingsGoal   SavingsGoal?    @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
-  groupId       String?
-  group         TransactionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  userId        String
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId            String?
+  group              TransactionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  recurringExpenseId String?
+  recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+  userId             String
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   deletedAt     DateTime?
@@ -72,6 +76,7 @@ model Transaction {
   @@index([userId, date, type])
   @@index([savingsGoalId])
   @@index([groupId])
+  @@index([recurringExpenseId])
 }
 
 model Budget {
@@ -146,6 +151,41 @@ model TransactionGroup {
   @@unique([userId, name])
   @@index([userId, deletedAt])
   @@index([userId, createdAt])
+}
+
+model RecurringExpense {
+  id          String          @id @default(cuid())
+  userId      String
+  amount      Float
+  description String
+  type        TransactionType @default(EXPENSE)
+  categoryId  String?
+  dayOfMonth  Int
+  nextDueDate DateTime        @db.Date
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+
+  user         User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     Category?                 @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+  history      RecurringExpenseHistory[]
+
+  @@index([userId, isActive])
+  @@index([nextDueDate])
+}
+
+model RecurringExpenseHistory {
+  id                 String   @id @default(cuid())
+  recurringExpenseId String
+  previousAmount     Float
+  newAmount          Float
+  changedAt          DateTime @default(now())
+
+  recurringExpense RecurringExpense @relation(fields: [recurringExpenseId], references: [id], onDelete: Cascade)
+
+  @@index([recurringExpenseId])
 }
 
 enum TransactionType {

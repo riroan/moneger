@@ -40,6 +40,10 @@ export default function Home() {
     router.push('/groups');
   };
 
+  const handleViewRecurring = () => {
+    router.push('/recurring');
+  };
+
   if (!isInitialized || isAuthLoading) {
     return null;
   }
@@ -55,6 +59,7 @@ export default function Home() {
         onViewAllTransactions={handleViewAllTransactions}
         onViewSavings={handleViewSavings}
         onViewGroups={handleViewGroups}
+        onViewRecurring={handleViewRecurring}
       />
     </MainLayout>
   );

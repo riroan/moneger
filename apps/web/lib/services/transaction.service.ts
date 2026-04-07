@@ -12,6 +12,7 @@ interface CreateTransactionInput {
   description?: string | null;
   categoryId?: string | null;
   groupId?: string | null;
+  recurringExpenseId?: string | null;
   date?: Date;
 }
 
@@ -56,7 +57,7 @@ const TRANSACTION_ORDER_BY: Record<string, Prisma.TransactionOrderByWithRelation
  * 거래 생성
  */
 export async function createTransaction(input: CreateTransactionInput) {
-  const { userId, type, amount, description, categoryId, groupId, date } = input;
+  const { userId, type, amount, description, categoryId, groupId, recurringExpenseId, date } = input;
 
   return prisma.$transaction(async (tx) => {
     const transaction = await tx.transaction.create({
@@ -67,6 +68,7 @@ export async function createTransaction(input: CreateTransactionInput) {
         description: description || null,
         categoryId: categoryId || null,
         groupId: groupId || null,
+        recurringExpenseId: recurringExpenseId || null,
         date: date || new Date(),
       },
       include: { category: { select: CATEGORY_SELECT } },

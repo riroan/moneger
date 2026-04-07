@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { formatNumber } from '@/utils/formatters';
 import { FaPlus, FaGift, FaHeartbeat, FaStar, FaRegStar } from 'react-icons/fa';
-import { MdSavings, MdTrendingUp, MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices } from 'react-icons/md';
+import { MdSavings, MdTrendingUp, MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices, MdEdit, MdDelete } from 'react-icons/md';
 
 const AddSavingsGoalModal = dynamic(() => import('./AddSavingsGoalModal'), { ssr: false });
 const EditSavingsGoalModal = dynamic(() => import('./EditSavingsGoalModal'), { ssr: false });
@@ -50,6 +50,8 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null);
   const [depositGoal, setDepositGoal] = useState<SavingsGoal | null>(null);
+  const [deleteTargetGoal, setDeleteTargetGoal] = useState<SavingsGoal | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchSavingsGoals = useCallback(async () => {
     try {
@@ -290,8 +292,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                 return (
                   <div
                     key={goal.id}
-                    className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4"
-                    onClick={() => handleGoalClick(goal)}
+                    className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] transition-all p-4"
                   >
                     {/* 상단: 아이콘 + 이름/대표/날짜 */}
                     <div className="flex items-center gap-3 mb-4">
@@ -356,14 +357,28 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                       />
                     </div>
 
-                    {/* 하단: 저축하기 버튼 + 이번 달 저축 상태 */}
+                    {/* 하단: 저축하기 버튼 + 수정/삭제 + 이번 달 저축 상태 */}
                     <div className="flex items-center justify-between">
-                      <button
-                        onClick={(e) => handleDepositClick(e, goal)}
-                        className="text-xs sm:text-sm text-accent-mint rounded-[8px] hover:opacity-80 transition-colors cursor-pointer flex items-center gap-1 py-2 px-4 bg-emerald-400/15"
-                      >
-                        <FaPlus className="text-[10px]" /> 저축하기
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => handleDepositClick(e, goal)}
+                          className="text-xs sm:text-sm text-accent-mint rounded-[8px] hover:opacity-80 transition-colors cursor-pointer flex items-center gap-1 py-2 px-4 bg-emerald-400/15"
+                        >
+                          <FaPlus className="text-[10px]" /> 저축하기
+                        </button>
+                        <button
+                          onClick={() => handleGoalClick(goal)}
+                          className="p-2 text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+                        >
+                          <MdEdit className="text-lg" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTargetGoal(goal)}
+                          className="p-2 text-text-muted hover:text-accent-coral transition-colors cursor-pointer"
+                        >
+                          <MdDelete className="text-lg" />
+                        </button>
+                      </div>
                       {goal.thisMonthSavings >= goal.monthlyTarget ? (
                         <p className="text-xs sm:text-sm font-medium text-accent-mint">
                           이번 달 완료!
@@ -431,6 +446,53 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         </div>
       </div>
 
+      {/* 삭제 확인 모달 */}
+      {deleteTargetGoal && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200] animate-[fadeIn_0.2s_ease-out]"
+          onClick={() => setDeleteTargetGoal(null)}
+        >
+          <div
+            className="bg-bg-card border border-[var(--border)] rounded-[20px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out] p-6 m-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-text-primary mb-3">
+              저축 목표 삭제
+            </h3>
+            <p className="text-sm text-text-secondary mb-5">
+              &apos;{deleteTargetGoal.name}&apos;을(를) 삭제하시겠습니까?<br />
+              이 작업은 되돌릴 수 없습니다.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteTargetGoal(null)}
+                className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3"
+                disabled={isDeleting}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsDeleting(true);
+                  try {
+                    await handleDeleteGoal(deleteTargetGoal.id);
+                    setDeleteTargetGoal(null);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                disabled={isDeleting}
+                className="flex-1 bg-accent-coral text-white rounded-[12px] font-medium hover:opacity-90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3"
+              >
+                {isDeleting ? '삭제 중...' : '삭제'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 저축 목표 추가 모달 */}
       <AddSavingsGoalModal
         isOpen={isAddModalOpen}
@@ -447,7 +509,6 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
           setSelectedGoal(null);
         }}
         onSave={handleEditGoal}
-        onDelete={handleDeleteGoal}
       />
 
       {/* 저축하기 모달 */}

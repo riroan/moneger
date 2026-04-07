@@ -31,7 +31,6 @@ interface EditSavingsGoalModalProps {
     targetYear: number;
     targetMonth: number;
   }) => void;
-  onDelete: (id: string) => void;
 }
 
 function parseTargetDate(targetDate: string): { year: number; month: number } {
@@ -42,7 +41,7 @@ function parseTargetDate(targetDate: string): { year: number; month: number } {
   return { year: new Date().getFullYear() + 1, month: 12 };
 }
 
-export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, onDelete }: EditSavingsGoalModalProps) {
+export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave }: EditSavingsGoalModalProps) {
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('home');
   const [targetAmount, setTargetAmount] = useState('');
@@ -50,8 +49,6 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
   const [targetYear, setTargetYear] = useState(new Date().getFullYear() + 1);
   const [targetMonth, setTargetMonth] = useState(12);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const [nameError, setNameError] = useState('');
   const [targetAmountError, setTargetAmountError] = useState('');
@@ -127,27 +124,9 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
     }
   };
 
-  const handleDeleteClick = () => {
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!goal) return;
-
-    setIsDeleting(true);
-    try {
-      await onDelete(goal.id);
-      setIsDeleteConfirmOpen(false);
-      onClose();
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   const handleClose = () => {
     setIsYearOpen(false);
     setIsMonthOpen(false);
-    setIsDeleteConfirmOpen(false);
     onClose();
   };
 
@@ -374,22 +353,14 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
             type="button"
             onClick={handleClose}
             className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
-            disabled={isSaving || isDeleting}
+            disabled={isSaving}
           >
             취소
           </button>
-          <button
-            type="button"
-            onClick={handleDeleteClick}
-            disabled={isSaving || isDeleting}
-            className="flex-1 bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
-          >
-            삭제
-          </button>
-          <button
+<button
             type="button"
             onClick={handleSave}
-            disabled={isSaving || isDeleting}
+            disabled={isSaving}
             className="flex-1 bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary rounded-[12px] font-medium hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3.5"
           >
             {isSaving ? '저장 중...' : '저장'}
@@ -397,44 +368,6 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave, on
         </div>
       </div>
 
-      {/* 삭제 확인 모달 */}
-      {isDeleteConfirmOpen && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[250] animate-[fadeIn_0.2s_ease-out]"
-          onClick={() => setIsDeleteConfirmOpen(false)}
-        >
-          <div
-            className="bg-bg-card border border-[var(--border)] rounded-[20px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out] p-6 m-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-bold text-text-primary mb-3">
-              저축 목표 삭제
-            </h3>
-            <p className="text-sm text-text-secondary mb-5">
-              &apos;{goal?.name}&apos; 목표를 삭제하시겠습니까?<br />
-              이 작업은 되돌릴 수 없습니다.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setIsDeleteConfirmOpen(false)}
-                className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3"
-                disabled={isDeleting}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                disabled={isDeleting}
-                className="flex-1 bg-accent-coral text-white rounded-[12px] font-medium hover:opacity-90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed p-3"
-              >
-                {isDeleting ? '삭제 중...' : '삭제'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
