@@ -43,8 +43,8 @@ function calculateNextDueDate(dayOfMonth: number, fromDate?: Date): Date {
 
   const clampedDay = clampDayOfMonth(kstYear, kstMonth, dayOfMonth);
 
-  // 오늘 이후면 이번 달, 아니면 다음 달
-  if (clampedDay > kstDay) {
+  // 오늘 이후(당일 포함)면 이번 달, 아니면 다음 달
+  if (clampedDay >= kstDay) {
     return new Date(Date.UTC(kstYear, kstMonth - 1, clampedDay));
   }
 
