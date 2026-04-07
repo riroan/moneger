@@ -24,6 +24,7 @@ jest.mock('@/lib/prisma', () => ({
     transaction: {
       create: jest.fn(),
       findFirst: jest.fn(),
+      count: jest.fn(),
     },
     dailyBalance: {
       findFirst: jest.fn(),
@@ -202,9 +203,10 @@ describe('recurring.service', () => {
       (mockPrisma.recurringExpense.findMany as jest.Mock)
         .mockResolvedValueOnce([{ amount: 500000 }, { amount: 100000 }]) // remaining
         .mockResolvedValueOnce([
-          { ...mockRecurring, amount: 500000 },
-          { ...mockRecurring, id: 'rec-2', amount: 100000, category: { id: 'cat-2', name: '구독', type: 'EXPENSE', color: '#4ECDC4', icon: null } },
+          { ...mockRecurring, amount: 500000, categoryId: 'cat-1' },
+          { ...mockRecurring, id: 'rec-2', amount: 100000, categoryId: 'cat-2', category: { id: 'cat-2', name: '구독', type: 'EXPENSE', color: '#4ECDC4', icon: null } },
         ]); // all active
+      (mockPrisma.transaction.count as jest.Mock).mockResolvedValue(1);
 
       const result = await getRecurringSummary('user-1');
 
@@ -212,6 +214,7 @@ describe('recurring.service', () => {
       expect(result.remainingTotal).toBe(600000);
       expect(result.disposableAmount).toBe(2400000);
       expect(result.categoryBreakdown).toHaveLength(2);
+      expect(result.processedThisMonth).toBe(1);
     });
 
     it('should return 0 balance when no DailyBalance exists', async () => {
@@ -219,11 +222,13 @@ describe('recurring.service', () => {
       (mockPrisma.recurringExpense.findMany as jest.Mock)
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
+      (mockPrisma.transaction.count as jest.Mock).mockResolvedValue(0);
 
       const result = await getRecurringSummary('user-1');
 
       expect(result.balance).toBe(0);
       expect(result.disposableAmount).toBe(0);
+      expect(result.processedThisMonth).toBe(0);
     });
   });
 
