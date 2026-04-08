@@ -358,7 +358,7 @@ describe('transaction.service', () => {
       expect(prisma.transaction.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            description: { contains: '점심', mode: 'insensitive' },
+            description: { contains: '점심' },
           }),
         })
       );

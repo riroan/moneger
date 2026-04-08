@@ -208,7 +208,7 @@ function buildTransactionWhere(input: GetTransactionsInput): Prisma.TransactionW
   }
 
   if (categoryIds?.length) where.categoryId = { in: categoryIds };
-  if (search) where.description = { contains: search, mode: 'insensitive' };
+  if (search) where.description = { contains: search };
   if (input.groupId) where.groupId = input.groupId;
 
   // 저축 전용 필터
