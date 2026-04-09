@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { formatNumber } from '@/utils/formatters';
 import { FaPlus, FaGift, FaHeartbeat, FaStar, FaRegStar } from 'react-icons/fa';
-import { MdSavings, MdTrendingUp, MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices, MdEdit, MdDelete } from 'react-icons/md';
+import { MdSavings, MdTrendingUp, MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices, MdEdit, MdDelete, MdCalendarToday, MdCheckCircle } from 'react-icons/md';
 
 const AddSavingsGoalModal = dynamic(() => import('./AddSavingsGoalModal'), { ssr: false });
 const EditSavingsGoalModal = dynamic(() => import('./EditSavingsGoalModal'), { ssr: false });
 const DepositModal = dynamic(() => import('./DepositModal'), { ssr: false });
+const SavingsTrendChart = dynamic(() => import('./SavingsTrendChart'), { ssr: false });
 
 const MAX_GOALS = 10;
 
@@ -401,48 +402,86 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
           )}
         </div>
 
-        {/* 저축 요약 카드 */}
-        <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-              <MdTrendingUp className="text-lg sm:text-xl text-accent-mint" /> 저축 현황
-            </h2>
+        {/* 오른쪽 컬럼: 추세 + 이번 달 진행 */}
+        <div className="flex flex-col gap-4">
+          {/* 저축 추세 차트 */}
+          <div
+            className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <MdTrendingUp className="text-lg sm:text-xl text-accent-mint" /> 저축 추세
+              </h2>
+            </div>
+
+            <SavingsTrendChart userId={userId} />
           </div>
 
-          {savingsGoals.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {savingsGoals.map((goal) => {
-                const IconComponent = getIconComponent(goal.icon);
-                return (
-                  <div
-                    key={goal.id}
-                    className="flex items-center justify-between bg-bg-secondary rounded-[12px] p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-[8px] flex items-center justify-center text-sm bg-amber-400/15 text-amber-400"
-                      >
-                        <IconComponent />
+          {/* 이번 달 진행 */}
+          <div
+            className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <MdCalendarToday className="text-lg sm:text-xl text-accent-blue" /> 이번 달 진행
+              </h2>
+            </div>
+
+            {savingsGoals.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {savingsGoals.map((goal) => {
+                  const IconComponent = getIconComponent(goal.icon);
+                  const progress = goal.monthlyTarget > 0
+                    ? Math.min(Math.round((goal.thisMonthSavings / goal.monthlyTarget) * 100), 100)
+                    : 0;
+                  const isComplete = goal.thisMonthSavings >= goal.monthlyTarget;
+
+                  return (
+                    <div
+                      key={goal.id}
+                      className="bg-bg-secondary rounded-[12px] p-3"
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-7 h-7 rounded-[8px] flex items-center justify-center text-sm bg-amber-400/15 text-amber-400">
+                          <IconComponent />
+                        </div>
+                        <p className="text-sm font-medium flex-1 truncate">{goal.name}</p>
+                        {isComplete ? (
+                          <MdCheckCircle className="text-lg text-accent-mint" />
+                        ) : (
+                          <span className="text-xs text-text-muted">
+                            {progress}%
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{goal.name}</p>
-                        <p className="text-xs text-text-muted">{goal.targetDate}</p>
+                      <div className="w-full h-1.5 bg-bg-card rounded-full overflow-hidden mb-1.5">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            isComplete ? 'bg-accent-mint' : progress >= 50 ? 'bg-accent-blue' : 'bg-text-muted'
+                          }`}
+                          style={{ width: `${Math.max(progress, goal.thisMonthSavings > 0 ? 2 : 0)}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-text-muted">
+                          <span className="mr-px">₩</span>{formatNumber(goal.thisMonthSavings)}
+                          <span className="mx-1">/</span>
+                          <span className="mr-px">₩</span>{formatNumber(goal.monthlyTarget)}
+                        </p>
+                        {isComplete && (
+                          <p className="text-xs font-medium text-accent-mint">완료!</p>
+                        )}
                       </div>
                     </div>
-                    <p className="text-sm sm:text-base font-semibold text-accent-mint">
-                      <span className="font-medium">({goal.progressPercent}%)</span>
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center text-text-muted py-8 text-sm">
-              저축 목표를 추가해주세요
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center text-text-muted py-8 text-sm">
+                저축 목표를 추가해주세요
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
