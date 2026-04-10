@@ -48,7 +48,7 @@ function SummaryCards({
     {
       type: 'income',
       icon: IncomeIcon,
-      label: '이번 달 수입',
+      label: '월 수입',
       amount: `₩${formatNumber(totalIncome)}`,
       change: `${incomeCount}건의 수입`,
       positive: true,
@@ -60,7 +60,7 @@ function SummaryCards({
     {
       type: 'expense',
       icon: ExpenseIcon,
-      label: '이번 달 지출',
+      label: '월 지출',
       amount: `₩${formatNumber(totalExpense)}`,
       change: `${expenseCount}건의 지출`,
       positive: false,
@@ -72,7 +72,7 @@ function SummaryCards({
     {
       type: 'savings',
       icon: SavingsIcon,
-      label: '저축',
+      label: '월 저축',
       amount: `₩${formatNumber(totalSavings)}`,
       change: `${savingsCount}건의 저축`,
       positive: true,

@@ -98,7 +98,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           onMonthSelect={goToMonth}
           onLogout={logout}
           oldestDate={oldestTransactionDate}
-          showDatePicker={false}
+          showDatePicker={pathname === '/'}
         />
 
         {children}
