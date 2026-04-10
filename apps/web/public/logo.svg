@@ -25,6 +25,6 @@
   <!-- Inner detail ring -->
   <circle cx="256" cy="256" r="135" stroke="#ffffff" stroke-width="2" stroke-opacity="0.3" fill="none"/>
 
-  <!-- M Letter -->
-  <text x="256" y="295" font-family="Arial, sans-serif" font-size="160" font-weight="700" fill="#ffffff" text-anchor="middle">M</text>
+  <!-- M Letter (path, no font dependency) -->
+  <path d="M196 310V202h12l48 76 48-76h12v108h-14V226l-42 66h-8l-42-66v84h-14z" fill="#ffffff"/>
 </svg>

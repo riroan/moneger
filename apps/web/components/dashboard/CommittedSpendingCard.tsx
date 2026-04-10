@@ -71,7 +71,7 @@ function CommittedSpendingCard({ onManage }: CommittedSpendingCardProps) {
       <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-            <MdEventRepeat className="text-lg sm:text-xl text-accent-coral" /> 정기 지출
+            <MdEventRepeat className="text-lg sm:text-xl text-accent-coral" /> 고정비
           </h2>
           {onManage && (
             <button
@@ -83,7 +83,7 @@ function CommittedSpendingCard({ onManage }: CommittedSpendingCardProps) {
           )}
         </div>
         <div className="bg-bg-secondary rounded-[12px] text-center text-text-muted text-sm p-5">
-          정기 지출을 등록해주세요
+          고정비를 등록해주세요
         </div>
       </div>
     );
@@ -105,7 +105,7 @@ function CommittedSpendingCard({ onManage }: CommittedSpendingCardProps) {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-          <MdEventRepeat className="text-lg sm:text-xl text-accent-coral" /> 정기 지출
+          <MdEventRepeat className="text-lg sm:text-xl text-accent-coral" /> 고정비
         </h2>
         {onManage && (
           <button
@@ -125,7 +125,7 @@ function CommittedSpendingCard({ onManage }: CommittedSpendingCardProps) {
             <MdEventRepeat />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium">월 정기 지출</p>
+            <p className="text-sm font-medium">월 고정비</p>
             <p className="text-xs text-text-muted">{data.activeCount}건 등록</p>
           </div>
         </div>

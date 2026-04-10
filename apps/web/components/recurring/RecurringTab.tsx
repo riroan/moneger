@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber } from '@/utils/formatters';
 import { FaPlus } from 'react-icons/fa';
-import { MdEventRepeat, MdEdit, MdDelete, MdHistory, MdTrendingDown } from 'react-icons/md';
+import { MdEventRepeat, MdEdit, MdDelete, MdHistory, MdPieChart, MdSchedule } from 'react-icons/md';
 
 const AddRecurringModal = dynamic(() => import('./AddRecurringModal'), { ssr: false });
 const EditRecurringModal = dynamic(() => import('./EditRecurringModal'), { ssr: false });
@@ -84,17 +85,19 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
     onDataChange?.();
   };
 
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
   const totalMonthly = summary?.totalMonthly || 0;
   const activeCount = summary?.activeCount || 0;
   const processedThisMonth = summary?.processedThisMonth || 0;
 
   return (
     <div className="animate-[fadeIn_0.5s_ease-out]">
-      {/* 상단 요약 카드 3개 — 저축 페이지와 동일한 레이아웃 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-        {/* 월 정기 지출 */}
+      {/* 상단 요약 카드 3개 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+        {/* 월 고정비 */}
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-5">
-          <p className="text-xs sm:text-sm text-text-secondary mb-1.5">월 정기 지출</p>
+          <p className="text-xs sm:text-sm text-text-secondary mb-1.5">월 고정비</p>
           <p className="text-2xl sm:text-3xl font-bold text-accent-coral">
             <span className="mr-0.5">₩</span>{formatNumber(totalMonthly)}
           </p>
@@ -104,7 +107,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
         </div>
 
         {/* 이번 달 처리 현황 */}
-        <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] sm:col-span-2 lg:col-span-1 p-5">
+        <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-5">
           <p className="text-xs sm:text-sm text-text-secondary mb-1.5">이번 달 처리 현황</p>
           <p className="text-2xl sm:text-3xl font-bold text-accent-blue">
             {processedThisMonth}<span className="text-base sm:text-lg font-normal text-text-muted">건 처리됨</span>
@@ -123,15 +126,32 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
             />
           </div>
         </div>
+
+        {/* 남은 고정비 */}
+        <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] sm:col-span-2 lg:col-span-1 p-5">
+          <p className="text-xs sm:text-sm text-text-secondary mb-1.5">남은 고정비</p>
+          {(summary?.remainingTotal ?? 0) === 0 ? (
+            <p className="text-2xl sm:text-3xl font-bold text-accent-mint">
+              모두 처리!
+            </p>
+          ) : (
+            <p className="text-2xl sm:text-3xl font-bold text-text-primary">
+              <span className="mr-0.5">₩</span>{formatNumber(summary?.remainingTotal ?? 0)}
+            </p>
+          )}
+          <p className="text-xs text-text-muted mt-1">
+            이번 달 미처리 금액
+          </p>
+        </div>
       </div>
 
       {/* 하단 2칸럼 — 저축 페이지와 동일한 구조 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* 왼쪽: 정기 지출 목록 */}
-        <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
+        {/* 왼쪽: 고정비 목록 */}
+        <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4 self-start">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-              <MdEventRepeat className="text-lg sm:text-xl text-accent-coral" /> 정기 지출
+              <MdEventRepeat className="text-lg sm:text-xl text-accent-coral" /> 고정비
               <span className="text-xs sm:text-sm text-text-muted font-normal">({expenses.length}/10)</span>
             </h2>
             <button
@@ -255,52 +275,190 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
             </div>
           ) : (
             <div className="text-center text-text-muted py-8 text-sm">
-              정기 지출이 없습니다
+              고정비가 없습니다
             </div>
           )}
         </div>
 
-        {/* 오른쪽: 카테고리별 현황 */}
-        <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-              <MdTrendingDown className="text-lg sm:text-xl text-accent-coral" /> 지출 현황
-            </h2>
-          </div>
+        {/* 오른쪽 컬럼: 카테고리 현황 + 다가오는 지출 */}
+        <div className="flex flex-col gap-4">
+          {/* 항목별 비중 */}
+          <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <MdPieChart className="text-lg sm:text-xl text-accent-coral" /> 항목별 비중
+              </h2>
+            </div>
 
-          {summary && summary.categoryBreakdown.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {summary.categoryBreakdown.map((cat, i) => (
-                <div
-                  key={cat.name}
-                  className="flex items-center justify-between bg-bg-secondary rounded-[12px] p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-[8px] flex items-center justify-center text-sm"
-                      style={{
-                        backgroundColor: `${cat.color || `hsl(${i * 60 + 200}, 50%, 55%)`}20`,
-                        color: cat.color || `hsl(${i * 60 + 200}, 50%, 55%)`,
-                      }}
-                    >
-                      <MdEventRepeat />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{cat.name}</p>
-                      <p className="text-xs text-text-muted">₩{formatNumber(cat.amount)}/월</p>
+            {(() => {
+              const activeExpenses = expenses.filter((e) => e.isActive).sort((a, b) => b.amount - a.amount);
+              const itemTotal = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+              if (activeExpenses.length === 0) {
+                return (
+                  <div className="text-center text-text-muted py-8 text-sm">
+                    고정비를 추가해주세요
+                  </div>
+                );
+              }
+
+              return (
+                <>
+                  {/* Donut Chart */}
+                  <div className="flex justify-center items-center relative mb-4 h-[180px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart style={{ outline: 'none' }}>
+                        <Pie
+                          data={activeExpenses.map((e, i) => ({
+                            name: e.description,
+                            value: e.amount,
+                            color: e.category?.color || `hsl(${i * 47 + 180}, 50%, 55%)`,
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={hoveredIndex !== null ? 42 : 45}
+                          outerRadius={75}
+                          paddingAngle={2}
+                          dataKey="value"
+                          startAngle={90}
+                          endAngle={-270}
+                          isAnimationActive={false}
+                          onMouseEnter={(_, index) => setHoveredIndex(index)}
+                          onMouseLeave={() => setHoveredIndex(null)}
+                        >
+                          {activeExpenses.map((e, i) => (
+                            <Cell
+                              key={e.id}
+                              fill={e.category?.color || `hsl(${i * 47 + 180}, 50%, 55%)`}
+                              opacity={hoveredIndex === null || hoveredIndex === i ? 0.9 : 0.4}
+                              style={{
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                transform: hoveredIndex === i ? 'scale(1.05)' : 'scale(1)',
+                                transformOrigin: 'center',
+                              }}
+                            />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                      {hoveredIndex !== null && activeExpenses[hoveredIndex] ? (
+                        <>
+                          <div className="font-bold text-text-primary text-sm sm:text-base">
+                            ₩{formatNumber(activeExpenses[hoveredIndex].amount)}
+                          </div>
+                          <div className="text-[10px] sm:text-xs text-text-muted mt-0.5 max-w-[80px] text-center truncate">
+                            {activeExpenses[hoveredIndex].description}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-bold text-text-primary text-sm sm:text-base">
+                            ₩{formatNumber(itemTotal)}
+                          </div>
+                          <div className="text-[10px] sm:text-xs text-text-muted mt-0.5">
+                            월 합계
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <p className="text-sm sm:text-base font-semibold text-accent-coral">
-                    {cat.percentage}%
-                  </p>
+
+                  {/* Item List */}
+                  <div className="flex flex-col gap-2">
+                    {activeExpenses.map((e, i) => {
+                      const pct = itemTotal > 0 ? Math.round((e.amount / itemTotal) * 100) : 0;
+                      const color = e.category?.color || `hsl(${i * 47 + 180}, 50%, 55%)`;
+                      return (
+                        <div
+                          key={e.id}
+                          className={`flex items-center justify-between rounded-[12px] p-3 transition-all cursor-pointer ${
+                            hoveredIndex === i ? 'bg-bg-card-hover translate-x-1' : 'bg-bg-secondary hover:bg-bg-card-hover hover:translate-x-1'
+                          }`}
+                          onMouseEnter={() => setHoveredIndex(i)}
+                          onMouseLeave={() => setHoveredIndex(null)}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`w-3 h-3 rounded-full shrink-0 transition-transform ${hoveredIndex === i ? 'scale-150' : ''}`}
+                              style={{ backgroundColor: color }}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{e.description}</p>
+                              <p className="text-xs text-text-muted">₩{formatNumber(e.amount)}/월</p>
+                            </div>
+                          </div>
+                          <p className="text-sm sm:text-base font-semibold text-accent-coral ml-2 shrink-0">
+                            {pct}%
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+          {/* 다가오는 지출 일정 */}
+          <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <MdSchedule className="text-lg sm:text-xl text-accent-blue" /> 다가오는 지출
+              </h2>
+            </div>
+
+            {(() => {
+              const activeExpenses = expenses
+                .filter((e) => e.isActive)
+                .map((e) => {
+                  const now = new Date();
+                  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+                  const todayStr = kstNow.toISOString().split('T')[0];
+                  const dueDate = e.nextDueDate.split('T')[0];
+                  const diffMs = new Date(dueDate).getTime() - new Date(todayStr).getTime();
+                  const daysLeft = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                  return { ...e, daysLeft };
+                })
+                .sort((a, b) => a.daysLeft - b.daysLeft);
+
+              if (activeExpenses.length === 0) {
+                return (
+                  <div className="text-center text-text-muted py-8 text-sm">
+                    고정비를 추가해주세요
+                  </div>
+                );
+              }
+
+              return (
+                <div className="flex flex-col gap-2">
+                  {activeExpenses.map((expense) => (
+                    <div
+                      key={expense.id}
+                      className="flex items-center justify-between bg-bg-secondary rounded-[12px] p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`min-w-[44px] text-center text-xs font-medium rounded-[8px] py-1.5 px-2 ${
+                          expense.daysLeft <= 0
+                            ? 'bg-accent-coral/15 text-accent-coral'
+                            : expense.daysLeft <= 3
+                            ? 'bg-accent-yellow/15 text-accent-yellow'
+                            : 'bg-accent-blue/15 text-accent-blue'
+                        }`}>
+                          {expense.daysLeft <= 0 ? '오늘' : `${expense.daysLeft}일 후`}
+                        </div>
+                        <p className="text-sm font-medium truncate">{expense.description}</p>
+                      </div>
+                      <p className="text-sm font-semibold text-accent-coral whitespace-nowrap ml-2">
+                        ₩{formatNumber(expense.amount)}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-text-muted py-8 text-sm">
-              정기 지출을 추가해주세요
-            </div>
-          )}
+              );
+            })()}
+          </div>
         </div>
       </div>
 
@@ -315,7 +473,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-text-primary mb-3">
-              정기 지출 삭제
+              고정비 삭제
             </h3>
             <p className="text-sm text-text-secondary mb-5">
               &apos;{deleteTargetExpense.description}&apos;을(를) 삭제하시겠습니까?<br />
