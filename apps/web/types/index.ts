@@ -74,6 +74,8 @@ export interface CategorySummary {
   count: number;
   budget?: number;
   budgetUsagePercent?: number;
+  prevTotal?: number;
+  changePercent?: number;
 }
 
 export interface TransactionSummary {
@@ -166,4 +168,6 @@ export interface CategoryChartData {
   count: number;
   budget?: number;
   budgetUsagePercent?: number;
+  prevTotal?: number;
+  changePercent?: number;
 }

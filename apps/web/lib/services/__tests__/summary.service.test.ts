@@ -41,7 +41,7 @@ describe('summary.service', () => {
     const year = 2024;
     const month = 1;
 
-    // fetchMonthlyAggregations runs 9 parallel queries:
+    // fetchMonthlyAggregations runs 10 parallel queries:
     // 1. aggregate: incomeAgg
     // 2. aggregate: expenseAgg
     // 3. groupBy: categoryStats (by categoryId)
@@ -51,6 +51,7 @@ describe('summary.service', () => {
     // 7. aggregate: previousIncomeAgg
     // 8. aggregate: previousExpenseAgg
     // 9. aggregate: previousSavingsAgg
+    // 10. groupBy: prevCategoryStats (이전 달 카테고리별 지출)
     //
     // Then buildCategoryStats runs 2 parallel queries:
     // 1. category.findMany
@@ -68,7 +69,7 @@ describe('summary.service', () => {
         .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousExpenseAgg
         .mockResolvedValueOnce({ _sum: { amount: 0 } }); // previousSavingsAgg
 
-      // groupBy calls: categoryStats, transactionCounts
+      // groupBy calls: categoryStats, transactionCounts, prevCategoryStats
       (prisma.transaction.groupBy as jest.Mock)
         .mockResolvedValueOnce([ // categoryStats
           { categoryId: 'cat-1', _sum: { amount: 500000 }, _count: 15 },
@@ -77,6 +78,9 @@ describe('summary.service', () => {
         .mockResolvedValueOnce([ // transactionCounts
           { type: 'INCOME', _count: 2 },
           { type: 'EXPENSE', _count: 23 },
+        ])
+        .mockResolvedValueOnce([ // prevCategoryStats
+          { categoryId: 'cat-1', _sum: { amount: 400000 } },
         ]);
 
       // savingsGoal
@@ -147,6 +151,21 @@ describe('summary.service', () => {
       });
     });
 
+    it('카테고리별 전월 대비 변화를 포함해야 함', async () => {
+      setupDefaultMocks();
+      const result = await getTransactionSummary(userId, year, month);
+
+      const cat1 = result.categories.find((c) => c.id === 'cat-1');
+      // cat-1: 이번 달 500000, 전월 400000 → +25%
+      expect(cat1?.prevTotal).toBe(400000);
+      expect(cat1?.changePercent).toBe(25);
+
+      const cat2 = result.categories.find((c) => c.id === 'cat-2');
+      // cat-2: 전월 데이터 없음 → 신규
+      expect(cat2?.prevTotal).toBeUndefined();
+      expect(cat2?.changePercent).toBeUndefined();
+    });
+
     it('카테고리에 월별 예산이 없으면 기본 예산을 사용해야 함', async () => {
       setupDefaultMocks();
       // cat-2에는 월별 예산이 없음
@@ -196,7 +215,8 @@ describe('summary.service', () => {
 
       (prisma.transaction.groupBy as jest.Mock)
         .mockResolvedValueOnce([]) // categoryStats
-        .mockResolvedValueOnce([]); // transactionCounts
+        .mockResolvedValueOnce([]) // transactionCounts
+        .mockResolvedValueOnce([]); // prevCategoryStats
 
       (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
       (prisma.category.findMany as jest.Mock).mockResolvedValue([]);
@@ -222,7 +242,8 @@ describe('summary.service', () => {
 
       (prisma.transaction.groupBy as jest.Mock)
         .mockResolvedValueOnce([]) // categoryStats
-        .mockResolvedValueOnce([]); // transactionCounts
+        .mockResolvedValueOnce([]) // transactionCounts
+        .mockResolvedValueOnce([]); // prevCategoryStats
 
       (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
       (prisma.category.findMany as jest.Mock).mockResolvedValue([]);
@@ -255,7 +276,8 @@ describe('summary.service', () => {
         .mockResolvedValueOnce([ // transactionCounts
           { type: 'INCOME', _count: 2 },
           { type: 'EXPENSE', _count: 23 },
-        ]);
+        ])
+        .mockResolvedValueOnce([]); // prevCategoryStats
 
       (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([
         {

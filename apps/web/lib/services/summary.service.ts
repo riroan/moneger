@@ -11,6 +11,8 @@ interface CategorySummary {
   total: number;
   budget?: number;
   budgetUsagePercent?: number;
+  prevTotal?: number;
+  changePercent?: number;
 }
 
 /**
@@ -21,7 +23,9 @@ async function fetchMonthlyAggregations(
   startDate: Date,
   endDate: Date,
   currentYear: number,
-  currentMonth: number
+  currentMonth: number,
+  prevMonthStart: Date,
+  prevMonthEnd: Date,
 ) {
   const whereClause = { userId, deletedAt: null, date: { gte: startDate, lte: endDate } };
 
@@ -29,6 +33,7 @@ async function fetchMonthlyAggregations(
     incomeAgg, expenseAgg, categoryStats, transactionCounts,
     activeSavingsData, monthlySavingsAgg,
     previousIncomeAgg, previousExpenseAgg, previousSavingsAgg,
+    prevCategoryStats,
   ] = await Promise.all([
     prisma.transaction.aggregate({
       where: { ...whereClause, type: 'INCOME' },
@@ -80,12 +85,25 @@ async function fetchMonthlyAggregations(
       where: { userId, date: { lt: startDate }, savingsGoalId: { not: null }, deletedAt: null },
       _sum: { amount: true },
     }),
+    prisma.transaction.groupBy({
+      by: ['categoryId'],
+      where: {
+        userId,
+        deletedAt: null,
+        type: 'EXPENSE',
+        categoryId: { not: null },
+        savingsGoalId: null,
+        date: { gte: prevMonthStart, lte: prevMonthEnd },
+      },
+      _sum: { amount: true },
+    }),
   ]);
 
   return {
     incomeAgg, expenseAgg, categoryStats, transactionCounts,
     activeSavingsData, monthlySavingsAgg,
     previousIncomeAgg, previousExpenseAgg, previousSavingsAgg,
+    prevCategoryStats,
   };
 }
 
@@ -96,8 +114,10 @@ async function buildCategoryStats(
   userId: string,
   startDate: Date,
   categoryStats: { categoryId: string | null; _sum: { amount: number | null }; _count: number }[],
+  prevCategoryStats: { categoryId: string | null; _sum: { amount: number | null } }[],
 ): Promise<CategorySummary[]> {
   const categoryIds = categoryStats.map((s) => s.categoryId!);
+  const prevMap = new Map(prevCategoryStats.map((p) => [p.categoryId, p._sum.amount ?? 0]));
 
   const [categories, allBudgets] = await Promise.all([
     categoryIds.length > 0
@@ -127,6 +147,11 @@ async function buildCategoryStats(
       const effectiveBudget = hasMonthlyBudget ? monthlyBudget : (category.defaultBudget ?? undefined);
       const spent = stat._sum.amount || 0;
 
+      const prevTotal = prevMap.has(category.id) ? prevMap.get(category.id)! : undefined;
+      const changePercent = prevTotal !== undefined && prevTotal > 0
+        ? Math.round(((spent - prevTotal) / prevTotal) * 100)
+        : undefined;
+
       return {
         id: category.id,
         name: category.name,
@@ -138,6 +163,8 @@ async function buildCategoryStats(
         budgetUsagePercent: effectiveBudget && effectiveBudget > 0
           ? Math.round((spent / effectiveBudget) * 100)
           : undefined,
+        prevTotal,
+        changePercent,
       };
     })
     .filter((c): c is CategorySummary => c !== null)
@@ -153,8 +180,12 @@ export async function getTransactionSummary(userId: string, year: number, month:
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
 
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const { startDate: prevMonthStart, endDate: prevMonthEnd } = getMonthRangeKST(prevYear, prevMonth);
+
   // 1. DB 집계 데이터 조회
-  const agg = await fetchMonthlyAggregations(userId, startDate, endDate, currentYear, currentMonth);
+  const agg = await fetchMonthlyAggregations(userId, startDate, endDate, currentYear, currentMonth, prevMonthStart, prevMonthEnd);
 
   // 2. 기본 금액 계산
   const carryOverBalance =
@@ -168,7 +199,7 @@ export async function getTransactionSummary(userId: string, year: number, month:
   const monthlySavingsCount = agg.monthlySavingsAgg._count || 0;
 
   // 3. 카테고리 통계 + 예산 조합
-  const categoryList = await buildCategoryStats(userId, startDate, agg.categoryStats);
+  const categoryList = await buildCategoryStats(userId, startDate, agg.categoryStats, agg.prevCategoryStats);
 
   // 4. 예산 계산
   const budgets = await prisma.budget.findMany({

@@ -15,6 +15,8 @@ interface CategoryData {
   count: number;
   budget?: number;
   budgetUsagePercent?: number;
+  prevTotal?: number;
+  changePercent?: number;
 }
 
 interface CategoryChartProps {
@@ -165,8 +167,19 @@ function CategoryChart({
                   <div className="text-xs sm:text-[13px] text-text-muted">{category.count}건</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm sm:text-base font-semibold">
-                    <CurrencyDisplay amount={`₩${formatNumber(category.amount)}`} />
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-sm sm:text-base font-semibold">
+                      <CurrencyDisplay amount={`₩${formatNumber(category.amount)}`} />
+                    </span>
+                    {category.prevTotal === undefined ? (
+                      <span className="text-[10px] sm:text-xs font-medium px-1 py-0.5 rounded bg-blue-500/15 text-blue-400">신규</span>
+                    ) : category.changePercent !== undefined && category.changePercent >= 3 ? (
+                      <span className="text-[10px] sm:text-xs font-medium px-1 py-0.5 rounded bg-red-500/15 text-red-400">{category.changePercent}% ↗</span>
+                    ) : category.changePercent !== undefined && category.changePercent <= -3 ? (
+                      <span className="text-[10px] sm:text-xs font-medium px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-400">{Math.abs(category.changePercent)}% ↘</span>
+                    ) : (
+                      <span className="text-[10px] sm:text-xs text-text-muted">→</span>
+                    )}
                   </div>
                   {category.budget !== undefined && category.budget > 0 && (
                     <div className="text-[10px] sm:text-xs text-text-muted">
