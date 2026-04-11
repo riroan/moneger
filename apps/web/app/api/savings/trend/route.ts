@@ -17,8 +17,11 @@ export const GET = apiHandler('fetch savings trend', async (request: NextRequest
     WHERE userId = ${userId}
     GROUP BY DATE_FORMAT(date, '%Y-%m')
     HAVING SUM(savings) > 0
-    ORDER BY month ASC
+    ORDER BY month DESC
+    LIMIT 5
   `;
+
+  monthlyData.reverse();
 
   let cumulative = 0;
   const data = monthlyData.map((row) => {
