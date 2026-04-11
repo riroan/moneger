@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { formatYearMonth } from '@/utils/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
-import { MdSettings, MdLogout, MdDarkMode, MdLightMode } from 'react-icons/md';
+import { MdSettings, MdLogout, MdDarkMode, MdLightMode, MdBarChart } from 'react-icons/md';
 
 interface HeaderProps {
   userName: string;
@@ -243,6 +243,15 @@ export default function Header({
                     />
                   </button>
                 </div>
+                <button
+                  className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    router.push('/analytics');
+                  }}
+                >
+                  <span className="flex items-center gap-2"><MdBarChart className="text-lg" /> 소비 분석</span>
+                </button>
                 <button
                   className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
                   onClick={() => {

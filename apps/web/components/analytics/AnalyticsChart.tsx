@@ -2,19 +2,17 @@
 
 import {
   ComposedChart,
-  BarChart,
-  AreaChart,
   Bar,
   Line,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  Cell,
 } from 'recharts';
-import { MdBarChart, MdTrendingUp, MdStackedBarChart, MdSavings } from 'react-icons/md';
+import { MdBarChart, MdSavings, MdCategory, MdCalendarViewWeek } from 'react-icons/md';
 import type { AnalyticsResult } from '@/lib/services/analytics.service';
 import { formatNumber } from '@/utils/formatters';
 
@@ -24,6 +22,11 @@ const COLOR_CORAL  = '#ff6b6b';
 const COLOR_BLUE   = '#60a5fa';
 const COLOR_PURPLE = '#a78bfa';
 const COLOR_YELLOW = '#fbbf24';
+
+// 카테고리 fallback 색상 팔레트
+const CATEGORY_FALLBACK_COLORS = [
+  '#60a5fa', '#f472b6', '#fb923c', '#a78bfa', '#34d399', '#facc15',
+];
 
 interface AnalyticsChartProps {
   data: AnalyticsResult;
@@ -41,9 +44,6 @@ function formatKRW(value: number) {
   return `${sign}${formatNumber(abs)}`;
 }
 
-function formatPct(value: number) {
-  return `${value}%`;
-}
 
 const tooltipStyle = {
   backgroundColor: 'var(--bg-card)',
@@ -71,7 +71,7 @@ function ChartLegend({ items }: { items: { label: string; color: string; type: '
 }
 
 export default function AnalyticsChart({ data, months: selectedMonths }: AnalyticsChartProps) {
-  const { months, averages } = data;
+  const { months, averages, monthlyTarget, categoryTrends, dowPattern } = data;
 
   // --- 차트 1: 수입/지출/저축/순저축 ---
   const barData = months.map((m) => ({
@@ -85,28 +85,8 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
   // --- 차트 2: 저축률 트렌드 ---
   const rateData = months.map((m) => ({
     label: monthLabel(m.year, m.month),
-    저축률: m.income > 0 ? Math.round((m.savingsDeposit / m.income) * 100) : 0,
+    저축액: m.savingsDeposit,
   }));
-
-  // --- 차트 3: 누적 순저축 ---
-  let cumulative = 0;
-  const cumData = months.map((m) => {
-    cumulative += m.net;
-    return {
-      label: monthLabel(m.year, m.month),
-      누적순저축: cumulative,
-    };
-  });
-
-  // --- 차트 4: 수입 대비 구성 비율 ---
-  const stackData = months.map((m) => {
-    const total = m.income;
-    if (total <= 0) return { label: monthLabel(m.year, m.month), 지출: 0, 저축: 0, 잉여: 0 };
-    const expPct  = Math.round((m.expense / total) * 100);
-    const savPct  = Math.round((m.savingsDeposit / total) * 100);
-    const surPct  = Math.max(0, 100 - expPct - savPct);
-    return { label: monthLabel(m.year, m.month), 지출: expPct, 저축: savPct, 잉여: surPct };
-  });
 
   // 요약 카드
   const currentMonth = months[months.length - 1];
@@ -127,119 +107,6 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
 
   return (
     <div className="flex flex-col gap-6">
-
-      {/* ① 수입 / 지출 / 저축 */}
-      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
-        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
-          <MdBarChart className="text-accent-blue text-lg sm:text-xl" />
-          월별 수입 / 지출 / 저축
-        </h2>
-        <ResponsiveContainer width="100%" height={240}>
-          <ComposedChart data={barData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
-            <Tooltip
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
-              contentStyle={tooltipStyle}
-            />
-            <Bar dataKey="수입"   fill={COLOR_MINT}   radius={[4,4,0,0]} maxBarSize={28} />
-            <Bar dataKey="지출"   fill={COLOR_CORAL}  radius={[4,4,0,0]} maxBarSize={28} />
-            <Bar dataKey="저축"   fill={COLOR_BLUE}   radius={[4,4,0,0]} maxBarSize={28} />
-            <Line type="monotone" dataKey="순저축" stroke={COLOR_PURPLE} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: COLOR_PURPLE }} />
-          </ComposedChart>
-        </ResponsiveContainer>
-        <ChartLegend items={[
-          { label: '수입',   color: COLOR_MINT,   type: 'rect' },
-          { label: '지출',   color: COLOR_CORAL,  type: 'rect' },
-          { label: '저축',   color: COLOR_BLUE,   type: 'rect' },
-          { label: '순저축', color: COLOR_PURPLE, type: 'line' },
-        ]} />
-      </div>
-
-      {/* ② 저축률 트렌드 */}
-      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
-        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
-          <MdSavings className="text-accent-mint text-lg sm:text-xl" />
-          저축률 트렌드
-        </h2>
-        <ResponsiveContainer width="100%" height={200}>
-          <ComposedChart data={rateData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={formatPct} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={40} domain={[0, 'auto']} />
-            <Tooltip
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={((v: any, n: string) => [`${v}%`, n]) as any}
-              contentStyle={tooltipStyle}
-            />
-            <ReferenceLine y={20} stroke={COLOR_YELLOW} strokeDasharray="4 3" strokeWidth={1.5} label={{ value: '목표 20%', position: 'insideTopRight', fontSize: 11, fill: COLOR_YELLOW }} />
-            <Line type="monotone" dataKey="저축률" stroke={COLOR_MINT} strokeWidth={2} dot={{ r: 4, fill: COLOR_MINT }} activeDot={{ r: 5 }} />
-          </ComposedChart>
-        </ResponsiveContainer>
-        <ChartLegend items={[
-          { label: '저축률', color: COLOR_MINT,   type: 'line' },
-          { label: '목표 20%', color: COLOR_YELLOW, type: 'line' },
-        ]} />
-      </div>
-
-      {/* ③ 누적 순저축 */}
-      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
-        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
-          <MdTrendingUp className="text-accent-purple text-lg sm:text-xl" />
-          누적 순저축
-        </h2>
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={cumData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="cumGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={COLOR_PURPLE} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={COLOR_PURPLE} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
-            <Tooltip
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
-              contentStyle={tooltipStyle}
-            />
-            <ReferenceLine y={0} stroke="var(--border)" strokeWidth={1} />
-            <Area type="monotone" dataKey="누적순저축" stroke={COLOR_PURPLE} strokeWidth={2} fill="url(#cumGradient)" dot={{ r: 3, fill: COLOR_PURPLE }} />
-          </AreaChart>
-        </ResponsiveContainer>
-        <ChartLegend items={[{ label: '누적 순저축', color: COLOR_PURPLE, type: 'area' }]} />
-      </div>
-
-      {/* ④ 수입 대비 구성 비율 */}
-      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
-        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
-          <MdStackedBarChart className="text-accent-yellow text-lg sm:text-xl" />
-          수입 대비 구성 비율
-        </h2>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={stackData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={formatPct} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={40} domain={[0, 100]} />
-            <Tooltip
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={((v: any, n: string) => [`${v}%`, n]) as any}
-              contentStyle={tooltipStyle}
-            />
-            <Bar dataKey="지출" stackId="a" fill={COLOR_CORAL} maxBarSize={40} />
-            <Bar dataKey="저축" stackId="a" fill={COLOR_BLUE}  maxBarSize={40} />
-            <Bar dataKey="잉여" stackId="a" fill={COLOR_MINT}  radius={[4,4,0,0]} maxBarSize={40} />
-          </BarChart>
-        </ResponsiveContainer>
-        <ChartLegend items={[
-          { label: '지출', color: COLOR_CORAL, type: 'rect' },
-          { label: '저축', color: COLOR_BLUE,  type: 'rect' },
-          { label: '잉여', color: COLOR_MINT,  type: 'rect' },
-        ]} />
-      </div>
 
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -287,6 +154,145 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
           </div>
         </div>
       </div>
+
+      {/* ① 수입 / 지출 / 저축 */}
+      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
+        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
+          <MdBarChart className="text-accent-blue text-lg sm:text-xl" />
+          월별 수입 / 지출 / 저축
+        </h2>
+        <ResponsiveContainer width="100%" height={240}>
+          <ComposedChart data={barData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
+            <Tooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
+              contentStyle={tooltipStyle}
+            />
+            <Bar dataKey="수입"   fill={COLOR_MINT}   radius={[4,4,0,0]} maxBarSize={28} />
+            <Bar dataKey="지출"   fill={COLOR_CORAL}  radius={[4,4,0,0]} maxBarSize={28} />
+            <Bar dataKey="저축"   fill={COLOR_BLUE}   radius={[4,4,0,0]} maxBarSize={28} />
+            <Line type="monotone" dataKey="순저축" stroke={COLOR_PURPLE} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: COLOR_PURPLE }} />
+          </ComposedChart>
+        </ResponsiveContainer>
+        <ChartLegend items={[
+          { label: '수입',   color: COLOR_MINT,   type: 'rect' },
+          { label: '지출',   color: COLOR_CORAL,  type: 'rect' },
+          { label: '저축',   color: COLOR_BLUE,   type: 'rect' },
+          { label: '순저축', color: COLOR_PURPLE, type: 'line' },
+        ]} />
+      </div>
+
+      {/* ② 요일별 지출 패턴 */}
+      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
+        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
+          <MdCalendarViewWeek className="text-accent-blue text-lg sm:text-xl" />
+          요일별 지출 패턴
+        </h2>
+        <ResponsiveContainer width="100%" height={200}>
+          <ComposedChart data={dowPattern} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
+            <Tooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
+              contentStyle={tooltipStyle}
+              itemStyle={{ color: 'var(--text-primary)' }}
+            />
+            <Bar dataKey="amount" name="지출" radius={[4, 4, 0, 0]} maxBarSize={40}>
+              {dowPattern.map((entry) => (
+                <Cell
+                  key={entry.day}
+                  fill={entry.day === '토' || entry.day === '일' ? COLOR_CORAL : COLOR_BLUE}
+                />
+              ))}
+            </Bar>
+          </ComposedChart>
+        </ResponsiveContainer>
+        <ChartLegend items={[
+          { label: '평일', color: COLOR_BLUE, type: 'rect' },
+          { label: '주말', color: COLOR_CORAL, type: 'rect' },
+        ]} />
+      </div>
+
+      {/* ③ 저축률 트렌드 */}
+      <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
+        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
+          <MdSavings className="text-accent-mint text-lg sm:text-xl" />
+          저축률 트렌드
+        </h2>
+        <ResponsiveContainer width="100%" height={200}>
+          <ComposedChart data={rateData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} padding={{ left: 24, right: 24 }} />
+            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
+            <Tooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
+              contentStyle={tooltipStyle}
+            />
+            {monthlyTarget != null && (
+              <ReferenceLine y={monthlyTarget} stroke={COLOR_YELLOW} strokeDasharray="4 3" strokeWidth={1.5} label={{ value: `목표 ${formatKRW(monthlyTarget)}`, position: 'insideTopRight', fontSize: 11, fill: COLOR_YELLOW }} />
+            )}
+            <Line type="monotone" dataKey="저축액" stroke={COLOR_MINT} strokeWidth={2} dot={{ r: 4, fill: COLOR_MINT }} activeDot={{ r: 5 }} />
+          </ComposedChart>
+        </ResponsiveContainer>
+        <ChartLegend items={[
+          { label: '저축액', color: COLOR_MINT, type: 'line' },
+          ...(monthlyTarget != null ? [{ label: '목표 저축액', color: COLOR_YELLOW, type: 'line' as const }] : []),
+        ]} />
+      </div>
+
+      {/* ③ 카테고리별 월간 지출 추이 */}
+      {categoryTrends.categories.length > 0 && (
+        <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
+          <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
+            <MdCategory className="text-accent-coral text-lg sm:text-xl" />
+            카테고리별 지출 추이
+          </h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={categoryTrends.data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} padding={{ left: 24, right: 24 }} />
+              <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
+              <Tooltip
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
+                contentStyle={tooltipStyle}
+              />
+              {categoryTrends.categories.map((cat, i) => (
+                <Line
+                  key={cat.id}
+                  type="monotone"
+                  dataKey={cat.name}
+                  stroke={cat.color ?? CATEGORY_FALLBACK_COLORS[i % CATEGORY_FALLBACK_COLORS.length]}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: cat.color ?? CATEGORY_FALLBACK_COLORS[i % CATEGORY_FALLBACK_COLORS.length] }}
+                  activeDot={{ r: 4 }}
+                />
+              ))}
+              {categoryTrends.data.some((d) => '기타' in d) && (
+                <Line type="monotone" dataKey="기타" stroke="var(--text-muted)" strokeWidth={1.5} strokeDasharray="4 3" dot={{ r: 2 }} />
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
+          <ChartLegend items={[
+            ...categoryTrends.categories.map((cat, i) => ({
+              label: cat.name,
+              color: cat.color ?? CATEGORY_FALLBACK_COLORS[i % CATEGORY_FALLBACK_COLORS.length],
+              type: 'line' as const,
+            })),
+            ...(categoryTrends.data.some((d) => '기타' in d)
+              ? [{ label: '기타', color: 'var(--text-muted)', type: 'line' as const }]
+              : []),
+          ]} />
+        </div>
+      )}
+
+
 
     </div>
   );
