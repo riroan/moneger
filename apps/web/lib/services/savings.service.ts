@@ -160,8 +160,15 @@ export async function getActiveSavingsGoalsWithProgress(userId: string) {
       (targetDate.getFullYear() - startDate.getFullYear()) * 12 + (targetDate.getMonth() - startDate.getMonth()) + 1
     );
 
+    // 남은 개월 수: 이번 달부터 목표 월까지
+    const nowDate = new Date(currentYear, currentMonth - 1, 1);
+    const remainingMonths = Math.max(
+      1,
+      (targetDate.getFullYear() - nowDate.getFullYear()) * 12 + (targetDate.getMonth() - nowDate.getMonth()) + 1
+    );
+
     const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
-    const monthlyTarget = Math.ceil(remainingAmount / totalMonths);
+    const monthlyTarget = Math.ceil(remainingAmount / remainingMonths);
     const thisMonthSavings = thisMonthSavingsMap.get(goal.id) || 0;
     const monthlyRequired = Math.max(0, monthlyTarget - thisMonthSavings);
     const progressPercent = goal.targetAmount > 0
