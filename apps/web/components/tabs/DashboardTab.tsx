@@ -11,7 +11,8 @@ import RecurringAlertBanner from '@/components/dashboard/RecurringAlertBanner';
 import SavingsCard from '@/components/dashboard/SavingsCard';
 import GroupsCard from '@/components/dashboard/GroupsCard';
 import TransactionItem from '@/components/transactions/TransactionItem';
-import { MdPieChart, MdHistory, MdCalendarMonth } from 'react-icons/md';
+import { MdPieChart, MdHistory, MdCalendarMonth, MdBarChart } from 'react-icons/md';
+import Link from 'next/link';
 import type { TransactionWithCategory, CategoryChartData } from '@/types';
 
 // 동적 임포트로 번들 최적화
@@ -129,6 +130,16 @@ export default function DashboardTab({
 
   return (
     <>
+      <div className="flex justify-end mb-2">
+        <Link
+          href="/analytics"
+          className="flex items-center gap-1 text-xs sm:text-sm text-text-muted hover:text-text-secondary bg-bg-secondary hover:bg-bg-card-hover rounded-lg transition-colors py-1.5 px-2.5"
+        >
+          <MdBarChart className="text-sm sm:text-base" />
+          <span>분석 →</span>
+        </Link>
+      </div>
+
       <SummaryCards
         totalIncome={totalIncome}
         totalExpense={totalExpense}
