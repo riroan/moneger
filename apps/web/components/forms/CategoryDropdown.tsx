@@ -66,7 +66,7 @@ export default function CategoryDropdown({
             value={isOpen ? search : (selectedCategory?.name || '')}
             onChange={(e) => setSearch(e.target.value)}
             onFocus={open}
-            className="flex-1 bg-transparent outline-none text-text-primary placeholder:text-text-muted"
+            className="flex-1 bg-transparent outline-none text-base text-text-primary placeholder:text-text-muted"
           />
           <button
             type="button"

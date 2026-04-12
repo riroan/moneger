@@ -15,6 +15,7 @@ import {
 import { MdBarChart, MdSavings, MdCategory, MdCalendarViewWeek } from 'react-icons/md';
 import type { AnalyticsResult } from '@/lib/services/analytics.service';
 import { formatNumber } from '@/utils/formatters';
+import { useAppStore } from '@/stores';
 
 // DESIGN.md accent colors
 const COLOR_MINT   = '#4ade80';
@@ -35,6 +36,15 @@ interface AnalyticsChartProps {
 
 function monthLabel(year: number, month: number) {
   return `${year}년 ${month}월`;
+}
+
+function formatXAxisLabel(label: string, isMobile: boolean) {
+  if (!isMobile) return label;
+  const match = label.match(/(\d{4})년 (\d+)월/);
+  if (!match) return label;
+  const yy = match[1].slice(2);
+  const mm = match[2].padStart(2, '0');
+  return `${yy}-${mm}`;
 }
 
 function formatKRW(value: number) {
@@ -71,6 +81,7 @@ function ChartLegend({ items }: { items: { label: string; color: string; type: '
 }
 
 export default function AnalyticsChart({ data, months: selectedMonths }: AnalyticsChartProps) {
+  const isMobile = useAppStore((state) => state.isMobile);
   const { months, averages, monthlyTarget, categoryTrends, dowPattern } = data;
 
   // --- 차트 1: 수입/지출/저축/순저축 ---
@@ -112,7 +123,7 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
           <div className="text-xs text-text-muted mb-1">이번 달 지출</div>
-          <div className="text-lg font-bold text-text-primary">₩{formatNumber(currentMonth.expense)}</div>
+          <div className="text-base sm:text-lg font-bold text-text-primary whitespace-nowrap overflow-hidden">₩{formatNumber(currentMonth.expense)}</div>
           <div className="text-xs mt-1">
             {expenseDiff > 0 ? (
               <span className="text-accent-coral">평균 대비 +{expenseDiff}% ↗</span>
@@ -126,13 +137,13 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
 
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
           <div className="text-xs text-text-muted mb-1">최고 지출 월</div>
-          <div className="text-lg font-bold text-text-primary">₩{formatNumber(peakMonth.expense)}</div>
+          <div className="text-base sm:text-lg font-bold text-text-primary whitespace-nowrap overflow-hidden">₩{formatNumber(peakMonth.expense)}</div>
           <div className="text-xs text-text-muted mt-1">{peakMonth.year}년 {peakMonth.month}월</div>
         </div>
 
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
           <div className="text-xs text-text-muted mb-1">평균 저축률</div>
-          <div className="text-lg font-bold text-text-primary">{Math.round(avgSavingsRate)}%</div>
+          <div className="text-base sm:text-lg font-bold text-text-primary whitespace-nowrap overflow-hidden">{Math.round(avgSavingsRate)}%</div>
           <div className="text-xs mt-1">
             {savingsTrend === '상승' ? (
               <span className="text-accent-mint">상승 중 ↗</span>
@@ -146,7 +157,7 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
 
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
           <div className="text-xs text-text-muted mb-1">{selectedMonths}개월 누적 순저축</div>
-          <div className={`text-lg font-bold ${totalNet >= 0 ? 'text-accent-mint' : 'text-accent-coral'}`}>
+          <div className={`text-base sm:text-lg font-bold whitespace-nowrap overflow-hidden ${totalNet >= 0 ? 'text-accent-mint' : 'text-accent-coral'}`}>
             {totalNet >= 0 ? '+' : ''}₩{formatNumber(Math.abs(totalNet))}
           </div>
           <div className="text-xs text-text-muted mt-1">
@@ -161,11 +172,11 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
           <MdBarChart className="text-accent-blue text-lg sm:text-xl" />
           월별 수입 / 지출 / 저축
         </h2>
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={isMobile ? 180 : 240}>
           <ComposedChart data={barData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
+            <XAxis dataKey="label" tickFormatter={(label) => formatXAxisLabel(label, isMobile)} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 40 : 60} />
             <Tooltip
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
@@ -191,11 +202,11 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
           <MdCalendarViewWeek className="text-accent-blue text-lg sm:text-xl" />
           요일별 지출 패턴
         </h2>
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={isMobile ? 160 : 200}>
           <ComposedChart data={dowPattern} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
+            <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 40 : 60} />
             <Tooltip
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
@@ -224,11 +235,11 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
           <MdSavings className="text-accent-mint text-lg sm:text-xl" />
           저축률 트렌드
         </h2>
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={isMobile ? 160 : 200}>
           <ComposedChart data={rateData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} padding={{ left: 24, right: 24 }} />
-            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
+            <XAxis dataKey="label" tickFormatter={(label) => formatXAxisLabel(label, isMobile)} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} padding={{ left: 24, right: 24 }} />
+            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 40 : 60} />
             <Tooltip
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
@@ -253,11 +264,11 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
             <MdCategory className="text-accent-coral text-lg sm:text-xl" />
             카테고리별 지출 추이
           </h2>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={isMobile ? 180 : 220}>
             <ComposedChart data={categoryTrends.data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} padding={{ left: 24, right: 24 }} />
-              <YAxis tickFormatter={formatKRW} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
+              <XAxis dataKey="label" tickFormatter={(label) => formatXAxisLabel(label, isMobile)} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} padding={{ left: 24, right: 24 }} />
+              <YAxis tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 40 : 60} />
               <Tooltip
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}

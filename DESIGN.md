@@ -156,3 +156,5 @@ bg-accent-blue/20 text-accent-blue font-medium rounded-lg px-2.5 py-1
 | 2026-04-11 | 5-accent color system (mint/coral/blue/purple/yellow) | 수입/지출/저축/분석/경고를 색으로 즉시 구분. 혼동 없이 의미를 전달한다. |
 | 2026-04-11 | Gradient orbs + noise overlay | 완전한 플랫 배경은 단조롭다. 저비용으로 공간감을 만드는 방법. |
 | 2026-04-11 | DESIGN.md created | /design-consultation 기반, 기존 코드베이스에서 추출 |
+| 2026-04-12 | 입력 필드(input/select/textarea)만 text-base(16px) 예외 적용 | iOS Safari는 font-size < 16px 입력 필드 탭 시 페이지 자동 zoom. 일반 UI 텍스트는 text-sm 유지. |
+| 2026-04-12 | 차트 YAxis tick font-size 최솟값 12px 적용 | DESIGN.md xs 최솟값(12px) 준수. recharts tick={{ fontSize: 11 }} → {{ fontSize: 12 }}. |

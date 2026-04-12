@@ -81,7 +81,7 @@ export default function EditGroupModal({ isOpen, onClose, onEdit, onDelete, grou
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-bg-secondary border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+              className="w-full bg-bg-secondary border border-[var(--border)] rounded-xl px-4 py-3 text-base text-text-primary focus:outline-none focus:border-accent-blue"
               maxLength={30}
             />
           </div>
@@ -93,7 +93,7 @@ export default function EditGroupModal({ isOpen, onClose, onEdit, onDelete, grou
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-bg-secondary border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+              className="w-full bg-bg-secondary border border-[var(--border)] rounded-xl px-4 py-3 text-base text-text-primary focus:outline-none focus:border-accent-blue"
               maxLength={50}
             />
           </div>

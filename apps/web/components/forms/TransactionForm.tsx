@@ -118,7 +118,7 @@ export default function TransactionForm({
           placeholder="예: 점심 식사, 월급 등"
           value={formState.description}
           onChange={(e) => setters.setDescription(e.target.value)}
-          className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none transition-colors py-3.5 px-4 ${
+          className={`w-full bg-bg-secondary border rounded-[12px] text-base text-text-primary focus:outline-none transition-colors py-3.5 px-4 ${
             errors.descriptionError
               ? 'border-accent-coral focus:border-accent-coral'
               : 'border-[var(--border)] focus:border-accent-mint'

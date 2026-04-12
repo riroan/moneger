@@ -98,7 +98,7 @@ export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAc
               setDeletePassword(e.target.value);
               setDeleteError('');
             }}
-            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary focus:outline-none focus:border-accent-coral transition-colors py-3 px-3.5"
+            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-base text-text-primary focus:outline-none focus:border-accent-coral transition-colors py-3 px-3.5"
             placeholder="비밀번호를 입력하세요"
           />
           {deleteError && (

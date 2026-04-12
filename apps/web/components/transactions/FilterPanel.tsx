@@ -283,7 +283,7 @@ export default function FilterPanel({
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
             placeholder="내역 검색..."
-            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
+            className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
           />
         </div>
 
@@ -392,7 +392,7 @@ export default function FilterPanel({
                       value={minAmountInput}
                       onChange={(e) => handleAmountInputChange('min', e.target.value)}
                       placeholder="0"
-                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors py-2 pr-2.5 pl-6"
+                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-base focus:outline-none focus:border-accent-blue transition-colors py-2 pr-2.5 pl-6"
                     />
                   </div>
                 </div>
@@ -406,7 +406,7 @@ export default function FilterPanel({
                       value={maxAmountInput}
                       onChange={(e) => handleAmountInputChange('max', e.target.value)}
                       placeholder="제한 없음"
-                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-sm focus:outline-none focus:border-accent-blue transition-colors py-2 pr-2.5 pl-6"
+                      className="w-full bg-bg-card border border-[var(--border)] rounded-[8px] text-right text-text-primary text-base focus:outline-none focus:border-accent-blue transition-colors py-2 pr-2.5 pl-6"
                     />
                   </div>
                 </div>

@@ -114,7 +114,7 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
                     setPasswordError('');
                     setPasswordSuccess('');
                   }}
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
                   placeholder="현재 비밀번호 입력"
                 />
               </div>
@@ -130,7 +130,7 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
                     setPasswordError('');
                     setPasswordSuccess('');
                   }}
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
                   placeholder="새 비밀번호 입력 (6자 이상)"
                 />
               </div>
@@ -146,7 +146,7 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
                     setPasswordError('');
                     setPasswordSuccess('');
                   }}
-                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-sm sm:text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
+                  className="w-full bg-bg-secondary border border-[var(--border)] rounded-[10px] text-text-primary text-base focus:outline-none focus:border-accent-blue transition-colors py-2.5 px-3"
                   placeholder="새 비밀번호 다시 입력"
                 />
               </div>

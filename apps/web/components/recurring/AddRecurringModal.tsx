@@ -150,7 +150,7 @@ export default function AddRecurringModal({ isOpen, userId, onClose, onSave }: A
               if (e.target.value.trim()) setDescriptionError('');
             }}
             placeholder="예: 월세, Netflix, 보험료"
-            className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none focus:border-accent-coral transition-colors py-3.5 px-4 ${
+            className={`w-full bg-bg-secondary border rounded-[12px] text-base text-text-primary focus:outline-none focus:border-accent-coral transition-colors py-3.5 px-4 ${
               descriptionError ? 'border-accent-coral' : 'border-[var(--border)]'
             }`}
             autoFocus

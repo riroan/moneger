@@ -230,8 +230,8 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-5">
           <p className="text-xs sm:text-sm text-text-secondary mb-1.5">그룹 수</p>
-          <p className="text-2xl sm:text-3xl font-bold text-text-primary">
-            {groups.length}<span className="text-base sm:text-lg text-text-muted font-normal">개</span>
+          <p className="text-lg sm:text-2xl font-bold text-text-primary whitespace-nowrap overflow-hidden">
+            {groups.length}<span className="text-sm sm:text-base text-text-muted font-normal">개</span>
           </p>
           <p className="text-xs text-text-muted mt-1">
             총 {totalTransactions}건의 거래
@@ -240,7 +240,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
 
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-5">
           <p className="text-xs sm:text-sm text-text-secondary mb-1.5">총 수입</p>
-          <p className="text-2xl sm:text-3xl font-bold text-[#4ADE80]">
+          <p className="text-lg sm:text-2xl font-bold text-[#4ADE80] whitespace-nowrap overflow-hidden">
             <span className="mr-0.5">₩</span>{formatNumber(totalIncome)}
           </p>
           <p className="text-xs text-text-muted mt-1">
@@ -250,7 +250,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
 
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-5">
           <p className="text-xs sm:text-sm text-text-secondary mb-1.5">총 지출</p>
-          <p className="text-2xl sm:text-3xl font-bold text-[#F87171]">
+          <p className="text-lg sm:text-2xl font-bold text-[#F87171] whitespace-nowrap overflow-hidden">
             <span className="mr-0.5">₩</span>{formatNumber(totalExpense)}
           </p>
           <p className="text-xs text-text-muted mt-1">
@@ -260,7 +260,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
 
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-5">
           <p className="text-xs sm:text-sm text-text-secondary mb-1.5">잔액</p>
-          <p className={`text-2xl sm:text-3xl font-bold ${totalIncome - totalExpense >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+          <p className={`text-lg sm:text-2xl font-bold whitespace-nowrap overflow-hidden ${totalIncome - totalExpense >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
             {totalIncome - totalExpense >= 0 ? '+' : '-'}<span className="mr-0.5">₩</span>{formatNumber(Math.abs(totalIncome - totalExpense))}
           </p>
           <p className="text-xs text-text-muted mt-1">

@@ -109,7 +109,7 @@ export default function GroupDropdown({ userId, selectedId, onSelect }: GroupDro
             value={isOpen ? search : (selectedGroup?.name || '')}
             onChange={(e) => setSearch(e.target.value)}
             onFocus={() => setIsOpen(true)}
-            className="flex-1 bg-transparent outline-none text-text-primary placeholder:text-text-muted"
+            className="flex-1 bg-transparent outline-none text-base text-text-primary placeholder:text-text-muted"
           />
           {selectedGroup && !isOpen && (
             <button

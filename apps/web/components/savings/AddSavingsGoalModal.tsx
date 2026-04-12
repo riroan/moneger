@@ -179,7 +179,7 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
               if (e.target.value.trim()) setNameError('');
             }}
             placeholder="예: 내 집 마련, 여행 자금"
-            className={`w-full bg-bg-secondary border rounded-[12px] text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 px-4 ${
+            className={`w-full bg-bg-secondary border rounded-[12px] text-base text-text-primary focus:outline-none focus:border-accent-mint transition-colors py-3.5 px-4 ${
               nameError ? 'border-accent-coral' : 'border-[var(--border)]'
             }`}
             autoFocus

@@ -150,7 +150,7 @@ export default function Header({
 
             {isDatePickerOpen && (
             <div
-              className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none w-80 p-5 mt-0.5 shadow-2xl"
+              className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none w-[min(320px,calc(100vw-2rem))] p-5 mt-0.5 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-4">
                 <button

@@ -155,7 +155,7 @@ export default function CategoryFormModal({
                 setCategoryName(e.target.value);
                 setNameError('');
               }}
-              className={`w-full bg-bg-secondary border ${nameError ? 'border-accent-coral' : 'border-[var(--border)]'} rounded-[12px] text-text-primary focus:outline-none focus:border-accent-blue transition-colors py-3.5 px-4`}
+              className={`w-full bg-bg-secondary border ${nameError ? 'border-accent-coral' : 'border-[var(--border)]'} rounded-[12px] text-base text-text-primary focus:outline-none focus:border-accent-blue transition-colors py-3.5 px-4`}
               placeholder="예: 식비, 교통비 등"
             />
             {nameError && (

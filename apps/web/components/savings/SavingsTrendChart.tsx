@@ -25,8 +25,7 @@ interface SavingsTrendChartProps {
 
 function formatMonth(month: string): string {
   const [year, m] = month.split('-');
-  const monthNum = parseInt(m, 10);
-  return `${year.slice(2)}년 ${monthNum}월`;
+  return `${year.slice(2)}-${m.padStart(2, '0')}`;
 }
 
 function formatAmount(value: number): string {

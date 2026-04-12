@@ -65,7 +65,7 @@ export default function AddGroupModal({ isOpen, onClose, onAdd }: AddGroupModalP
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="예: 제주도 여행"
-              className="w-full bg-bg-secondary border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
+              className="w-full bg-bg-secondary border border-[var(--border)] rounded-xl px-4 py-3 text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
               maxLength={30}
             />
           </div>
@@ -78,7 +78,7 @@ export default function AddGroupModal({ isOpen, onClose, onAdd }: AddGroupModalP
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="예: 2026년 4월 3박4일"
-              className="w-full bg-bg-secondary border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
+              className="w-full bg-bg-secondary border border-[var(--border)] rounded-xl px-4 py-3 text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
               maxLength={50}
             />
           </div>
