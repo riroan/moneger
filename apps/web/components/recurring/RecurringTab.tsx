@@ -173,7 +173,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                     !expense.isActive ? 'opacity-50' : ''
                   }`}
                 >
-                  {/* 상단: 토글 + 이름/메타 + 금액 */}
+                  {/* 상단: 토글 + 이름/메타 + 편집/삭제 */}
                   <div className="flex items-start gap-3">
                     <button
                       onClick={() => handleToggleActive(expense)}
@@ -205,16 +205,32 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                         )}
                       </div>
                       <p className="text-xs text-text-muted mt-0.5">
-                        매월 {expense.dayOfMonth}일 · 다음 {new Date(expense.nextDueDate).toLocaleDateString('ko-KR')}
+                        매월 {expense.dayOfMonth}일 · <span className="whitespace-nowrap">다음 {new Date(expense.nextDueDate).toLocaleDateString('ko-KR')}</span>
                       </p>
                     </div>
-                    <p className="text-xl sm:text-2xl font-bold text-accent-coral shrink-0 tabular-nums">
-                      <span className="mr-0.5">₩</span>{formatNumber(expense.amount)}
-                    </p>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button
+                        onClick={() => {
+                          setSelectedExpense(expense);
+                          setIsEditModalOpen(true);
+                        }}
+                        className="p-1.5 rounded-[8px] text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+                        title="편집"
+                      >
+                        <MdEdit className="text-base" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTargetExpense(expense)}
+                        className="p-1.5 rounded-[8px] text-text-muted hover:text-accent-coral transition-colors cursor-pointer"
+                        title="삭제"
+                      >
+                        <MdDelete className="text-base" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* 하단: 액션 버튼 (통일된 ghost 스타일) */}
-                  <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-[var(--border)]">
+                  {/* 하단: 이력(선택) + 금액 */}
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--border)]">
                     {expense.history.length > 0 && (
                       <button
                         onClick={() => setExpandedHistoryId(expandedHistoryId === expense.id ? null : expense.id)}
@@ -223,23 +239,9 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                         <MdHistory className="text-sm" /> 이력
                       </button>
                     )}
-                    <button
-                      onClick={() => {
-                        setSelectedExpense(expense);
-                        setIsEditModalOpen(true);
-                      }}
-                      className="p-1.5 rounded-[8px] text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
-                      title="편집"
-                    >
-                      <MdEdit className="text-base" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteTargetExpense(expense)}
-                      className="p-1.5 rounded-[8px] text-text-muted hover:text-accent-coral transition-colors cursor-pointer"
-                      title="삭제"
-                    >
-                      <MdDelete className="text-base" />
-                    </button>
+                    <p className="text-xl sm:text-2xl font-bold text-accent-coral tabular-nums ml-auto">
+                      <span className="mr-0.5">₩</span>{formatNumber(expense.amount)}
+                    </p>
                   </div>
 
                   {/* 금액 변경 이력 (확장) */}
