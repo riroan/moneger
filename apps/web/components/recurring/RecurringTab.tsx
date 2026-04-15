@@ -169,15 +169,15 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
               {expenses.map((expense) => (
                 <div
                   key={expense.id}
-                  className={`bg-bg-secondary rounded-[12px] sm:rounded-[14px] transition-all p-4 ${
+                  className={`bg-bg-secondary hover:bg-bg-card-hover rounded-[14px] transition-colors p-4 ${
                     !expense.isActive ? 'opacity-50' : ''
                   }`}
                 >
-                  {/* 상단: 카테고리 아이콘 + 이름/상태 */}
-                  <div className="flex items-center gap-3 mb-4">
+                  {/* 상단: 토글 + 이름/메타 + 금액 */}
+                  <div className="flex items-start gap-3">
                     <button
                       onClick={() => handleToggleActive(expense)}
-                      className={`w-10 h-10 rounded-[10px] flex items-center justify-center text-lg cursor-pointer transition-all hover:scale-105 ${
+                      className={`w-11 h-11 rounded-[10px] flex items-center justify-center text-lg cursor-pointer transition-all hover:scale-105 shrink-0 ${
                         expense.isActive
                           ? 'bg-accent-coral/15 text-accent-coral'
                           : 'bg-gray-400/15 text-gray-400'
@@ -187,7 +187,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                       <MdEventRepeat />
                     </button>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm sm:text-base font-medium truncate">{expense.description}</p>
                         {expense.category && (
                           <span
@@ -204,54 +204,42 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                           <span className="text-[10px] text-text-muted bg-bg-card px-1.5 py-0.5 rounded-full">중지</span>
                         )}
                       </div>
-                      <p className="text-xs text-text-muted">
-                        매월 {expense.dayOfMonth}일 · 다음: {new Date(expense.nextDueDate).toLocaleDateString('ko-KR')}
+                      <p className="text-xs text-text-muted mt-0.5">
+                        매월 {expense.dayOfMonth}일 · 다음 {new Date(expense.nextDueDate).toLocaleDateString('ko-KR')}
                       </p>
                     </div>
-                  </div>
-
-                  {/* 금액 */}
-                  <div className="text-right mb-3">
-                    <div className="sm:hidden">
-                      <p className="text-xl font-bold text-accent-coral">
-                        <span className="mr-0.5">₩</span>{formatNumber(expense.amount)}
-                      </p>
-                    </div>
-                    <p className="hidden sm:block text-2xl font-bold text-accent-coral">
+                    <p className="text-xl sm:text-2xl font-bold text-accent-coral shrink-0 tabular-nums">
                       <span className="mr-0.5">₩</span>{formatNumber(expense.amount)}
                     </p>
                   </div>
 
-                  {/* 하단: 액션 버튼 */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      {expense.history.length > 0 && (
-                        <button
-                          onClick={() => setExpandedHistoryId(expandedHistoryId === expense.id ? null : expense.id)}
-                          className="text-xs sm:text-sm text-accent-blue rounded-[8px] hover:opacity-80 transition-colors cursor-pointer flex items-center gap-1 py-2 px-3 bg-blue-400/15"
-                        >
-                          <MdHistory className="text-sm" /> 이력
-                        </button>
-                      )}
+                  {/* 하단: 액션 버튼 (통일된 ghost 스타일) */}
+                  <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-[var(--border)]">
+                    {expense.history.length > 0 && (
                       <button
-                        onClick={() => {
-                          setSelectedExpense(expense);
-                          setIsEditModalOpen(true);
-                        }}
-                        className="p-2 text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+                        onClick={() => setExpandedHistoryId(expandedHistoryId === expense.id ? null : expense.id)}
+                        className="flex items-center gap-1 text-xs text-text-muted hover:text-accent-blue transition-colors cursor-pointer py-1.5 px-2 rounded-[8px]"
                       >
-                        <MdEdit className="text-lg" />
+                        <MdHistory className="text-sm" /> 이력
                       </button>
-                      <button
-                        onClick={() => setDeleteTargetExpense(expense)}
-                        className="p-2 text-text-muted hover:text-accent-coral transition-colors cursor-pointer"
-                      >
-                        <MdDelete className="text-lg" />
-                      </button>
-                    </div>
-                    <p className="text-xs sm:text-sm text-text-muted">
-                      {expense.isActive ? '활성' : '중지됨'}
-                    </p>
+                    )}
+                    <button
+                      onClick={() => {
+                        setSelectedExpense(expense);
+                        setIsEditModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-[8px] text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+                      title="편집"
+                    >
+                      <MdEdit className="text-base" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTargetExpense(expense)}
+                      className="p-1.5 rounded-[8px] text-text-muted hover:text-accent-coral transition-colors cursor-pointer"
+                      title="삭제"
+                    >
+                      <MdDelete className="text-base" />
+                    </button>
                   </div>
 
                   {/* 금액 변경 이력 (확장) */}
@@ -263,7 +251,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                           <span className="text-text-muted">
                             {new Date(h.changedAt).toLocaleDateString('ko-KR')}
                           </span>
-                          <span className="text-text-secondary">
+                          <span className="text-text-secondary tabular-nums">
                             ₩{formatNumber(h.previousAmount)} → ₩{formatNumber(h.newAmount)}
                           </span>
                         </div>
