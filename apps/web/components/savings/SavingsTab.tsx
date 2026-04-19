@@ -296,7 +296,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                     className="bg-bg-secondary hover:bg-bg-card-hover rounded-[14px] transition-colors p-4"
                   >
                     {/* 상단: 아이콘 + 이름/날짜 + 금액 */}
-                    <div className="flex items-start gap-3 mb-3">
+                    <div className="flex items-start gap-3 mb-3 overflow-hidden">
                       <button
                         onClick={(e) => handleTogglePrimary(e, goal.id, goal.isPrimary)}
                         className="w-11 h-11 rounded-[10px] flex items-center justify-center text-lg relative cursor-pointer transition-all hover:scale-105 bg-amber-400/15 text-amber-400 shrink-0"
@@ -313,20 +313,20 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                           )}
                         </div>
                       </button>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="flex items-center gap-2">
                           <p className="text-sm sm:text-base font-medium truncate">{goal.name}</p>
                           {goal.isPrimary && (
-                            <span className="text-xs text-amber-400 font-medium">대표</span>
+                            <span className="text-xs text-amber-400 font-medium shrink-0">대표</span>
                           )}
                         </div>
                         <p className="text-xs text-text-muted mt-0.5 whitespace-nowrap">{goal.targetDate}</p>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xl sm:text-2xl font-bold text-text-primary tabular-nums leading-tight">
+                      <div className="text-right shrink-0 max-w-[45%]">
+                        <p className="text-lg sm:text-2xl font-bold text-text-primary tabular-nums leading-tight truncate">
                           <span className="mr-0.5">₩</span>{formatNumber(goal.currentAmount)}
                         </p>
-                        <p className="text-xs text-text-muted tabular-nums mt-0.5 whitespace-nowrap">
+                        <p className="text-[11px] sm:text-xs text-text-muted tabular-nums mt-0.5 truncate">
                           / <span className="mr-px">₩</span>{formatNumber(goal.targetAmount)}
                           <span className="text-accent-mint font-semibold ml-1">({goal.progressPercent}%)</span>
                         </p>
@@ -334,48 +334,47 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                     </div>
 
                     {/* 진행률 바 */}
-                    <div className="w-full h-2 bg-bg-card rounded-full overflow-hidden mb-1.5">
+                    <div className="w-full h-2 bg-bg-card rounded-full overflow-hidden mb-3">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-accent-mint to-accent-blue transition-all duration-300"
                         style={{ width: `${Math.min(goal.progressPercent, 100)}%` }}
                       />
                     </div>
 
-                    {/* 이번 달 남은 저축액 caption */}
-                    <div className="flex justify-end mb-3">
+                    {/* 하단: 저축하기 + 편집/삭제 | 이번 달 상태 */}
+                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-[var(--border)] overflow-hidden">
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={(e) => handleDepositClick(e, goal)}
+                          className="text-xs sm:text-sm text-accent-mint rounded-[8px] hover:opacity-80 transition-colors cursor-pointer flex items-center gap-1 py-1.5 px-3 bg-emerald-400/15 whitespace-nowrap shrink-0"
+                        >
+                          <FaPlus className="text-[10px]" /> 저축하기
+                        </button>
+                        <button
+                          onClick={() => handleGoalClick(goal)}
+                          className="p-1.5 rounded-[8px] text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+                          title="편집"
+                        >
+                          <MdEdit className="text-base" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTargetGoal(goal)}
+                          className="p-1.5 rounded-[8px] text-text-muted hover:text-accent-coral transition-colors cursor-pointer"
+                          title="삭제"
+                        >
+                          <MdDelete className="text-base" />
+                        </button>
+                      </div>
                       {goal.thisMonthSavings >= goal.monthlyTarget ? (
-                        <p className="text-xs font-medium text-accent-mint whitespace-nowrap">
+                        <p className="text-xs sm:text-sm font-medium text-accent-mint shrink-0 whitespace-nowrap">
                           이번 달 완료!
                         </p>
                       ) : (
-                        <p className="text-xs text-text-muted tabular-nums whitespace-nowrap">
-                          <span className="text-text-primary">₩{formatNumber(goal.monthlyTarget - goal.thisMonthSavings)}</span> 더 필요
+                        <p className="text-xs sm:text-sm text-text-primary shrink-0 tabular-nums whitespace-nowrap">
+                          ₩{formatNumber(goal.monthlyTarget - goal.thisMonthSavings)}
+                          <span className="text-text-muted"> 더 필요</span>
                         </p>
                       )}
-                    </div>
-
-                    {/* 하단: 저축하기(primary) + 편집/삭제(ghost) */}
-                    <div className="flex items-center gap-1 pt-3 border-t border-[var(--border)]">
-                      <button
-                        onClick={(e) => handleDepositClick(e, goal)}
-                        className="text-xs sm:text-sm text-accent-mint rounded-[8px] hover:opacity-80 transition-colors cursor-pointer flex items-center gap-1 py-1.5 px-3 bg-emerald-400/15 whitespace-nowrap"
-                      >
-                        <FaPlus className="text-[10px]" /> 저축하기
-                      </button>
-                      <button
-                        onClick={() => handleGoalClick(goal)}
-                        className="p-1.5 rounded-[8px] text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
-                        title="편집"
-                      >
-                        <MdEdit className="text-base" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTargetGoal(goal)}
-                        className="p-1.5 rounded-[8px] text-text-muted hover:text-accent-coral transition-colors cursor-pointer"
-                        title="삭제"
-                      >
-                        <MdDelete className="text-base" />
-                      </button>
                     </div>
                   </div>
                 );
@@ -448,8 +447,8 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                           style={{ width: `${Math.max(progress, goal.thisMonthSavings > 0 ? 2 : 0)}%` }}
                         />
                       </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-text-muted">
+                      <div className="flex items-center justify-between overflow-hidden">
+                        <p className="text-xs text-text-muted truncate">
                           <span className="mr-px">₩</span>{formatNumber(goal.thisMonthSavings)}
                           <span className="mx-1">/</span>
                           <span className="mr-px">₩</span>{formatNumber(goal.monthlyTarget)}
