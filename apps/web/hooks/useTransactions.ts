@@ -24,6 +24,7 @@ interface UseTransactionsProps {
   activeTab: 'dashboard' | 'transactions' | 'savings';
   dateRange: DateRange | null;
   amountRange: AmountRange | null;
+  recurringFilter?: 'all' | 'only' | 'none';
 }
 
 export function useTransactions({
@@ -35,6 +36,7 @@ export function useTransactions({
   activeTab,
   dateRange,
   amountRange,
+  recurringFilter = 'all',
 }: UseTransactionsProps) {
   const [allTransactions, setAllTransactions] = useState<TransactionWithCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,6 +90,10 @@ export function useTransactions({
         }
       }
 
+      if (recurringFilter !== 'all') {
+        params.append('recurring', recurringFilter);
+      }
+
       const response = await fetch(`/api/transactions?${params.toString()}`);
       const data = await response.json();
 
@@ -106,7 +112,7 @@ export function useTransactions({
       setIsLoading(false);
       isLoadingRef.current = false;
     }
-  }, [userId, filterType, filterCategories, searchKeyword, sortOrder, dateRange, amountRange]);
+  }, [userId, filterType, filterCategories, searchKeyword, sortOrder, dateRange, amountRange, recurringFilter]);
 
   const resetAndFetch = useCallback(() => {
     setNextCursor(null);
@@ -132,7 +138,7 @@ export function useTransactions({
     if (activeTab === 'transactions' && userId) {
       resetAndFetch();
     }
-  }, [filterType, filterCategories, sortOrder, dateRange, amountRange]);
+  }, [filterType, filterCategories, sortOrder, dateRange, amountRange, recurringFilter]);
 
   // 검색어 디바운스
   useEffect(() => {

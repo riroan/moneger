@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { MdSearch, MdSavings } from 'react-icons/md';
+import { MdSearch, MdSavings, MdEventRepeat } from 'react-icons/md';
 import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 import { getIconComponent } from '@/components/settings/constants';
 import { AMOUNT_LIMITS } from '@/lib/constants';
@@ -42,6 +42,8 @@ interface FilterPanelProps {
   oldestDate: { year: number; month: number } | null;
   amountRange: AmountRange | null;
   setAmountRange: (range: AmountRange | null) => void;
+  recurringFilter: 'all' | 'only' | 'none';
+  setRecurringFilter: (filter: 'all' | 'only' | 'none') => void;
 }
 
 interface CustomSelectProps {
@@ -131,6 +133,8 @@ export default function FilterPanel({
   oldestDate,
   amountRange,
   setAmountRange,
+  recurringFilter,
+  setRecurringFilter,
 }: FilterPanelProps) {
   const [isIncomeCategoryOpen, setIsIncomeCategoryOpen] = useState(true);
   const [isExpenseCategoryOpen, setIsExpenseCategoryOpen] = useState(true);
@@ -156,7 +160,7 @@ export default function FilterPanel({
   const currentMonth = now.getMonth();
   const minYear = oldestDate?.year || currentYear;
 
-  const hasActiveFilters = filterType !== 'ALL' || filterCategories.length > 0 || searchKeyword || sortOrder !== 'recent' || dateRange !== null || amountRange !== null;
+  const hasActiveFilters = filterType !== 'ALL' || filterCategories.length > 0 || searchKeyword || sortOrder !== 'recent' || dateRange !== null || amountRange !== null || recurringFilter !== 'all';
 
   const handleReset = () => {
     setFilterType('ALL');
@@ -169,6 +173,7 @@ export default function FilterPanel({
     setIsAmountFilterEnabled(false);
     setMinAmountInput('');
     setMaxAmountInput('');
+    setRecurringFilter('all');
   };
 
   const handleDateFilterToggle = (enabled: boolean) => {
@@ -431,6 +436,32 @@ export default function FilterPanel({
                 className={`rounded-[8px] text-sm font-medium transition-all cursor-pointer py-2 px-3 ${
                   filterType === option.value
                     ? option.activeClass
+                    : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 정기 지출 */}
+        <div className="mb-4">
+          <label className="text-sm text-text-muted mb-2 flex items-center gap-1.5">
+            <MdEventRepeat className="text-sm text-accent-coral" /> 정기 지출
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: 'all' as const, label: '전체' },
+              { value: 'only' as const, label: '정기만' },
+              { value: 'none' as const, label: '일반만' },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setRecurringFilter(option.value)}
+                className={`rounded-[8px] text-sm font-medium transition-all cursor-pointer py-2 px-2 ${
+                  recurringFilter === option.value
+                    ? 'bg-accent-coral/20 text-accent-coral'
                     : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
                 }`}
               >

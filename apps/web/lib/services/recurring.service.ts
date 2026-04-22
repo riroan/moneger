@@ -155,9 +155,12 @@ export async function deleteRecurringExpense(id: string, userId: string) {
 
 /**
  * 정기 지출 목록 조회
+ *
+ * 각 항목에 이번 달 처리 여부(processedThisMonth)와 마지막 처리 일자(lastProcessedDate)를 부착.
+ * 판정 기준: 이번 달(KST) 기간 내에 `recurringExpenseId`로 연결된 거래가 존재하면 처리됨.
  */
 export async function getRecurringExpenses(userId: string) {
-  return prisma.recurringExpense.findMany({
+  const expenses = await prisma.recurringExpense.findMany({
     where: { userId, deletedAt: null },
     include: {
       category: { select: CATEGORY_SELECT },
@@ -165,6 +168,39 @@ export async function getRecurringExpenses(userId: string) {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  if (expenses.length === 0) return [];
+
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstNow = new Date(Date.now() + kstOffset);
+  const year = kstNow.getUTCFullYear();
+  const month = kstNow.getUTCMonth();
+  const monthStart = new Date(Date.UTC(year, month, 1));
+  const monthEnd = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
+
+  const processedTxs = await prisma.transaction.findMany({
+    where: {
+      userId,
+      deletedAt: null,
+      recurringExpenseId: { in: expenses.map((e) => e.id) },
+      date: { gte: monthStart, lte: monthEnd },
+    },
+    select: { recurringExpenseId: true, date: true },
+    orderBy: { date: 'desc' },
+  });
+
+  const processedMap = new Map<string, string>();
+  for (const tx of processedTxs) {
+    if (tx.recurringExpenseId && !processedMap.has(tx.recurringExpenseId)) {
+      processedMap.set(tx.recurringExpenseId, tx.date.toISOString());
+    }
+  }
+
+  return expenses.map((e) => ({
+    ...e,
+    processedThisMonth: processedMap.has(e.id),
+    lastProcessedDate: processedMap.get(e.id) ?? null,
+  }));
 }
 
 /**

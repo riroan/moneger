@@ -3,6 +3,7 @@ import type { TransactionWithCategory, TransactionSummary, TodaySummary, DateRan
 
 export type FilterType = 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
 export type SortOrder = 'recent' | 'oldest' | 'expensive' | 'cheapest';
+export type RecurringFilter = 'all' | 'only' | 'none';
 
 interface TransactionState {
   // 데이터
@@ -19,6 +20,7 @@ interface TransactionState {
   sortOrder: SortOrder;
   dateRange: DateRange | null;
   amountRange: AmountRange | null;
+  recurringFilter: RecurringFilter;
   isFilterOpen: boolean;
 
   // 로딩 상태
@@ -42,8 +44,9 @@ interface TransactionActions {
   setSortOrder: (order: SortOrder) => void;
   setDateRange: (range: DateRange | null) => void;
   setAmountRange: (range: AmountRange | null) => void;
+  setRecurringFilter: (filter: RecurringFilter) => void;
   setIsFilterOpen: (isOpen: boolean) => void;
-  setFilters: (filters: Partial<Pick<TransactionState, 'filterType' | 'filterCategories' | 'searchKeyword' | 'sortOrder' | 'dateRange' | 'amountRange'>>) => void;
+  setFilters: (filters: Partial<Pick<TransactionState, 'filterType' | 'filterCategories' | 'searchKeyword' | 'sortOrder' | 'dateRange' | 'amountRange' | 'recurringFilter'>>) => void;
   resetFilters: () => void;
 
   // 로딩 상태 설정
@@ -61,6 +64,7 @@ const initialFilterState = {
   sortOrder: 'recent' as SortOrder,
   dateRange: null,
   amountRange: null,
+  recurringFilter: 'all' as RecurringFilter,
   isFilterOpen: false,
 };
 
@@ -96,6 +100,7 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
   setSortOrder: (order) => set({ sortOrder: order }),
   setDateRange: (range) => set({ dateRange: range }),
   setAmountRange: (range) => set({ amountRange: range }),
+  setRecurringFilter: (filter) => set({ recurringFilter: filter }),
   setIsFilterOpen: (isOpen) => set({ isFilterOpen: isOpen }),
 
   setFilters: (filters) => set((state) => ({ ...state, ...filters })),

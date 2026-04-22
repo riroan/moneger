@@ -31,6 +31,8 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
     setDateRange,
     amountRange,
     setAmountRange,
+    recurringFilter,
+    setRecurringFilter,
     oldestTransactionDate,
   } = useTransactionStore();
 
@@ -52,6 +54,7 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
     activeTab: 'transactions',
     dateRange,
     amountRange,
+    recurringFilter,
   });
 
   // Infinite scroll
@@ -119,6 +122,8 @@ export default function TransactionsTab({ onTransactionClick, onRefresh }: Trans
         oldestDate={oldestTransactionDate}
         amountRange={amountRange}
         setAmountRange={setAmountRange}
+        recurringFilter={recurringFilter}
+        setRecurringFilter={setRecurringFilter}
       />
 
       <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">

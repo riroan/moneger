@@ -43,6 +43,7 @@ interface GetTransactionsInput {
   maxAmount?: number;
   savingsOnly?: boolean;
   groupId?: string;
+  recurring?: 'all' | 'only' | 'none';
 }
 
 // 정렬 옵션 매핑 (모듈 레벨 상수)
@@ -223,6 +224,13 @@ function buildTransactionWhere(input: GetTransactionsInput): Prisma.TransactionW
     where.amount = {};
     if (input.minAmount !== undefined) where.amount.gte = input.minAmount;
     if (input.maxAmount !== undefined) where.amount.lte = input.maxAmount;
+  }
+
+  // 정기 지출 필터
+  if (input.recurring === 'only') {
+    where.recurringExpenseId = { not: null };
+  } else if (input.recurring === 'none') {
+    where.recurringExpenseId = null;
   }
 
   return where;

@@ -41,6 +41,7 @@ export const GET = apiHandler('fetch transactions', async (request: NextRequest)
     maxAmount: searchParams.get('maxAmount') ? parseInt(searchParams.get('maxAmount')!) : undefined,
     savingsOnly: searchParams.get('savingsOnly') === 'true',
     groupId: searchParams.get('groupId') || undefined,
+    recurring: (searchParams.get('recurring') as 'all' | 'only' | 'none' | null) || undefined,
   });
 
   return paginatedResponse(result.data, result.count, result.nextCursor, result.hasMore);

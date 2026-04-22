@@ -3,7 +3,7 @@
 import { memo, useMemo } from 'react';
 import { formatNumber, formatDate, formatCurrencyDisplay } from '@/utils/formatters';
 import { getIconComponent } from '@/components/settings/constants';
-import { MdSavings } from 'react-icons/md';
+import { MdSavings, MdEventRepeat } from 'react-icons/md';
 import type { TransactionWithCategory } from '@/types';
 
 interface TransactionItemProps {
@@ -30,6 +30,7 @@ CurrencyDisplay.displayName = 'CurrencyDisplay';
 
 function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
   const isSavings = !!tx.savingsGoalId;
+  const isRecurring = !!tx.recurringExpenseId;
 
   // 아이콘 컴포넌트 메모이제이션
   const IconComponent = useMemo(
@@ -45,10 +46,19 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
       <div className="flex items-center">
         {/* 아이콘 */}
         <div
-          className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0 mr-3"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0 mr-3 relative"
           style={{ color: isSavings ? 'var(--accent-blue)' : (tx.category?.color || 'var(--text-primary)') }}
         >
           <IconComponent />
+          {isRecurring && (
+            <span
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-bg-card flex items-center justify-center text-accent-coral"
+              title="정기 지출"
+              aria-label="정기 지출"
+            >
+              <MdEventRepeat className="text-[10px]" />
+            </span>
+          )}
         </div>
         {/* 내용 영역 */}
         <div className="flex-1 min-w-0">
@@ -66,7 +76,12 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
           {/* 하단: 시간 + 카테고리 */}
           <div className="flex items-center justify-between text-xs sm:text-[13px] text-text-muted">
             <span>{formatDate(tx.date)}</span>
-            <span>{isSavings ? '저축' : (tx.category?.name || '미분류')}</span>
+            <span className="inline-flex items-center gap-1">
+              {isRecurring && !isSavings && (
+                <span className="text-[10px] font-medium bg-accent-coral/15 text-accent-coral px-1.5 py-0.5 rounded-full">정기</span>
+              )}
+              {isSavings ? '저축' : (tx.category?.name || '미분류')}
+            </span>
           </div>
         </div>
       </div>
@@ -80,6 +95,7 @@ export default memo(TransactionItem, (prevProps, nextProps) => {
     prevProps.transaction.id === nextProps.transaction.id &&
     prevProps.transaction.amount === nextProps.transaction.amount &&
     prevProps.transaction.description === nextProps.transaction.description &&
+    prevProps.transaction.recurringExpenseId === nextProps.transaction.recurringExpenseId &&
     prevProps.onClick === nextProps.onClick
   );
 });

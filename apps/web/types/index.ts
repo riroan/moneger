@@ -47,6 +47,7 @@ export interface TransactionWithCategory {
   category: CategoryWithSelect | null;
   savingsGoalId?: string | null;
   groupId?: string | null;
+  recurringExpenseId?: string | null;
 }
 
 // Budget Types

@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber } from '@/utils/formatters';
 import { FaPlus } from 'react-icons/fa';
-import { MdEventRepeat, MdEdit, MdDelete, MdHistory, MdPieChart, MdSchedule } from 'react-icons/md';
+import { MdEventRepeat, MdEdit, MdDelete, MdHistory, MdPieChart, MdSchedule, MdCheckCircle, MdAccessTime } from 'react-icons/md';
 
 const AddRecurringModal = dynamic(() => import('./AddRecurringModal'), { ssr: false });
 const EditRecurringModal = dynamic(() => import('./EditRecurringModal'), { ssr: false });
@@ -18,8 +18,22 @@ interface RecurringExpense {
   dayOfMonth: number;
   nextDueDate: string;
   isActive: boolean;
+  processedThisMonth: boolean;
+  lastProcessedDate: string | null;
   category: { id: string; name: string; type: string; color: string | null; icon: string | null } | null;
   history: { id: string; previousAmount: number; newAmount: number; changedAt: string }[];
+}
+
+/**
+ * nextDueDate 기준 남은 일수 (KST). 음수/0 = 오늘/지남.
+ */
+function getDaysUntilDue(nextDueDate: string): number {
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstNow = new Date(Date.now() + kstOffset);
+  const todayStr = kstNow.toISOString().split('T')[0];
+  const dueStr = nextDueDate.split('T')[0];
+  const diffMs = new Date(dueStr).getTime() - new Date(todayStr).getTime();
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
 interface RecurringSummary {
@@ -200,9 +214,43 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                             {expense.category.name}
                           </span>
                         )}
-                        {!expense.isActive && (
-                          <span className="text-[10px] text-text-muted bg-bg-card px-1.5 py-0.5 rounded-full">중지</span>
-                        )}
+                        {(() => {
+                          if (!expense.isActive) {
+                            return (
+                              <span className="text-[10px] text-text-muted bg-bg-card px-1.5 py-0.5 rounded-full whitespace-nowrap">중지</span>
+                            );
+                          }
+                          if (expense.processedThisMonth) {
+                            const processedMonth = expense.lastProcessedDate
+                              ? new Date(expense.lastProcessedDate).getMonth() + 1
+                              : new Date().getMonth() + 1;
+                            return (
+                              <span className="text-[10px] font-medium bg-accent-mint/15 text-accent-mint px-1.5 py-0.5 rounded-full whitespace-nowrap inline-flex items-center gap-0.5">
+                                <MdCheckCircle className="text-[11px]" />
+                                {processedMonth}월 처리됨
+                              </span>
+                            );
+                          }
+                          const daysLeft = getDaysUntilDue(expense.nextDueDate);
+                          const label =
+                            daysLeft < 0
+                              ? `${Math.abs(daysLeft)}일 지남`
+                              : daysLeft === 0
+                              ? '오늘 예정'
+                              : `${daysLeft}일 후 예정`;
+                          const toneClass =
+                            daysLeft <= 0
+                              ? 'bg-accent-coral/15 text-accent-coral'
+                              : daysLeft <= 3
+                              ? 'bg-accent-yellow/15 text-accent-yellow'
+                              : 'bg-accent-blue/15 text-accent-blue';
+                          return (
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap inline-flex items-center gap-0.5 ${toneClass}`}>
+                              <MdAccessTime className="text-[11px]" />
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <p className="text-xs text-text-muted mt-0.5">
                         매월 {expense.dayOfMonth}일 · <span className="whitespace-nowrap">다음 {new Date(expense.nextDueDate).toLocaleDateString('ko-KR')}</span>
