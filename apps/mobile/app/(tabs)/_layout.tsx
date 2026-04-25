@@ -12,7 +12,7 @@ const tabs: { name: string; path: string; title: string; icon: MaterialIconName 
   { name: 'index', path: '/(tabs)', title: '홈', icon: 'home' },
   { name: 'transactions', path: '/(tabs)/transactions', title: '내역', icon: 'receipt-long' },
   { name: 'add', path: '', title: '', icon: 'add' }, // Center add button placeholder
-  { name: 'savings', path: '/(tabs)/savings', title: '저축', icon: 'savings' },
+  { name: 'analytics', path: '/(tabs)/analytics', title: '분석', icon: 'insights' },
   { name: 'settings', path: '/(tabs)/settings', title: '전체', icon: 'menu' },
 ];
 
@@ -66,9 +66,14 @@ export default function TabsLayout() {
     },
   });
 
+  const SETTINGS_SUBPAGES = ['/recurring', '/groups', '/savings'];
+
   const isActive = (path: string) => {
     if (path === '/(tabs)') {
       return pathname === '/' || pathname === '/(tabs)';
+    }
+    if (path === '/(tabs)/settings' && SETTINGS_SUBPAGES.includes(pathname)) {
+      return true;
     }
     return pathname === path || pathname === path.replace('/(tabs)', '');
   };

@@ -11,15 +11,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useAuthStore } from '../stores/authStore';
-import { useThemeStore } from '../stores/themeStore';
-import { useRefreshStore } from '../stores/refreshStore';
-import { useToast } from '../contexts/ToastContext';
-import { Colors } from '../constants/Colors';
-import { recurringApi, type RecurringExpense, type RecurringSummary } from '../lib/api';
+import { useAuthStore } from '../../stores/authStore';
+import { useThemeStore } from '../../stores/themeStore';
+import { useRefreshStore } from '../../stores/refreshStore';
+import { useToast } from '../../contexts/ToastContext';
+import { Colors } from '../../constants/Colors';
+import { recurringApi, type RecurringExpense, type RecurringSummary } from '../../lib/api';
 import { formatNumber } from '@moneger/shared';
-import DonutChart from '../components/charts/DonutChart';
-import { AddRecurringModal, EditRecurringModal } from '../components/recurring';
+import DonutChart from '../../components/charts/DonutChart';
+import { AddRecurringModal, EditRecurringModal } from '../../components/recurring';
 
 const MAX_ITEMS = 10;
 
@@ -216,16 +216,6 @@ export default function RecurringScreen() {
       color: colors.textPrimary,
       flex: 1,
     },
-    addHeaderButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 10,
-      backgroundColor: colors.bgCard,
-    },
-    addHeaderText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     summarySection: { paddingHorizontal: 16, marginBottom: 12 },
     summaryCard: {
@@ -444,12 +434,6 @@ export default function RecurringScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>고정비</Text>
-        {expenses.length < MAX_ITEMS && (
-          <TouchableOpacity style={styles.addHeaderButton} onPress={() => setIsAddOpen(true)}>
-            <MaterialIcons name="add" size={16} color={colors.textSecondary} />
-            <Text style={styles.addHeaderText}>추가</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       <ScrollView

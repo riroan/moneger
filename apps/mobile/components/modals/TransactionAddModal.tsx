@@ -19,6 +19,7 @@ import { useRefreshStore } from '../../stores/refreshStore';
 import { AMOUNT_LIMITS, formatAmountInput } from '@moneger/shared';
 import { getIconName } from '../../constants/Icons';
 import ModalContainer from './ModalContainer';
+import { GroupDropdown } from '../forms';
 
 // Fallback mock categories (used when API fails or user is not logged in)
 const FALLBACK_CATEGORIES = {
@@ -58,6 +59,7 @@ export default function TransactionAddModal({
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [amountExceeded, setAmountExceeded] = useState(false);
@@ -90,6 +92,7 @@ export default function TransactionAddModal({
     setDescription('');
     setAmount('');
     setSelectedCategory(null);
+    setSelectedGroupId(null);
     setIsCategoryDropdownOpen(false);
     setAmountExceeded(false);
   };
@@ -124,6 +127,7 @@ export default function TransactionAddModal({
       description: description.trim() || undefined,
       date: now.toISOString(),
       categoryId: selectedCategory || undefined,
+      groupId: selectedGroupId,
     };
 
     const result = await transactionApi.create(requestData);
@@ -538,6 +542,18 @@ export default function TransactionAddModal({
           )}
         </View>
       </View>
+
+      {/* Group (optional) */}
+      {userId && (
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>그룹 (선택)</Text>
+          <GroupDropdown
+            userId={userId}
+            selectedId={selectedGroupId}
+            onSelect={setSelectedGroupId}
+          />
+        </View>
+      )}
     </ModalContainer>
   );
 }

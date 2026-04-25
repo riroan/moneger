@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import type { MaterialIconName } from '../../constants/Icons';
 import { useAuthStore } from '../../stores/authStore';
@@ -45,6 +46,7 @@ export default function SavingsScreen() {
   const { showToast } = useToast();
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [trend, setTrend] = useState<SavingsTrendPoint[]>([]);
@@ -357,19 +359,34 @@ export default function SavingsScreen() {
       flex: 1,
       backgroundColor: colors.bgPrimary,
     },
-    header: {
-      padding: 20,
-      paddingTop: 10,
+    headerBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingTop: 8,
+      paddingBottom: 12,
+      gap: 8,
     },
-    title: {
-      fontSize: 24,
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerTitle: {
+      fontSize: 22,
       fontWeight: 'bold',
       color: colors.textPrimary,
+      flex: 1,
+    },
+    header: {
+      paddingHorizontal: 20,
+      paddingBottom: 10,
     },
     subtitle: {
       fontSize: 14,
       color: colors.textSecondary,
-      marginTop: 4,
     },
     loadingContainer: {
       flex: 1,
@@ -706,6 +723,13 @@ export default function SavingsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.headerBar}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>저축</Text>
+      </View>
+
       <ScrollView
         refreshControl={
           <RefreshControl
@@ -716,7 +740,6 @@ export default function SavingsScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.title}>저축</Text>
           <Text style={styles.subtitle}>목표를 향해 차근차근 모아보세요</Text>
         </View>
 

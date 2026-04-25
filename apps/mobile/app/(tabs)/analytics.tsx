@@ -9,15 +9,14 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useAuthStore } from '../stores/authStore';
-import { useThemeStore } from '../stores/themeStore';
-import { Colors } from '../constants/Colors';
-import { analyticsApi, type AnalyticsResult } from '../lib/api';
+import { useAuthStore } from '../../stores/authStore';
+import { useThemeStore } from '../../stores/themeStore';
+import { Colors } from '../../constants/Colors';
+import { analyticsApi, type AnalyticsResult } from '../../lib/api';
 import { formatNumber } from '@moneger/shared';
-import BarChart from '../components/charts/BarChart';
-import MultiLineChart from '../components/charts/MultiLineChart';
+import BarChart from '../../components/charts/BarChart';
+import MultiLineChart from '../../components/charts/MultiLineChart';
 
 const COLOR_MINT = '#4ade80';
 const COLOR_CORAL = '#ff6b6b';
@@ -41,7 +40,6 @@ function shortMonthLabel(year: number, month: number) {
 }
 
 export default function AnalyticsScreen() {
-  const router = useRouter();
   const { userId } = useAuthStore();
   const { theme } = useThemeStore();
   const colors = Colors[theme];
@@ -87,13 +85,6 @@ export default function AnalyticsScreen() {
       paddingTop: 8,
       paddingBottom: 12,
       gap: 8,
-    },
-    backButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     headerTitle: {
       fontSize: 22,
@@ -200,9 +191,6 @@ export default function AnalyticsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
           <Text style={styles.headerTitle}>분석</Text>
         </View>
         <View style={styles.loadingContainer}>
@@ -216,9 +204,6 @@ export default function AnalyticsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
           <Text style={styles.headerTitle}>분석</Text>
         </View>
         <View style={styles.errorContainer}>
@@ -263,9 +248,6 @@ export default function AnalyticsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>분석</Text>
       </View>
 

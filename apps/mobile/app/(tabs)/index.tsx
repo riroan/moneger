@@ -512,7 +512,7 @@ export default function HomeScreen() {
                 <MaterialIcons name="savings" size={20} color="#06B6D4" />
                 <Text style={styles.savingsTitle}>저축</Text>
               </View>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/savings')}>
+              <TouchableOpacity onPress={() => router.push('/savings')}>
                 <Text style={styles.savingsViewAll}>전체보기 →</Text>
               </TouchableOpacity>
             </View>

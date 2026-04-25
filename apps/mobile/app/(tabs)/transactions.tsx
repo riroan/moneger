@@ -29,6 +29,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useRefreshStore } from '../../stores/refreshStore';
 import { AMOUNT_LIMITS, formatNumber, formatAmountInput, formatDateWithDay, formatTime } from '@moneger/shared';
 import { EditSavingsTransactionModal, type SavingsTransactionForEdit } from '../../components/savings';
+import { GroupDropdown } from '../../components/forms';
 
 // Pagination settings
 const INITIAL_LOAD_LIMIT = 50; // 처음 로드할 개수
@@ -189,6 +190,7 @@ export default function TransactionsScreen() {
   const [editAmount, setEditAmount] = useState('');
   const [editAmountExceeded, setEditAmountExceeded] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
+  const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [isEditCategoryDropdownOpen, setIsEditCategoryDropdownOpen] = useState(false);
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
@@ -703,6 +705,7 @@ export default function TransactionsScreen() {
     setEditAmount(tx.amount.toLocaleString('ko-KR'));
     setEditAmountExceeded(false);
     setEditCategoryId(tx.categoryId || null);
+    setEditGroupId(tx.groupId ?? null);
     setIsEditCategoryDropdownOpen(false);
     setShowDeleteConfirm(false);
     setIsEditModalOpen(true);
@@ -787,6 +790,7 @@ export default function TransactionsScreen() {
       amount: numericAmount,
       description: editDescription.trim() || undefined,
       categoryId: editCategoryId || undefined,
+      groupId: editGroupId,
     });
 
     setIsEditSubmitting(false);
@@ -2522,6 +2526,18 @@ export default function TransactionsScreen() {
                       )}
                     </View>
                   </View>
+
+                  {/* Group (optional) */}
+                  {userId && (
+                    <View style={styles.editFieldContainer}>
+                      <Text style={styles.editFieldLabel}>그룹 (선택)</Text>
+                      <GroupDropdown
+                        userId={userId}
+                        selectedId={editGroupId}
+                        onSelect={setEditGroupId}
+                      />
+                    </View>
+                  )}
 
                   {/* Action Buttons */}
                   <View style={styles.editActionButtons}>

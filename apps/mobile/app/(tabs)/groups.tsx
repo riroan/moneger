@@ -11,16 +11,16 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useAuthStore } from '../stores/authStore';
-import { useThemeStore } from '../stores/themeStore';
-import { useRefreshStore } from '../stores/refreshStore';
-import { useToast } from '../contexts/ToastContext';
-import { Colors } from '../constants/Colors';
-import { groupsApi, transactionApi, type GroupSummary } from '../lib/api';
-import type { TransactionWithCategory } from '../lib/api';
+import { useAuthStore } from '../../stores/authStore';
+import { useThemeStore } from '../../stores/themeStore';
+import { useRefreshStore } from '../../stores/refreshStore';
+import { useToast } from '../../contexts/ToastContext';
+import { Colors } from '../../constants/Colors';
+import { groupsApi, transactionApi, type GroupSummary } from '../../lib/api';
+import type { TransactionWithCategory } from '../../lib/api';
 import { formatNumber } from '@moneger/shared';
-import TransactionItem from '../components/TransactionItem';
-import { GroupFormModal, GROUP_ICON_MAP, type GroupForEdit } from '../components/groups';
+import TransactionItem from '../../components/TransactionItem';
+import { GroupFormModal, GROUP_ICON_MAP, type GroupForEdit } from '../../components/groups';
 
 const MAX_GROUPS = 20;
 
@@ -193,16 +193,6 @@ export default function GroupsScreen() {
       color: colors.textPrimary,
       flex: 1,
     },
-    addHeaderButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 10,
-      backgroundColor: colors.bgCard,
-    },
-    addHeaderText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     summaryGrid: {
       flexDirection: 'row',
@@ -353,19 +343,6 @@ export default function GroupsScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>그룹</Text>
-        {groups.length < MAX_GROUPS && (
-          <TouchableOpacity
-            style={styles.addHeaderButton}
-            onPress={() => {
-              setFormMode('add');
-              setEditTarget(null);
-              setIsFormOpen(true);
-            }}
-          >
-            <MaterialIcons name="add" size={16} color={colors.textSecondary} />
-            <Text style={styles.addHeaderText}>추가</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       <ScrollView

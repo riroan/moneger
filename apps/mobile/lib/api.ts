@@ -76,6 +76,7 @@ export interface Transaction {
   description: string;
   date: string;
   categoryId: string | null;
+  groupId?: string | null;
   recurringExpenseId?: string | null;
   categoryName?: string;
   categoryIcon?: string;
@@ -90,6 +91,7 @@ export interface TransactionWithCategory {
   description: string | null;
   date: string;
   categoryId: string | null;
+  groupId?: string | null;
   savingsGoalId?: string | null;
   recurringExpenseId?: string | null;
   category?: {
@@ -265,6 +267,7 @@ export const transactionApi = {
     description?: string;
     date: string;
     categoryId?: string;
+    groupId?: string | null;
   }) =>
     request<Transaction>(API_ENDPOINTS.TRANSACTIONS, {
       method: 'POST',
@@ -279,6 +282,7 @@ export const transactionApi = {
       type: 'INCOME' | 'EXPENSE';
       description?: string;
       categoryId?: string;
+      groupId?: string | null;
     }
   ) =>
     request<Transaction>(`${API_ENDPOINTS.TRANSACTIONS}/${id}`, {

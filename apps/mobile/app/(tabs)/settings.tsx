@@ -1057,6 +1057,7 @@ export default function SettingsScreen() {
     { id: 'calendar', icon: 'calendar-today' as MaterialIconName, label: '일별 내역', color: '#10B981', onPress: () => setActiveModal('calendar') },
     { id: 'daily-report', icon: 'show-chart' as MaterialIconName, label: '일별 리포트', color: '#8B5CF6', onPress: () => setActiveModal('daily-report') },
     { id: 'analytics', icon: 'insights' as MaterialIconName, label: '분석', color: '#3B82F6', onPress: () => router.push('/analytics') },
+    { id: 'savings', icon: 'savings' as MaterialIconName, label: '저축', color: '#06B6D4', onPress: () => router.push('/savings') },
     { id: 'recurring', icon: 'event-repeat' as MaterialIconName, label: '고정비', color: '#EF4444', onPress: () => router.push('/recurring') },
     { id: 'groups', icon: 'folder' as MaterialIconName, label: '그룹', color: '#818CF8', onPress: () => router.push('/groups') },
   ];
