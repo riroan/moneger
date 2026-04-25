@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -17,9 +18,11 @@ import { useThemeStore } from '../../stores/themeStore';
 import { useRefreshStore } from '../../stores/refreshStore';
 import { useToast } from '../../contexts/ToastContext';
 import { Colors } from '../../constants/Colors';
-import { savingsApi, SavingsGoal } from '../../lib/api';
+import { savingsApi, SavingsGoal, type SavingsTrendPoint } from '../../lib/api';
 import { SAVINGS_GOAL, formatNumber } from '@moneger/shared';
 import { AddGoalModal, DepositModal, EditGoalModal, type SavingsGoalForDeposit, type SavingsGoalForEdit } from '../../components/savings';
+import BarChart from '../../components/charts/BarChart';
+import MultiLineChart from '../../components/charts/MultiLineChart';
 
 const MAX_GOALS = SAVINGS_GOAL.MAX_COUNT;
 
@@ -44,6 +47,7 @@ export default function SavingsScreen() {
   const insets = useSafeAreaInsets();
 
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [trend, setTrend] = useState<SavingsTrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -67,9 +71,15 @@ export default function SavingsScreen() {
     }
 
     try {
-      const res = await savingsApi.getAll(userId);
-      if (res.success && res.data) {
-        setGoals(res.data);
+      const [goalsRes, trendRes] = await Promise.all([
+        savingsApi.getAll(userId),
+        savingsApi.getTrend(userId),
+      ]);
+      if (goalsRes.success && goalsRes.data) {
+        setGoals(goalsRes.data);
+      }
+      if (trendRes.success && trendRes.data) {
+        setTrend(trendRes.data);
       }
     } catch (error) {
       console.error('Failed to fetch savings:', error);
@@ -603,6 +613,85 @@ export default function SavingsScreen() {
       color: colors.textMuted,
       marginTop: 8,
     },
+    // Trend chart card
+    trendChartCard: {
+      paddingHorizontal: 20,
+      marginBottom: 16,
+    },
+    chartLegendRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 16,
+      marginTop: 8,
+    },
+    chartLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    chartLegendSwatch: {
+      width: 10,
+      height: 10,
+      borderRadius: 2,
+    },
+    chartLegendLine: { width: 16, height: 2, borderRadius: 1 },
+    chartLegendText: { fontSize: 11, color: colors.textMuted },
+    chartEmpty: {
+      paddingVertical: 28,
+      alignItems: 'center',
+    },
+    // Monthly progress card
+    monthlyProgressItem: {
+      backgroundColor: colors.bgSecondary,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+    },
+    monthlyProgressHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 6,
+    },
+    monthlyProgressIconBox: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      backgroundColor: 'rgba(251, 191, 36, 0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    monthlyProgressName: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textPrimary,
+      flex: 1,
+    },
+    monthlyProgressPct: {
+      fontSize: 11,
+      color: colors.textMuted,
+    },
+    monthlyProgressBar: {
+      height: 6,
+      backgroundColor: colors.bgCard,
+      borderRadius: 3,
+      overflow: 'hidden',
+      marginBottom: 4,
+    },
+    monthlyProgressFill: {
+      height: '100%',
+      borderRadius: 3,
+    },
+    monthlyProgressFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    monthlyProgressAmount: {
+      fontSize: 11,
+      color: colors.textMuted,
+    },
+    monthlyProgressDone: {
+      fontSize: 11,
+      fontWeight: '500',
+      color: colors.accentMint,
+    },
   });
 
   if (isLoading) {
@@ -781,6 +870,124 @@ export default function SavingsScreen() {
             )}
           </View>
         </View>
+
+        {/* Savings Trend Chart */}
+        <View style={styles.goalsSection}>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <MaterialIcons name="trending-up" size={20} color={colors.accentMint} />
+                <Text style={styles.sectionTitle}>저축 추세</Text>
+              </View>
+            </View>
+
+            {trend.length === 0 ? (
+              <View style={styles.chartEmpty}>
+                <Text style={styles.emptyText}>저축 기록이 없습니다</Text>
+              </View>
+            ) : (() => {
+              const chartWidth = Dimensions.get('window').width - 40 - 32; // screen - section padding - card padding
+              const labels = trend.map((p) => {
+                const [yy, mm] = p.month.split('-');
+                return `${yy.slice(2)}-${mm.padStart(2, '0')}`;
+              });
+              return (
+                <>
+                  <BarChart
+                    width={chartWidth}
+                    height={220}
+                    labels={labels}
+                    series={[
+                      {
+                        key: 'amount',
+                        label: '월 저축',
+                        color: colors.accentMint,
+                        values: trend.map((p) => p.amount),
+                      },
+                    ]}
+                    lineSeries={{
+                      key: 'cumulative',
+                      label: '누적',
+                      color: colors.accentBlue,
+                      values: trend.map((p) => p.cumulative),
+                    }}
+                  />
+                  <View style={styles.chartLegendRow}>
+                    <View style={styles.chartLegendItem}>
+                      <View style={[styles.chartLegendSwatch, { backgroundColor: colors.accentMint }]} />
+                      <Text style={styles.chartLegendText}>월 저축</Text>
+                    </View>
+                    <View style={styles.chartLegendItem}>
+                      <View style={[styles.chartLegendLine, { backgroundColor: colors.accentBlue }]} />
+                      <Text style={styles.chartLegendText}>누적</Text>
+                    </View>
+                  </View>
+                </>
+              );
+            })()}
+          </View>
+        </View>
+
+        {/* Monthly Progress per Goal */}
+        {goals.length > 0 && (
+          <View style={styles.goalsSection}>
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <MaterialIcons name="calendar-today" size={20} color={colors.accentBlue} />
+                  <Text style={styles.sectionTitle}>이번 달 진행</Text>
+                </View>
+              </View>
+
+              {goals.map((goal) => {
+                const progress = goal.monthlyTarget > 0
+                  ? Math.min(Math.round((goal.thisMonthSavings / goal.monthlyTarget) * 100), 100)
+                  : 0;
+                const isComplete = goal.thisMonthSavings >= goal.monthlyTarget;
+                const fillWidth = Math.max(progress, goal.thisMonthSavings > 0 ? 2 : 0);
+                const fillColor = isComplete
+                  ? colors.accentMint
+                  : progress >= 50
+                  ? colors.accentBlue
+                  : colors.textMuted;
+
+                return (
+                  <View key={goal.id} style={styles.monthlyProgressItem}>
+                    <View style={styles.monthlyProgressHeader}>
+                      <View style={styles.monthlyProgressIconBox}>
+                        {renderGoalIcon(goal.icon, 16, '#FBBF24')}
+                      </View>
+                      <Text style={styles.monthlyProgressName} numberOfLines={1}>
+                        {goal.name}
+                      </Text>
+                      {isComplete ? (
+                        <MaterialIcons name="check-circle" size={18} color={colors.accentMint} />
+                      ) : (
+                        <Text style={styles.monthlyProgressPct}>{progress}%</Text>
+                      )}
+                    </View>
+                    <View style={styles.monthlyProgressBar}>
+                      <View
+                        style={[
+                          styles.monthlyProgressFill,
+                          { width: `${fillWidth}%`, backgroundColor: fillColor },
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.monthlyProgressFooter}>
+                      <Text style={styles.monthlyProgressAmount}>
+                        ₩{formatNumber(goal.thisMonthSavings)} / ₩{formatNumber(goal.monthlyTarget)}
+                      </Text>
+                      {isComplete && <Text style={styles.monthlyProgressDone}>완료!</Text>}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        <View style={{ height: 16 }} />
       </ScrollView>
 
       {/* Add Savings Goal Modal */}

@@ -408,9 +408,18 @@ export interface SavingsGoal {
   isPrimary: boolean;
 }
 
+export interface SavingsTrendPoint {
+  month: string;
+  amount: number;
+  cumulative: number;
+}
+
 export const savingsApi = {
   getAll: (userId: string) =>
     request<SavingsGoal[]>(`${API_ENDPOINTS.SAVINGS}?userId=${userId}`),
+
+  getTrend: (userId: string) =>
+    request<SavingsTrendPoint[]>(`${API_ENDPOINTS.SAVINGS_TREND}?userId=${userId}`),
 
   create: (data: {
     userId: string;

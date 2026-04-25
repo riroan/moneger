@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
 
   // Savings
   SAVINGS: '/api/savings',
+  SAVINGS_TREND: '/api/savings/trend',
 
   // Recurring (고정비)
   RECURRING: '/api/recurring',
