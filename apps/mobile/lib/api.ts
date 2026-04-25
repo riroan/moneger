@@ -111,6 +111,8 @@ export interface CategorySummary {
   total: number;
   budget?: number;
   budgetUsagePercent?: number;
+  prevTotal?: number;
+  changePercent?: number;
 }
 
 export interface PrimaryGoal {

@@ -49,8 +49,13 @@ export default function HomeScreen() {
 
   const now = new Date();
   const kstNow = getKSTDateParts(now);
-  const year = kstNow.year;
-  const month = kstNow.month;
+  const currentYear = kstNow.year;
+  const currentMonth = kstNow.month;
+
+  const [selectedDate, setSelectedDate] = useState(() => new Date(currentYear, currentMonth - 1, 1));
+  const year = selectedDate.getFullYear();
+  const month = selectedDate.getMonth() + 1;
+  const isCurrentMonth = year === currentYear && month === currentMonth;
 
   const fetchData = useCallback(async () => {
     if (!userId) {
@@ -182,7 +187,18 @@ export default function HomeScreen() {
     total: cat.total,
     count: cat.count,
     budget: cat.budget,
+    prevTotal: cat.prevTotal,
+    changePercent: cat.changePercent,
   }));
+
+  const handlePrevMonth = () => {
+    setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    if (isCurrentMonth) return;
+    setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1));
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -202,6 +218,36 @@ export default function HomeScreen() {
       fontWeight: 'bold',
       color: colors.textPrimary,
       marginTop: 4,
+    },
+    monthPicker: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      marginTop: 12,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      backgroundColor: colors.bgCard,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignSelf: 'flex-start',
+    },
+    monthPickerButton: {
+      width: 28,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    monthPickerButtonDisabled: {
+      opacity: 0.3,
+    },
+    monthPickerText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      minWidth: 90,
+      textAlign: 'center',
     },
     loadingContainer: {
       flex: 1,
@@ -406,6 +452,24 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <Text style={styles.greeting}>안녕하세요,</Text>
           <Text style={styles.userName}>{userName || '사용자'}님</Text>
+          <View style={styles.monthPicker}>
+            <TouchableOpacity style={styles.monthPickerButton} onPress={handlePrevMonth}>
+              <MaterialIcons name="chevron-left" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <Text style={styles.monthPickerText}>
+              {year}년 {month}월
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.monthPickerButton,
+                isCurrentMonth && styles.monthPickerButtonDisabled,
+              ]}
+              onPress={handleNextMonth}
+              disabled={isCurrentMonth}
+            >
+              <MaterialIcons name="chevron-right" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Summary Cards Carousel */}

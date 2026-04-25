@@ -20,6 +20,8 @@ export interface CategoryData {
   total: number;
   count: number;
   budget?: number;
+  prevTotal?: number;
+  changePercent?: number;
 }
 
 interface CategoryExpenseListProps {
@@ -120,6 +122,24 @@ export function CategoryExpenseList({
       fontSize: 14,
       fontWeight: '600',
       color: colors.textPrimary,
+    },
+    categoryAmountRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    changeBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 6,
+    },
+    changeBadgeText: {
+      fontSize: 10,
+      fontWeight: '600',
+    },
+    changeNeutralText: {
+      fontSize: 11,
+      color: colors.textMuted,
     },
     budgetRow: {
       flexDirection: 'row',
@@ -237,7 +257,45 @@ export function CategoryExpenseList({
                 <Text style={styles.categoryName}>{cat.name}</Text>
                 <Text style={styles.categoryCount}>{cat.count}건</Text>
               </View>
-              <Text style={styles.categoryAmount}>₩{formatNumber(cat.total)}</Text>
+              <View style={styles.categoryAmountRow}>
+                <Text style={styles.categoryAmount}>₩{formatNumber(cat.total)}</Text>
+                {cat.prevTotal === undefined ? (
+                  <View
+                    style={[
+                      styles.changeBadge,
+                      { backgroundColor: colors.accentBlue + '26' },
+                    ]}
+                  >
+                    <Text style={[styles.changeBadgeText, { color: colors.accentBlue }]}>
+                      신규
+                    </Text>
+                  </View>
+                ) : cat.changePercent !== undefined && cat.changePercent >= 3 ? (
+                  <View
+                    style={[
+                      styles.changeBadge,
+                      { backgroundColor: colors.accentCoral + '26' },
+                    ]}
+                  >
+                    <Text style={[styles.changeBadgeText, { color: colors.accentCoral }]}>
+                      {cat.changePercent}% ↗
+                    </Text>
+                  </View>
+                ) : cat.changePercent !== undefined && cat.changePercent <= -3 ? (
+                  <View
+                    style={[
+                      styles.changeBadge,
+                      { backgroundColor: colors.accentMint + '26' },
+                    ]}
+                  >
+                    <Text style={[styles.changeBadgeText, { color: colors.accentMint }]}>
+                      {Math.abs(cat.changePercent)}% ↘
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.changeNeutralText}>→</Text>
+                )}
+              </View>
             </View>
             {cat.budget && (
               <View style={styles.budgetRow}>
