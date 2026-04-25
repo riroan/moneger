@@ -3,3 +3,5 @@ export { default as TodaySummaryCard } from './TodaySummaryCard';
 export { default as SavingsGoalCard } from './SavingsGoalCard';
 export { default as DailyReportCard } from './DailyReportCard';
 export { CommittedSpendingCard } from './CommittedSpendingCard';
+export { RecurringAlertBanner } from './RecurringAlertBanner';
+export { GroupsCard } from './GroupsCard';

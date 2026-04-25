@@ -26,7 +26,12 @@ import { useRefreshStore } from '../../stores/refreshStore';
 import { formatNumber, getKSTDateParts } from '@moneger/shared';
 import TransactionItem from '../../components/TransactionItem';
 import { SummaryCarousel, SummaryCardData, CategoryExpenseList, CategoryData } from '../../components/home';
-import { TodaySummaryCard, CommittedSpendingCard } from '../../components/cards';
+import {
+  TodaySummaryCard,
+  CommittedSpendingCard,
+  RecurringAlertBanner,
+  GroupsCard,
+} from '../../components/cards';
 
 export default function HomeScreen() {
   const { userId, userName } = useAuthStore();
@@ -472,6 +477,9 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* Recurring Alert Banner (only when not dismissed and items exist) */}
+        <RecurringAlertBanner />
+
         {/* Summary Cards Carousel */}
         <SummaryCarousel
           cards={summaryCards}
@@ -493,6 +501,9 @@ export default function HomeScreen() {
 
           {/* Committed Spending (Recurring) Card */}
           <CommittedSpendingCard onManage={() => router.push('/recurring')} />
+
+          {/* Groups Card */}
+          <GroupsCard onViewAll={() => router.push('/groups')} />
 
           {/* Savings Card */}
           <View style={styles.savingsCard}>
