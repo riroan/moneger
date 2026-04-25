@@ -18,6 +18,8 @@ import { AMOUNT_LIMITS } from '@moneger/shared';
 import { Category } from '../../lib/api';
 
 export type FilterType = 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
+export type RecurringFilter = 'all' | 'only' | 'none';
+export type SortOrder = 'recent' | 'oldest' | 'expensive' | 'cheapest';
 
 export interface DateRange {
   startYear: number;
@@ -38,6 +40,8 @@ export interface FilterState {
   isAmountFilterEnabled: boolean;
   amountRange: AmountRange | null;
   selectedCategories: string[];
+  recurringFilter: RecurringFilter;
+  sortOrder: SortOrder;
 }
 
 interface FilterModalProps {
@@ -75,6 +79,8 @@ export function FilterModal({
     initialState.amountRange?.maxAmount?.toLocaleString('ko-KR') || ''
   );
   const [draftSelectedCategories, setDraftSelectedCategories] = useState<string[]>([...initialState.selectedCategories]);
+  const [draftRecurringFilter, setDraftRecurringFilter] = useState<RecurringFilter>(initialState.recurringFilter);
+  const [draftSortOrder, setDraftSortOrder] = useState<SortOrder>(initialState.sortOrder);
 
   // Dropdown states
   const [activeDropdown, setActiveDropdown] = useState<'startYear' | 'startMonth' | 'endYear' | 'endMonth' | null>(null);
@@ -162,6 +168,8 @@ export function FilterModal({
     setDraftMinAmountInput('');
     setDraftMaxAmountInput('');
     setDraftSelectedCategories([]);
+    setDraftRecurringFilter('all');
+    setDraftSortOrder('recent');
     setActiveDropdown(null);
   };
 
@@ -173,6 +181,8 @@ export function FilterModal({
       isAmountFilterEnabled: draftIsAmountFilterEnabled,
       amountRange: draftAmountRange,
       selectedCategories: draftSelectedCategories,
+      recurringFilter: draftRecurringFilter,
+      sortOrder: draftSortOrder,
     });
     onClose();
   };
@@ -260,6 +270,32 @@ export function FilterModal({
     },
     typeOptionTextActive: {
       color: '#fff',
+    },
+    chipRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 12,
+      flexWrap: 'wrap',
+    },
+    chip: {
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      backgroundColor: colors.bgSecondary,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chipActive: {
+      backgroundColor: colors.accentBlue + '26',
+      borderColor: colors.accentBlue,
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    chipTextActive: {
+      color: colors.accentBlue,
     },
     filterContent: {
       backgroundColor: colors.bgSecondary,
@@ -829,6 +865,67 @@ export function FilterModal({
                   )}
                 </View>
               )}
+            </View>
+
+            {/* Recurring (고정비) Filter */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>고정비</Text>
+              <View style={styles.chipRow}>
+                {[
+                  { value: 'all', label: '전체' },
+                  { value: 'only', label: '고정비만' },
+                  { value: 'none', label: '제외' },
+                ].map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.chip,
+                      draftRecurringFilter === opt.value && styles.chipActive,
+                    ]}
+                    onPress={() => setDraftRecurringFilter(opt.value as RecurringFilter)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        draftRecurringFilter === opt.value && styles.chipTextActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Sort Order */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>정렬</Text>
+              <View style={styles.chipRow}>
+                {[
+                  { value: 'recent', label: '최신순' },
+                  { value: 'oldest', label: '오래된순' },
+                  { value: 'expensive', label: '금액 높은순' },
+                  { value: 'cheapest', label: '금액 낮은순' },
+                ].map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.chip,
+                      draftSortOrder === opt.value && styles.chipActive,
+                    ]}
+                    onPress={() => setDraftSortOrder(opt.value as SortOrder)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        draftSortOrder === opt.value && styles.chipTextActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           </ScrollView>
 

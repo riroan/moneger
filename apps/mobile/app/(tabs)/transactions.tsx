@@ -153,6 +153,7 @@ const formatDate = formatDateWithDay;
 
 type FilterType = 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
 type SortOrder = 'recent' | 'oldest' | 'expensive' | 'cheapest';
+type RecurringFilter = 'all' | 'only' | 'none';
 
 interface DateRange {
   startYear: number;
@@ -258,6 +259,7 @@ export default function TransactionsScreen() {
   const [isAmountFilterEnabled, setIsAmountFilterEnabled] = useState(false);
   const [amountRange, setAmountRange] = useState<AmountRange | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [recurringFilter, setRecurringFilter] = useState<RecurringFilter>('all');
 
   // Draft filter states (used in modal before applying)
   const [draftFilterType, setDraftFilterType] = useState<FilterType>('ALL');
@@ -268,6 +270,8 @@ export default function TransactionsScreen() {
   const [draftMinAmountInput, setDraftMinAmountInput] = useState('');
   const [draftMaxAmountInput, setDraftMaxAmountInput] = useState('');
   const [draftSelectedCategories, setDraftSelectedCategories] = useState<string[]>([]);
+  const [draftRecurringFilter, setDraftRecurringFilter] = useState<RecurringFilter>('all');
+  const [draftSortOrder, setDraftSortOrder] = useState<SortOrder>('recent');
 
   // Date picker dropdown states
   const [activeDropdown, setActiveDropdown] = useState<'startYear' | 'startMonth' | 'endYear' | 'endMonth' | null>(null);
@@ -428,6 +432,8 @@ export default function TransactionsScreen() {
     setDraftMinAmountInput(amountRange?.minAmount?.toLocaleString('ko-KR') || '');
     setDraftMaxAmountInput(amountRange?.maxAmount?.toLocaleString('ko-KR') || '');
     setDraftSelectedCategories([...selectedCategories]);
+    setDraftRecurringFilter(recurringFilter);
+    setDraftSortOrder(sortOrder);
     setActiveDropdown(null);
     setIsFilterModalOpen(true);
   };
@@ -440,6 +446,8 @@ export default function TransactionsScreen() {
     setIsAmountFilterEnabled(draftIsAmountFilterEnabled);
     setAmountRange(draftAmountRange);
     setSelectedCategories(draftSelectedCategories);
+    setRecurringFilter(draftRecurringFilter);
+    setSortOrder(draftSortOrder);
     setActiveDropdown(null);
     setIsFilterModalOpen(false);
   };
@@ -565,7 +573,15 @@ export default function TransactionsScreen() {
         selectedCategories.length === 0 ||
         (tx.categoryId && selectedCategories.includes(tx.categoryId));
 
-      return typeMatch && keywordMatch && dateMatch && amountMatch && categoryMatch;
+      // Recurring filter
+      let recurringMatch = true;
+      if (recurringFilter === 'only') {
+        recurringMatch = !!tx.recurringExpenseId;
+      } else if (recurringFilter === 'none') {
+        recurringMatch = !tx.recurringExpenseId;
+      }
+
+      return typeMatch && keywordMatch && dateMatch && amountMatch && categoryMatch && recurringMatch;
     });
 
     // Sort
@@ -585,7 +601,7 @@ export default function TransactionsScreen() {
     });
 
     return result;
-  }, [transactions, filterType, searchKeyword, sortOrder, isDateFilterEnabled, dateRange, isAmountFilterEnabled, amountRange, selectedCategories]);
+  }, [transactions, filterType, searchKeyword, sortOrder, isDateFilterEnabled, dateRange, isAmountFilterEnabled, amountRange, selectedCategories, recurringFilter]);
 
   // Group transactions by date (normalize to YYYY-MM-DD to group same-day transactions)
   const groupedTransactions = useMemo(() => {
@@ -628,13 +644,17 @@ export default function TransactionsScreen() {
     searchKeyword !== '' ||
     isDateFilterEnabled ||
     isAmountFilterEnabled ||
-    selectedCategories.length > 0;
+    selectedCategories.length > 0 ||
+    recurringFilter !== 'all' ||
+    sortOrder !== 'recent';
 
   const activeFilterCount = [
     filterType !== 'ALL',
     isDateFilterEnabled,
     isAmountFilterEnabled,
     selectedCategories.length > 0,
+    recurringFilter !== 'all',
+    sortOrder !== 'recent',
   ].filter(Boolean).length;
 
   // Reset draft filters in modal
@@ -647,6 +667,8 @@ export default function TransactionsScreen() {
     setDraftMinAmountInput('');
     setDraftMaxAmountInput('');
     setDraftSelectedCategories([]);
+    setDraftRecurringFilter('all');
+    setDraftSortOrder('recent');
     setActiveDropdown(null);
   };
 
@@ -1110,6 +1132,32 @@ export default function TransactionsScreen() {
       fontSize: 14,
       fontWeight: '600',
       color: colors.textSecondary,
+    },
+    filterChipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 12,
+    },
+    filterChip: {
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      backgroundColor: colors.bgSecondary,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    filterChipActive: {
+      backgroundColor: colors.accentBlue + '26',
+      borderColor: colors.accentBlue,
+    },
+    filterChipText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    filterChipTextActive: {
+      color: colors.accentBlue,
     },
     filterToggleRow: {
       flexDirection: 'row',
@@ -2212,6 +2260,67 @@ export default function TransactionsScreen() {
                     )}
                   </View>
                 )}
+              </View>
+
+              {/* Recurring (고정비) Filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>고정비</Text>
+                <View style={styles.filterChipRow}>
+                  {[
+                    { value: 'all', label: '전체' },
+                    { value: 'only', label: '고정비만' },
+                    { value: 'none', label: '제외' },
+                  ].map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[
+                        styles.filterChip,
+                        draftRecurringFilter === opt.value && styles.filterChipActive,
+                      ]}
+                      onPress={() => setDraftRecurringFilter(opt.value as RecurringFilter)}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          draftRecurringFilter === opt.value && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Sort Order */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>정렬</Text>
+                <View style={styles.filterChipRow}>
+                  {[
+                    { value: 'recent', label: '최신순' },
+                    { value: 'oldest', label: '오래된순' },
+                    { value: 'expensive', label: '금액 높은순' },
+                    { value: 'cheapest', label: '금액 낮은순' },
+                  ].map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[
+                        styles.filterChip,
+                        draftSortOrder === opt.value && styles.filterChipActive,
+                      ]}
+                      onPress={() => setDraftSortOrder(opt.value as SortOrder)}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          draftSortOrder === opt.value && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             </ScrollView>
 
