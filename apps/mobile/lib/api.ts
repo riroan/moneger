@@ -296,6 +296,11 @@ export const transactionApi = {
     request<{ year: number; month: number } | null>(
       `${API_ENDPOINTS.TRANSACTIONS_OLDEST_DATE}?userId=${userId}`
     ),
+
+  getByGroup: (userId: string, groupId: string, limit: number = 20) =>
+    request<TransactionWithCategory[]>(
+      `${API_ENDPOINTS.TRANSACTIONS}?userId=${userId}&groupId=${groupId}&limit=${limit}`
+    ),
 };
 
 // Category API
@@ -576,6 +581,63 @@ export interface RecurringSummary {
   categoryBreakdown: { name: string; color: string | null; amount: number; percentage: number }[];
   alerts: RecurringSummaryAlert[];
 }
+
+// Groups API
+export interface GroupSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  totalIncome: number;
+  totalExpense: number;
+  netAmount: number;
+  incomeCount: number;
+  expenseCount: number;
+  transactionCount: number;
+}
+
+export const groupsApi = {
+  getAll: (userId: string) =>
+    request<GroupSummary[]>(`${API_ENDPOINTS.GROUPS}?userId=${userId}`),
+
+  create: (data: {
+    userId: string;
+    name: string;
+    description?: string;
+    icon?: string;
+    color?: string;
+  }) =>
+    request<GroupSummary>(API_ENDPOINTS.GROUPS, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (
+    id: string,
+    data: {
+      userId: string;
+      name?: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+    }
+  ) =>
+    request<GroupSummary>(`${API_ENDPOINTS.GROUPS}/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string, userId: string) =>
+    request(`${API_ENDPOINTS.GROUPS}/${id}?userId=${userId}`, {
+      method: 'DELETE',
+    }),
+
+  getDetail: (id: string, userId: string) =>
+    request<GroupSummary & { description: string | null }>(
+      `${API_ENDPOINTS.GROUPS}/${id}?userId=${userId}`
+    ),
+};
 
 // Analytics API
 export interface MonthlyAnalytics {

@@ -35,6 +35,9 @@ export const API_ENDPOINTS = {
   // Analytics
   ANALYTICS: '/api/analytics',
 
+  // Groups
+  GROUPS: '/api/groups',
+
   // Balance
   BALANCE: '/api/balance',
   DAILY_BALANCE: '/api/daily-balance',
