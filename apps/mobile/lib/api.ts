@@ -566,6 +566,43 @@ export interface RecurringSummary {
   alerts: RecurringSummaryAlert[];
 }
 
+// Analytics API
+export interface MonthlyAnalytics {
+  year: number;
+  month: number;
+  income: number;
+  expense: number;
+  savingsDeposit: number;
+  net: number;
+}
+
+export interface CategoryTrend {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
+export interface AnalyticsResult {
+  months: MonthlyAnalytics[];
+  averages: {
+    income: number;
+    expense: number;
+  };
+  monthlyTarget: number | null;
+  categoryTrends: {
+    categories: CategoryTrend[];
+    data: Record<string, number | string>[];
+  };
+  dowPattern: { day: string; amount: number }[];
+}
+
+export const analyticsApi = {
+  get: (userId: string, months: number) =>
+    request<AnalyticsResult>(
+      `${API_ENDPOINTS.ANALYTICS}?userId=${userId}&months=${months}`
+    ),
+};
+
 export const recurringApi = {
   getAll: (userId: string) =>
     request<RecurringExpense[]>(`${API_ENDPOINTS.RECURRING}?userId=${userId}`),

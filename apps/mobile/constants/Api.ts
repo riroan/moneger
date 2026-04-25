@@ -31,6 +31,9 @@ export const API_ENDPOINTS = {
   RECURRING: '/api/recurring',
   RECURRING_SUMMARY: '/api/recurring/summary',
 
+  // Analytics
+  ANALYTICS: '/api/analytics',
+
   // Balance
   BALANCE: '/api/balance',
   DAILY_BALANCE: '/api/daily-balance',

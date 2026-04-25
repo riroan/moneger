@@ -1056,6 +1056,7 @@ export default function SettingsScreen() {
   const reportMenuItems = [
     { id: 'calendar', icon: 'calendar-today' as MaterialIconName, label: '일별 내역', color: '#10B981', onPress: () => setActiveModal('calendar') },
     { id: 'daily-report', icon: 'show-chart' as MaterialIconName, label: '일별 리포트', color: '#8B5CF6', onPress: () => setActiveModal('daily-report') },
+    { id: 'analytics', icon: 'insights' as MaterialIconName, label: '분석', color: '#3B82F6', onPress: () => router.push('/analytics') },
     { id: 'recurring', icon: 'event-repeat' as MaterialIconName, label: '고정비', color: '#EF4444', onPress: () => router.push('/recurring') },
   ];
 
