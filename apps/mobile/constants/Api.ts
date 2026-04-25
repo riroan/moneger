@@ -27,6 +27,10 @@ export const API_ENDPOINTS = {
   // Savings
   SAVINGS: '/api/savings',
 
+  // Recurring (고정비)
+  RECURRING: '/api/recurring',
+  RECURRING_SUMMARY: '/api/recurring/summary',
+
   // Balance
   BALANCE: '/api/balance',
   DAILY_BALANCE: '/api/daily-balance',

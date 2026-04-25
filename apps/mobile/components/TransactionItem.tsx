@@ -13,6 +13,7 @@ interface TransactionItemProps {
     description: string | null;
     date: string;
     savingsGoalId?: string | null;
+    recurringExpenseId?: string | null;
     category?: {
       name: string;
       icon: string | null;
@@ -32,6 +33,7 @@ export default function TransactionItem({
   const colors = Colors[theme];
 
   const isSavings = !!transaction.savingsGoalId;
+  const isRecurring = !!transaction.recurringExpenseId;
   const iconColor = isSavings
     ? colors.accentCyan
     : (transaction.category?.color || '#6B7280');
@@ -62,6 +64,17 @@ export default function TransactionItem({
       justifyContent: 'center',
       marginRight: 12,
     },
+    recurringBadge: {
+      position: 'absolute',
+      top: -3,
+      right: -3,
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      backgroundColor: colors.bgCard,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     info: {
       flex: 1,
     },
@@ -70,10 +83,26 @@ export default function TransactionItem({
       fontWeight: '500',
       color: colors.textPrimary,
     },
+    categoryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 2,
+    },
+    categoryPill: {
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 8,
+      backgroundColor: colors.accentCoral + '26',
+    },
+    categoryPillText: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.accentCoral,
+    },
     category: {
       fontSize: 12,
       color: colors.textMuted,
-      marginTop: 2,
     },
     right: {
       alignItems: 'flex-end',
@@ -97,12 +126,24 @@ export default function TransactionItem({
     <>
       <View style={[styles.icon, { backgroundColor: iconColor + '20' }]}>
         <MaterialIcons name={iconName} size={20} color={iconColor} />
+        {isRecurring && (
+          <View style={styles.recurringBadge}>
+            <MaterialIcons name="event-repeat" size={9} color={colors.accentCoral} />
+          </View>
+        )}
       </View>
       <View style={styles.info}>
         <Text style={styles.description}>
           {transaction.description || (transaction.type === 'INCOME' ? '수입' : '지출')}
         </Text>
-        <Text style={styles.category}>{categoryName}</Text>
+        <View style={styles.categoryRow}>
+          {isRecurring && !isSavings && (
+            <View style={styles.categoryPill}>
+              <Text style={styles.categoryPillText}>정기</Text>
+            </View>
+          )}
+          <Text style={styles.category}>{categoryName}</Text>
+        </View>
       </View>
       <View style={styles.right}>
         <Text style={[styles.amount, { color: amountColor }]}>

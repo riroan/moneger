@@ -988,6 +988,36 @@ export default function TransactionsScreen() {
       color: colors.textMuted,
       marginTop: 2,
     },
+    transactionCategoryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 2,
+    },
+    recurringPill: {
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 8,
+      backgroundColor: colors.accentCoral + '26',
+    },
+    recurringPillText: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.accentCoral,
+    },
+    recurringIconBadge: {
+      position: 'absolute',
+      top: -3,
+      right: -3,
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      backgroundColor: colors.bgCard,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.bgCard,
+    },
     transactionRight: {
       alignItems: 'flex-end',
     },
@@ -1695,6 +1725,7 @@ export default function TransactionsScreen() {
                 <View style={styles.transactionCard}>
                   {txs.map((tx, index) => {
                     const isSavings = isSavingsTransaction(tx);
+                    const isRecurring = !!tx.recurringExpenseId;
                     const iconColor = isSavings
                       ? colors.accentCyan
                       : (tx.category?.color || '#6B7280');
@@ -1727,14 +1758,30 @@ export default function TransactionsScreen() {
                               size={20}
                               color={iconColor}
                             />
+                            {isRecurring && (
+                              <View style={styles.recurringIconBadge}>
+                                <MaterialIcons
+                                  name="event-repeat"
+                                  size={9}
+                                  color={colors.accentCoral}
+                                />
+                              </View>
+                            )}
                           </View>
                           <View style={styles.transactionInfo}>
                             <Text style={styles.transactionDescription}>
                               {tx.description || '내역 없음'}
                             </Text>
-                            <Text style={styles.transactionCategory}>
-                              {categoryName}
-                            </Text>
+                            <View style={styles.transactionCategoryRow}>
+                              {isRecurring && !isSavings && (
+                                <View style={styles.recurringPill}>
+                                  <Text style={styles.recurringPillText}>정기</Text>
+                                </View>
+                              )}
+                              <Text style={styles.transactionCategory}>
+                                {categoryName}
+                              </Text>
+                            </View>
                           </View>
                           <View style={styles.transactionRight}>
                             <Text

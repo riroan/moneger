@@ -26,7 +26,7 @@ import { useRefreshStore } from '../../stores/refreshStore';
 import { formatNumber, getKSTDateParts } from '@moneger/shared';
 import TransactionItem from '../../components/TransactionItem';
 import { SummaryCarousel, SummaryCardData, CategoryExpenseList, CategoryData } from '../../components/home';
-import { TodaySummaryCard } from '../../components/cards';
+import { TodaySummaryCard, CommittedSpendingCard } from '../../components/cards';
 
 export default function HomeScreen() {
   const { userId, userName } = useAuthStore();
@@ -426,6 +426,9 @@ export default function HomeScreen() {
             expense={todayExpense}
             savings={todaySavingsData}
           />
+
+          {/* Committed Spending (Recurring) Card */}
+          <CommittedSpendingCard onManage={() => router.push('/recurring')} />
 
           {/* Savings Card */}
           <View style={styles.savingsCard}>

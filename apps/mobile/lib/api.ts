@@ -76,6 +76,7 @@ export interface Transaction {
   description: string;
   date: string;
   categoryId: string | null;
+  recurringExpenseId?: string | null;
   categoryName?: string;
   categoryIcon?: string;
   categoryColor?: string;
@@ -90,6 +91,7 @@ export interface TransactionWithCategory {
   date: string;
   categoryId: string | null;
   savingsGoalId?: string | null;
+  recurringExpenseId?: string | null;
   category?: {
     id: string;
     name: string;
@@ -515,4 +517,93 @@ export const dailyBalanceApi = {
     request<DailyBalance[]>(
       `${API_ENDPOINTS.DAILY_BALANCE}?userId=${userId}&year=${year}&month=${month}`
     ),
+};
+
+// Recurring (고정비) API
+export interface RecurringExpenseHistoryEntry {
+  id: string;
+  previousAmount: number;
+  newAmount: number;
+  changedAt: string;
+}
+
+export interface RecurringExpense {
+  id: string;
+  amount: number;
+  description: string;
+  type: TransactionType;
+  dayOfMonth: number;
+  nextDueDate: string;
+  isActive: boolean;
+  processedThisMonth: boolean;
+  lastProcessedDate: string | null;
+  category: {
+    id: string;
+    name: string;
+    type: TransactionType;
+    color: string | null;
+    icon: string | null;
+  } | null;
+  history: RecurringExpenseHistoryEntry[];
+}
+
+export interface RecurringSummaryAlert {
+  id: string;
+  amount: number;
+  description: string;
+  nextDueDate: string;
+  category: { id: string; name: string; color: string | null; icon: string | null } | null;
+}
+
+export interface RecurringSummary {
+  balance: number;
+  remainingTotal: number;
+  disposableAmount: number;
+  totalMonthly: number;
+  activeCount: number;
+  processedThisMonth: number;
+  categoryBreakdown: { name: string; color: string | null; amount: number; percentage: number }[];
+  alerts: RecurringSummaryAlert[];
+}
+
+export const recurringApi = {
+  getAll: (userId: string) =>
+    request<RecurringExpense[]>(`${API_ENDPOINTS.RECURRING}?userId=${userId}`),
+
+  getSummary: (userId: string) =>
+    request<RecurringSummary>(`${API_ENDPOINTS.RECURRING_SUMMARY}?userId=${userId}`),
+
+  create: (data: {
+    userId: string;
+    amount: number;
+    description: string;
+    categoryId?: string | null;
+    dayOfMonth: number;
+    type?: TransactionType;
+  }) =>
+    request<RecurringExpense>(API_ENDPOINTS.RECURRING, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (
+    id: string,
+    data: {
+      userId: string;
+      amount?: number;
+      description?: string;
+      categoryId?: string | null;
+      dayOfMonth?: number;
+      isActive?: boolean;
+    }
+  ) =>
+    request<RecurringExpense>(`${API_ENDPOINTS.RECURRING}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string, userId: string) =>
+    request(`${API_ENDPOINTS.RECURRING}/${id}?userId=${userId}`, {
+      method: 'DELETE',
+    }),
 };
