@@ -145,7 +145,10 @@ const LandingPage = () => {
     navInner: {
       maxWidth: '1152px',
       margin: '0 auto',
-      padding: '16px 24px',
+      paddingTop: 'calc(16px + env(safe-area-inset-top))',
+      paddingRight: 'calc(24px + env(safe-area-inset-right))',
+      paddingBottom: '16px',
+      paddingLeft: 'calc(24px + env(safe-area-inset-left))',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',

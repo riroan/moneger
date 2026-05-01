@@ -91,7 +91,13 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div
+      style={{
+        top: 'max(1rem, calc(env(safe-area-inset-top) + 0.5rem))',
+        right: 'max(1rem, env(safe-area-inset-right))',
+      }}
+      className="fixed z-50 flex flex-col gap-2 max-w-sm"
+    >
       {toasts.map((toast) => (
         <ToastItem
           key={toast.id}
