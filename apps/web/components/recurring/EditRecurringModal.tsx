@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { MdKeyboardArrowDown } from 'react-icons/md';
 import { CurrencyInput } from '@/components/common';
-import { useOutsideClickWithRef } from '@/hooks';
+import { useOutsideClickWithRef, useEscapeKey } from '@/hooks';
 import CategoryDropdown from '@/components/forms/CategoryDropdown';
 import type { Category } from '@/types';
 
@@ -41,6 +41,10 @@ export default function EditRecurringModal({ isOpen, userId, expense, onClose, o
 
   const [descriptionError, setDescriptionError] = useState('');
   const [amountError, setAmountError] = useState('');
+
+  // Escape: 삭제 확인이 열려 있으면 그것만 닫고, 아니면 모달 닫기
+  useEscapeKey(isOpen && !isDeleteConfirmOpen, onClose);
+  useEscapeKey(isOpen && isDeleteConfirmOpen, () => setIsDeleteConfirmOpen(false));
 
   // 지출일 드롭다운
   const [isDayOpen, setIsDayOpen] = useState(false);

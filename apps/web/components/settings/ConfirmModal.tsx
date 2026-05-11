@@ -1,5 +1,7 @@
 'use client';
 
+import { useEscapeKey } from '@/hooks';
+
 interface ConfirmModalProps {
   isOpen: boolean;
   title: string;
@@ -23,12 +25,15 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  useEscapeKey(isOpen, onCancel);
   if (!isOpen) return null;
 
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[300] animate-[fadeIn_0.2s_ease-out]"
       onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
     >
       <div
         className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out] p-8 m-5"

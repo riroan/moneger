@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { MdFolder, MdFlight, MdHome, MdCelebration, MdWork, MdSchool, MdShoppingBag, MdFavorite } from 'react-icons/md';
+import { useEscapeKey } from '@/hooks';
 
 const ICON_OPTIONS = [
   { key: 'folder', icon: MdFolder, label: '기본' },
@@ -44,6 +45,8 @@ export default function EditGroupModal({ isOpen, onClose, onEdit, group }: EditG
   const [description, setDescription] = useState(group.description || '');
   const [selectedIcon, setSelectedIcon] = useState(group.icon || 'folder');
   const [selectedColor, setSelectedColor] = useState(group.color || '#6366F1');
+
+  useEscapeKey(isOpen, onClose);
 
   if (!isOpen) return null;
 

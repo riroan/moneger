@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyInput } from '@/components/common';
+import { useEscapeKey } from '@/hooks';
 import { getGoalIcon } from './constants';
 
 interface SavingsGoal {
@@ -29,6 +30,8 @@ export default function DepositModal({ isOpen, goal, onClose, onDeposit }: Depos
   const [amount, setAmount] = useState('');
   const [isDepositing, setIsDepositing] = useState(false);
   const [amountError, setAmountError] = useState('');
+
+  useEscapeKey(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) {

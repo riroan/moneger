@@ -26,24 +26,24 @@ export function useDashboardData() {
         ]);
 
         const [oldestDateData, recentData, todayData] = await Promise.all([
-          oldestDateRes.json(),
-          recentRes.json(),
-          todayRes.json(),
+          oldestDateRes.ok ? oldestDateRes.json() : null,
+          recentRes.ok ? recentRes.json() : null,
+          todayRes.ok ? todayRes.json() : null,
         ]);
 
         const s = useTransactionStore.getState();
-        if (oldestDateData.success && oldestDateData.data.year && oldestDateData.data.month) {
+        if (oldestDateData?.success && oldestDateData.data.year && oldestDateData.data.month) {
           s.setOldestTransactionDate({
             year: oldestDateData.data.year,
             month: oldestDateData.data.month,
           });
         }
 
-        if (recentData.success) {
+        if (recentData?.success) {
           s.setRecentTransactions(recentData.data);
         }
 
-        if (todayData.success) {
+        if (todayData?.success) {
           s.setTodaySummary(todayData.data);
         }
       } catch (error) {
@@ -77,16 +77,16 @@ export function useDashboardData() {
         ]);
 
         const [currentData, lastData] = await Promise.all([
-          currentRes.json(),
-          lastRes.json(),
+          currentRes.ok ? currentRes.json() : null,
+          lastRes.ok ? lastRes.json() : null,
         ]);
 
         const s = useTransactionStore.getState();
-        if (currentData.success) {
+        if (currentData?.success) {
           s.setSummary(currentData.data);
         }
 
-        if (lastData.success) {
+        if (lastData?.success) {
           s.setLastMonthBalance(lastData.data.summary.balance || 0);
         }
       } catch (error) {
@@ -106,29 +106,34 @@ export function useDashboardData() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1;
 
-    const [recentRes, summaryRes, todayRes] = await Promise.all([
-      fetch(`/api/transactions/recent?userId=${userId}&limit=10`),
-      fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`),
-      fetch(`/api/transactions/today?userId=${userId}`),
-    ]);
+    try {
+      const [recentRes, summaryRes, todayRes] = await Promise.all([
+        fetch(`/api/transactions/recent?userId=${userId}&limit=10`),
+        fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`),
+        fetch(`/api/transactions/today?userId=${userId}`),
+      ]);
 
-    const [recentData, summaryData, todayData] = await Promise.all([
-      recentRes.json(),
-      summaryRes.json(),
-      todayRes.json(),
-    ]);
+      // Skip parsing failed responses; an HTML error page would throw inside .json()
+      const [recentData, summaryData, todayData] = await Promise.all([
+        recentRes.ok ? recentRes.json() : null,
+        summaryRes.ok ? summaryRes.json() : null,
+        todayRes.ok ? todayRes.json() : null,
+      ]);
 
-    const s = useTransactionStore.getState();
-    if (recentData.success) {
-      s.setRecentTransactions(recentData.data);
-    }
+      const s = useTransactionStore.getState();
+      if (recentData?.success) {
+        s.setRecentTransactions(recentData.data);
+      }
 
-    if (summaryData.success) {
-      s.setSummary(summaryData.data);
-    }
+      if (summaryData?.success) {
+        s.setSummary(summaryData.data);
+      }
 
-    if (todayData.success) {
-      s.setTodaySummary(todayData.data);
+      if (todayData?.success) {
+        s.setTodaySummary(todayData.data);
+      }
+    } catch (error) {
+      console.error('Failed to refresh dashboard data:', error instanceof Error ? error.message : 'Unknown error');
     }
   }, [userId, currentDate]);
 

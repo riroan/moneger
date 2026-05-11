@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { MdKeyboardArrowDown } from 'react-icons/md';
 import { SAVINGS_GOAL } from '@/lib/constants';
 import { CurrencyInput } from '@/components/common';
-import { useOutsideClickWithRef } from '@/hooks';
+import { useOutsideClickWithRef, useEscapeKey } from '@/hooks';
 import { GOAL_ICONS } from './constants';
 
 interface SavingsGoal {
@@ -51,6 +51,8 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave }: 
 
   const [nameError, setNameError] = useState('');
   const [targetAmountError, setTargetAmountError] = useState('');
+
+  useEscapeKey(isOpen, onClose);
 
   const [isYearOpen, setIsYearOpen] = useState(false);
   const [isMonthOpen, setIsMonthOpen] = useState(false);

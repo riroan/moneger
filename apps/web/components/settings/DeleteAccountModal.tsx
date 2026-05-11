@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEscapeKey } from '@/hooks';
 
 interface DeleteAccountModalProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAc
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  useEscapeKey(isOpen, onClose);
 
   const handleDeleteAccount = async () => {
     if (!userId) return;

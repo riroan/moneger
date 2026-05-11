@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MdKeyboardArrowDown } from 'react-icons/md';
 import { CurrencyInput } from '@/components/common';
-import { useOutsideClickWithRef } from '@/hooks';
+import { useOutsideClickWithRef, useEscapeKey } from '@/hooks';
 import CategoryDropdown from '@/components/forms/CategoryDropdown';
 import type { Category } from '@/types';
 
@@ -24,6 +24,8 @@ export default function AddRecurringModal({ isOpen, userId, onClose, onSave }: A
 
   const [descriptionError, setDescriptionError] = useState('');
   const [amountError, setAmountError] = useState('');
+
+  useEscapeKey(isOpen, onClose);
 
   // 지출일 드롭다운
   const [isDayOpen, setIsDayOpen] = useState(false);

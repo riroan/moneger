@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { getIconComponent } from './constants';
 import { CurrencyInput } from '@/components/common';
+import { useEscapeKey } from '@/hooks';
 import type { Category } from '@/types';
 
 interface BudgetEditModalProps {
@@ -25,6 +26,8 @@ export default function BudgetEditModal({
 }: BudgetEditModalProps) {
   const [budgetAmount, setBudgetAmount] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  useEscapeKey(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) {

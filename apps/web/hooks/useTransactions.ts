@@ -42,13 +42,16 @@ export function useTransactions({
   const [isLoading, setIsLoading] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  const isLoadingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchTransactions = useCallback(async (cursor?: string | null, reset?: boolean) => {
     if (!userId) return;
-    if (isLoadingRef.current) return;
 
-    isLoadingRef.current = true;
+    // Cancel any in-flight request so its response can't clobber fresher state
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
 
     try {
@@ -94,8 +97,11 @@ export function useTransactions({
         params.append('recurring', recurringFilter);
       }
 
-      const response = await fetch(`/api/transactions?${params.toString()}`);
+      const response = await fetch(`/api/transactions?${params.toString()}`, { signal: controller.signal });
       const data = await response.json();
+
+      // Bail if a newer request took over while we were awaiting
+      if (controller.signal.aborted) return;
 
       if (data.success) {
         if (reset) {
@@ -107,10 +113,13 @@ export function useTransactions({
         setHasMore(data.hasMore);
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       console.error('Failed to fetch transactions:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
-      setIsLoading(false);
-      isLoadingRef.current = false;
+      if (abortControllerRef.current === controller) {
+        setIsLoading(false);
+        abortControllerRef.current = null;
+      }
     }
   }, [userId, filterType, filterCategories, searchKeyword, sortOrder, dateRange, amountRange, recurringFilter]);
 
@@ -153,6 +162,13 @@ export function useTransactions({
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchKeyword]);
+
+  // Abort the latest fetch on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   return {
     transactions: allTransactions,

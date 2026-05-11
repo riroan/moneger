@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { MdKeyboardArrowDown } from 'react-icons/md';
 import { SAVINGS_GOAL } from '@/lib/constants';
 import { CurrencyInput } from '@/components/common';
-import { useOutsideClickWithRef } from '@/hooks';
+import { useOutsideClickWithRef, useEscapeKey } from '@/hooks';
 import { GOAL_ICONS } from './constants';
 
 interface AddSavingsGoalModalProps {
@@ -39,6 +39,8 @@ export default function AddSavingsGoalModal({ isOpen, onClose, onSave }: AddSavi
 
   const [nameError, setNameError] = useState('');
   const [targetAmountError, setTargetAmountError] = useState('');
+
+  useEscapeKey(isOpen, onClose);
 
   // 시작 날짜 드롭다운 상태
   const [isStartYearOpen, setIsStartYearOpen] = useState(false);

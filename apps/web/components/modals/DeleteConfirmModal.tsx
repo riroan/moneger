@@ -1,5 +1,7 @@
 'use client';
 
+import { useEscapeKey } from '@/hooks';
+
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,12 +15,16 @@ export default function DeleteConfirmModal({
   onConfirm,
   isSubmitting,
 }: DeleteConfirmModalProps) {
+  useEscapeKey(isOpen, onClose);
   if (!isOpen) return null;
 
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[300] animate-[fadeIn_0.2s_ease-out]"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-confirm-title"
     >
       <div
         className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out] p-8 m-5"
@@ -28,6 +34,7 @@ export default function DeleteConfirmModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="닫기"
             className="text-text-secondary hover:text-text-primary transition-colors text-2xl w-8 h-8 flex items-center justify-center cursor-pointer"
           >
             ×
@@ -37,7 +44,7 @@ export default function DeleteConfirmModal({
           <div className="w-16 h-16 rounded-full bg-[var(--glow-coral)] flex items-center justify-center text-3xl mb-4">
             ⚠️
           </div>
-          <h2 className="text-xl font-bold text-text-primary mb-2">
+          <h2 id="delete-confirm-title" className="text-xl font-bold text-text-primary mb-2">
             내역 삭제
           </h2>
           <p className="text-sm text-text-secondary text-center">

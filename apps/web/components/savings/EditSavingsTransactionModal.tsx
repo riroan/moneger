@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { formatNumber, formatDate } from '@/utils/formatters';
 import { MdSavings } from 'react-icons/md';
+import { useEscapeKey } from '@/hooks';
 import type { TransactionWithCategory } from '@/types';
 
 interface EditSavingsTransactionModalProps {
@@ -43,6 +44,8 @@ function EditSavingsTransactionModalContent({
   isSubmitting: boolean;
 }) {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  useEscapeKey(!isDeleteConfirmOpen, onClose);
+  useEscapeKey(isDeleteConfirmOpen, () => setIsDeleteConfirmOpen(false));
 
   const handleDelete = () => {
     setIsDeleteConfirmOpen(true);

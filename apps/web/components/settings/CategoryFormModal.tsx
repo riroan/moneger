@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ICON_LIST, ICON_MAP, COLOR_LIST } from './constants';
 import { CurrencyInput } from '@/components/common';
+import { useEscapeKey } from '@/hooks';
 import type { Category } from '@/types';
 
 interface CategoryFormModalProps {
@@ -39,6 +40,8 @@ export default function CategoryFormModal({
   const [categoryDefaultBudget, setCategoryDefaultBudget] = useState('');
   const [nameError, setNameError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEscapeKey(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) {
