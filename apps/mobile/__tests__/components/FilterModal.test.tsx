@@ -34,12 +34,12 @@ jest.mock('../../constants/Icons', () => ({
 describe('FilterModal', () => {
   const mockCategories = {
     INCOME: [
-      { id: 'cat-1', name: '급여', icon: 'work', color: '#10B981', type: 'INCOME' },
-      { id: 'cat-2', name: '부수입', icon: 'attach-money', color: '#34D399', type: 'INCOME' },
+      { id: 'cat-1', name: '급여', icon: 'work', color: '#10B981', type: 'INCOME' as const },
+      { id: 'cat-2', name: '부수입', icon: 'attach-money', color: '#34D399', type: 'INCOME' as const },
     ],
     EXPENSE: [
-      { id: 'cat-3', name: '식비', icon: 'restaurant', color: '#F97316', type: 'EXPENSE' },
-      { id: 'cat-4', name: '교통비', icon: 'directions-bus', color: '#EF4444', type: 'EXPENSE' },
+      { id: 'cat-3', name: '식비', icon: 'restaurant', color: '#F97316', type: 'EXPENSE' as const },
+      { id: 'cat-4', name: '교통비', icon: 'directions-bus', color: '#EF4444', type: 'EXPENSE' as const },
     ],
   };
 
@@ -50,6 +50,8 @@ describe('FilterModal', () => {
     isAmountFilterEnabled: false,
     amountRange: null,
     selectedCategories: [],
+    recurringFilter: 'all',
+    sortOrder: 'recent',
   };
 
   const defaultProps = {
@@ -71,10 +73,11 @@ describe('FilterModal', () => {
   });
 
   it('should render transaction type options', () => {
-    const { getByText } = render(<FilterModal {...defaultProps} />);
+    const { getByText, getAllByText } = render(<FilterModal {...defaultProps} />);
 
     expect(getByText('거래 유형')).toBeTruthy();
-    expect(getByText('전체')).toBeTruthy();
+    // "전체" appears in both filterType options and recurringFilter options
+    expect(getAllByText('전체').length).toBeGreaterThanOrEqual(1);
     expect(getByText('수입')).toBeTruthy();
     expect(getByText('지출')).toBeTruthy();
     expect(getByText('저축')).toBeTruthy();
@@ -141,6 +144,8 @@ describe('FilterModal', () => {
       isAmountFilterEnabled: true,
       amountRange: { minAmount: 1000, maxAmount: 50000 },
       selectedCategories: ['cat-1'],
+      recurringFilter: 'all',
+      sortOrder: 'recent',
     };
 
     const { getByText } = render(
@@ -157,6 +162,8 @@ describe('FilterModal', () => {
       isAmountFilterEnabled: false,
       amountRange: null,
       selectedCategories: [],
+      recurringFilter: 'all',
+      sortOrder: 'recent',
     });
   });
 
