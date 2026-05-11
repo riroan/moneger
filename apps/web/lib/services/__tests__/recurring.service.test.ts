@@ -118,7 +118,7 @@ describe('recurring.service', () => {
       }));
       (mockPrisma.$transaction as jest.Mock).mockImplementation(txFn);
 
-      const result = await updateRecurringExpense('rec-1', 'user-1', { amount: 550000 });
+      await updateRecurringExpense('rec-1', 'user-1', { amount: 550000 });
 
       const txCallback = txFn.mock.calls[0][0];
       const mockTx = {
@@ -238,7 +238,7 @@ describe('recurring.service', () => {
     it('should return expenses due within 3 days', async () => {
       (mockPrisma.recurringExpense.findMany as jest.Mock).mockResolvedValue([mockRecurring]);
 
-      const result = await getUpcomingAlerts('user-1');
+      await getUpcomingAlerts('user-1');
 
       expect(mockPrisma.recurringExpense.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

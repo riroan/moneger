@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { formatNumber } from '@/utils/formatters';
 import { MdKeyboardArrowDown } from 'react-icons/md';
 import { SAVINGS_GOAL } from '@/lib/constants';
 import { CurrencyInput } from '@/components/common';

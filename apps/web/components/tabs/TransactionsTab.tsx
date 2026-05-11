@@ -10,10 +10,9 @@ import type { TransactionWithCategory } from '@/types';
 
 interface TransactionsTabProps {
   onTransactionClick: (tx: TransactionWithCategory) => void;
-  onRefresh?: () => void;
 }
 
-export default function TransactionsTab({ onTransactionClick, onRefresh }: TransactionsTabProps) {
+export default function TransactionsTab({ onTransactionClick }: TransactionsTabProps) {
   const userId = useAuthStore((state) => state.userId);
   const categories = useCategoryStore((state) => state.categories);
   const {

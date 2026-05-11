@@ -126,21 +126,23 @@ export function useTransactions({
     }
   }, [hasMore, isLoading, nextCursor, fetchTransactions]);
 
-  // 탭 활성화 시 초기 로드
+  // 탭 활성화 시 초기 로드 — fires only when tab/user changes, not when list grows
   useEffect(() => {
     if (activeTab === 'transactions' && userId && allTransactions.length === 0) {
       fetchTransactions(null, true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, userId]);
 
-  // 필터 변경 시 리셋
+  // 필터 변경 시 리셋 — only react to filter prop changes, not callback identity
   useEffect(() => {
     if (activeTab === 'transactions' && userId) {
       resetAndFetch();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterType, filterCategories, sortOrder, dateRange, amountRange, recurringFilter]);
 
-  // 검색어 디바운스
+  // 검색어 디바운스 — debounce on search input, ignore callback identity
   useEffect(() => {
     if (activeTab !== 'transactions' || !userId) return;
 
@@ -149,6 +151,7 @@ export function useTransactions({
     }, 300);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchKeyword]);
 
   return {

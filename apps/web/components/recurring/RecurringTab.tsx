@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber } from '@/utils/formatters';

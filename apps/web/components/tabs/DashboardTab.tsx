@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, memo, useCallback } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useAppStore, useTransactionStore, useCategoryStore, useAuthStore } from '@/stores';
 import { useFilterHandlers } from '@/hooks/useFilterHandlers';
@@ -154,8 +154,6 @@ export default function DashboardTab({
           <CommittedSpendingCard onManage={onViewRecurring} />
 
           <SavingsCard
-            savingsGoal={summary?.savings?.targetAmount || 0}
-            currentSavings={summary?.savings?.totalAmount || 0}
             primaryGoal={summary?.savings?.primaryGoal}
             onViewAll={onViewSavings}
           />

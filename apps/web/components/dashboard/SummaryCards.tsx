@@ -4,7 +4,6 @@ import { memo, useMemo } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
 import { FaMoneyBillWave, FaCreditCard, FaWallet, FaChartLine } from 'react-icons/fa';
-import { ReactNode } from 'react';
 
 // 아이콘 컴포넌트를 밖에서 정의하여 재생성 방지
 const IncomeIcon = <FaMoneyBillWave className="text-white text-xl sm:text-2xl" />;

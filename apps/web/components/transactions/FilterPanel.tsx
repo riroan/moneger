@@ -332,7 +332,7 @@ export default function FilterPanel({
                       value={dateRange.startMonth}
                       options={getMonthOptions(dateRange.startYear)}
                       onChange={(newMonth) => {
-                        let newEndYear = dateRange.endYear;
+                        const newEndYear = dateRange.endYear;
                         let newEndMonth = dateRange.endMonth;
                         if (dateRange.startYear > dateRange.endYear || (dateRange.startYear === dateRange.endYear && newMonth > dateRange.endMonth)) {
                           newEndMonth = newMonth;

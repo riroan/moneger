@@ -42,7 +42,7 @@ describe('POST /api/savings/[id]/deposit', () => {
     const updatedGoal = { ...mockSavingsGoal, currentAmount: 600000 };
     const mockTransaction = { id: 'tx-1', amount: 100000, type: 'EXPENSE' };
 
-    (prisma.$transaction as jest.Mock).mockImplementation(async (callback: Function) => {
+    (prisma.$transaction as jest.Mock).mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => {
       const tx = {};
       (savingsService.depositToSavingsGoal as jest.Mock).mockResolvedValue({
         updatedGoal,
@@ -170,7 +170,7 @@ describe('POST /api/savings/[id]/deposit', () => {
   it('트랜잭션 내에서 DailyBalance가 업데이트되어야 함', async () => {
     (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(mockSavingsGoal);
 
-    (prisma.$transaction as jest.Mock).mockImplementation(async (callback: Function) => {
+    (prisma.$transaction as jest.Mock).mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => {
       const tx = {};
       (savingsService.depositToSavingsGoal as jest.Mock).mockResolvedValue({
         updatedGoal: mockSavingsGoal,

@@ -263,7 +263,6 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           onEdit={handleEditGroup}
-          onDelete={handleDeleteGroup}
           group={group}
         />
       )}

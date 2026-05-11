@@ -166,7 +166,6 @@ describe('PATCH /api/savings/[id]', () => {
     });
 
     const response = await PATCH(request, { params: Promise.resolve({ id: 'invalid-id' }) });
-    const data = await response.json();
 
     expect(response.status).toBe(404);
   });

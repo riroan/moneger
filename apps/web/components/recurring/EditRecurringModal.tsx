@@ -262,13 +262,21 @@ export default function EditRecurringModal({ isOpen, userId, expense, onClose, o
         <div className="flex gap-3">
           <button
             type="button"
+            onClick={handleDeleteClick}
+            disabled={isSaving || isDeleting}
+            className="bg-bg-secondary text-accent-coral border border-accent-coral rounded-[12px] font-medium hover:bg-accent-coral hover:text-bg-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3.5"
+          >
+            삭제
+          </button>
+          <button
+            type="button"
             onClick={handleClose}
             className="flex-1 bg-bg-secondary text-text-primary rounded-[12px] font-medium hover:bg-bg-card-hover transition-colors cursor-pointer p-3.5"
             disabled={isSaving || isDeleting}
           >
             취소
           </button>
-<button
+          <button
             type="button"
             onClick={handleSave}
             disabled={isSaving || isDeleting}

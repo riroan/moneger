@@ -106,17 +106,6 @@ function DailyCalendarView({
     return getHolidayDaysInMonth(year, month);
   }, [year, month]);
 
-  // 월 합계 계산
-  const monthTotal = useMemo(() => {
-    return data.reduce(
-      (acc, d) => ({
-        income: acc.income + d.income,
-        expense: acc.expense + d.expense,
-      }),
-      { income: 0, expense: 0 }
-    );
-  }, [data]);
-
   // 선택된 날짜의 데이터
   const selectedDayData = useMemo(() => {
     return data.find((d) => new Date(d.date).getDate() === selectedDay) || null;
@@ -131,7 +120,6 @@ function DailyCalendarView({
     }
 
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for fetch
     setIsLoadingTransactions(true);
 
     fetch(`/api/transactions?userId=${userId}&year=${year}&month=${month}&limit=100`)

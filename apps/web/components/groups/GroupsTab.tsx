@@ -581,7 +581,6 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           onEdit={handleEditGroup}
-          onDelete={handleDeleteGroup}
           group={selectedGroup}
         />
       )}

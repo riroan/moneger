@@ -154,11 +154,6 @@ export async function getActiveSavingsGoalsWithProgress(userId: string) {
     const startYear = goal.startYear ?? new Date(goal.createdAt).getFullYear();
     const startMonth = goal.startMonth ?? (new Date(goal.createdAt).getMonth() + 1);
     const targetDate = new Date(goal.targetYear, goal.targetMonth - 1, 1);
-    const startDate = new Date(startYear, startMonth - 1, 1);
-    const totalMonths = Math.max(
-      1,
-      (targetDate.getFullYear() - startDate.getFullYear()) * 12 + (targetDate.getMonth() - startDate.getMonth()) + 1
-    );
 
     // 남은 개월 수: 이번 달부터 목표 월까지
     const nowDate = new Date(currentYear, currentMonth - 1, 1);

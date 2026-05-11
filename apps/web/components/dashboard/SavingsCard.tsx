@@ -16,8 +16,6 @@ interface PrimaryGoal {
 }
 
 interface SavingsCardProps {
-  savingsGoal: number;
-  currentSavings: number;
   primaryGoal?: PrimaryGoal | null;
   onViewAll?: () => void;
 }
@@ -34,12 +32,9 @@ const GOAL_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>>
 };
 
 function SavingsCard({
-  savingsGoal,
-  currentSavings,
   primaryGoal,
   onViewAll,
 }: SavingsCardProps) {
-  const progressPercent = savingsGoal > 0 ? Math.round((currentSavings / savingsGoal) * 100) : 0;
   const IconComponent = primaryGoal ? (GOAL_ICON_MAP[primaryGoal.icon] || MdSavings) : null;
 
   return (

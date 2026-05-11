@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuthStore, useAppStore, useModalStore, useCategoryStore, useTransactionStore } from '@/stores';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -20,7 +20,6 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const router = useRouter();
   const pathname = usePathname();
 
   // Auth store

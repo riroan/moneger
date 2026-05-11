@@ -36,11 +36,10 @@ interface EditGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEdit: (data: { id: string; name: string; description?: string; icon?: string; color?: string }) => void;
-  onDelete: (id: string) => void;
   group: GroupSummary;
 }
 
-export default function EditGroupModal({ isOpen, onClose, onEdit, onDelete, group }: EditGroupModalProps) {
+export default function EditGroupModal({ isOpen, onClose, onEdit, group }: EditGroupModalProps) {
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description || '');
   const [selectedIcon, setSelectedIcon] = useState(group.icon || 'folder');

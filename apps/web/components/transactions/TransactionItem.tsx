@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useMemo } from 'react';
+import { memo, createElement } from 'react';
 import { formatNumber, formatDate, formatCurrencyDisplay } from '@/utils/formatters';
 import { getIconComponent } from '@/components/settings/constants';
 import { MdSavings, MdEventRepeat } from 'react-icons/md';
@@ -32,11 +32,7 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
   const isSavings = !!tx.savingsGoalId;
   const isRecurring = !!tx.recurringExpenseId;
 
-  // 아이콘 컴포넌트 메모이제이션
-  const IconComponent = useMemo(
-    () => (isSavings ? MdSavings : getIconComponent(tx.category?.icon)),
-    [isSavings, tx.category?.icon]
-  );
+  const iconType = isSavings ? MdSavings : getIconComponent(tx.category?.icon);
 
   return (
     <div
@@ -49,7 +45,7 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
           className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0 mr-3 relative"
           style={{ color: isSavings ? 'var(--accent-blue)' : (tx.category?.color || 'var(--text-primary)') }}
         >
-          <IconComponent />
+          {createElement(iconType)}
           {isRecurring && (
             <span
               className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-bg-card flex items-center justify-center text-accent-coral"
