@@ -34,6 +34,7 @@ export default function ConfirmModal({
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
+      aria-label={title}
     >
       <div
         className="bg-bg-card border border-[var(--border)] rounded-[24px] w-full max-w-sm animate-[fadeInUp_0.3s_ease-out] p-8 m-5"
@@ -44,6 +45,7 @@ export default function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
+            aria-label="닫기"
             className="text-text-secondary hover:text-text-primary transition-colors text-2xl w-8 h-8 flex items-center justify-center cursor-pointer"
           >
             ×

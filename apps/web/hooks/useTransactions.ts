@@ -100,9 +100,6 @@ export function useTransactions({
       const response = await fetch(`/api/transactions?${params.toString()}`, { signal: controller.signal });
       const data = await response.json();
 
-      // Bail if a newer request took over while we were awaiting
-      if (controller.signal.aborted) return;
-
       if (data.success) {
         if (reset) {
           setAllTransactions(data.data);
@@ -116,7 +113,8 @@ export function useTransactions({
       if (error instanceof DOMException && error.name === 'AbortError') return;
       console.error('Failed to fetch transactions:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
-      if (abortControllerRef.current === controller) {
+      // Skip post-unmount/cancelled setState; ref check protects against superseded fetches
+      if (!controller.signal.aborted && abortControllerRef.current === controller) {
         setIsLoading(false);
         abortControllerRef.current = null;
       }
@@ -167,6 +165,7 @@ export function useTransactions({
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
     };
   }, []);
 

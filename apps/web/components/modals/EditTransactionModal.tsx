@@ -2,6 +2,7 @@
 
 import ModalOverlay from './ModalOverlay';
 import TransactionForm from '@/components/forms/TransactionForm';
+import { useModalStore } from '@/stores';
 import type { Category, TransactionWithCategory } from '@/types';
 import type { TransactionFormData } from '@/hooks/useTransactionForm';
 
@@ -26,10 +27,11 @@ export default function EditTransactionModal({
   userId,
   isSubmitting,
 }: EditTransactionModalProps) {
+  const isDeleteConfirmOpen = useModalStore((s) => s.isDeleteConfirmOpen);
   if (!isOpen || !transaction) return null;
 
   return (
-    <ModalOverlay onClose={onClose} title="내역 수정">
+    <ModalOverlay onClose={onClose} title="내역 수정" escapeActive={!isDeleteConfirmOpen}>
       <TransactionForm
         mode="edit"
         initialTransaction={transaction}

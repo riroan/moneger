@@ -6,14 +6,17 @@ interface ModalOverlayProps {
   children: React.ReactNode;
   onClose: () => void;
   title: string;
+  /** When false, the Escape key does not close this overlay. Useful when a child confirmation modal is open. */
+  escapeActive?: boolean;
 }
 
 export default function ModalOverlay({
   children,
   onClose,
   title,
+  escapeActive = true,
 }: ModalOverlayProps) {
-  useEscapeKey(true, onClose);
+  useEscapeKey(escapeActive, onClose);
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm"
