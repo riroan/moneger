@@ -10,32 +10,28 @@ interface AuthState {
   isLoading: boolean;
 }
 
+function readAuthFromStorage(): AuthState {
+  if (typeof window === 'undefined') {
+    return { userId: null, userName: '', userEmail: '', isLoading: true };
+  }
+  const storedUserId = localStorage.getItem('userId');
+  return {
+    userId: storedUserId,
+    userName: localStorage.getItem('userName') || '',
+    userEmail: localStorage.getItem('userEmail') || '',
+    isLoading: false,
+  };
+}
+
 export function useAuth() {
   const router = useRouter();
-  const [authState, setAuthState] = useState<AuthState>({
-    userId: null,
-    userName: '',
-    userEmail: '',
-    isLoading: true,
-  });
+  const [authState] = useState<AuthState>(readAuthFromStorage);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem('userId');
-    const storedUserName = localStorage.getItem('userName');
-    const storedUserEmail = localStorage.getItem('userEmail');
-
-    if (!storedUserId) {
+    if (!authState.userId) {
       router.push('/');
-      return;
     }
-
-    setAuthState({
-      userId: storedUserId,
-      userName: storedUserName || '',
-      userEmail: storedUserEmail || '',
-      isLoading: false,
-    });
-  }, [router]);
+  }, [authState.userId, router]);
 
   const logout = () => {
     localStorage.removeItem('userId');

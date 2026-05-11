@@ -16,27 +16,18 @@ describe('useTransactionForm', () => {
     it('should initialize with transaction data in edit mode', () => {
       const transaction: TransactionWithCategory = {
         id: '1',
-        userId: 'user-1',
         type: 'INCOME',
         amount: 50000,
         description: '급여',
-        date: new Date(),
+        date: new Date().toISOString(),
         categoryId: 'cat-1',
         savingsGoalId: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
         category: {
           id: 'cat-1',
           name: '급여',
           icon: 'money',
           color: '#10B981',
           type: 'INCOME',
-          userId: 'user-1',
-          defaultBudget: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          deletedAt: null,
         },
       };
 

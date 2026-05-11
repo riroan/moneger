@@ -43,12 +43,13 @@ function DailyCalendarView({
   const todayDate = today.getDate();
   const defaultDay = isCurrentMonth ? todayDate : 1;
   const [selectedDay, setSelectedDay] = useState<number>(defaultDay);
+  const [prevYearMonth, setPrevYearMonth] = useState({ year, month });
 
-  // 월이 변경되면 선택된 날짜 초기화
-  useEffect(() => {
-    const newDefault = isCurrentMonth ? todayDate : 1;
-    setSelectedDay(newDefault);
-  }, [year, month, isCurrentMonth, todayDate]);
+  // 월이 변경되면 선택된 날짜 초기화 (state-during-render pattern)
+  if (prevYearMonth.year !== year || prevYearMonth.month !== month) {
+    setPrevYearMonth({ year, month });
+    setSelectedDay(defaultDay);
+  }
 
   const calendarData = useMemo(() => {
     const firstDay = new Date(year, month - 1, 1);
@@ -123,21 +124,31 @@ function DailyCalendarView({
 
   // 월별 거래 내역 로드 (한 번만)
   useEffect(() => {
-    if (userId) {
-      setIsLoadingTransactions(true);
-
-      fetch(`/api/transactions?userId=${userId}&year=${year}&month=${month}&limit=100`)
-        .then((res) => res.json())
-        .then((res) => {
-          if (res.data) {
-            setMonthTransactions(res.data);
-          }
-        })
-        .catch(console.error)
-        .finally(() => setIsLoadingTransactions(false));
-    } else {
+    if (!userId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale data on logout
       setMonthTransactions([]);
+      return;
     }
+
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for fetch
+    setIsLoadingTransactions(true);
+
+    fetch(`/api/transactions?userId=${userId}&year=${year}&month=${month}&limit=100`)
+      .then((res) => res.json())
+      .then((res) => {
+        if (!cancelled && res.data) {
+          setMonthTransactions(res.data);
+        }
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (!cancelled) setIsLoadingTransactions(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId, year, month]);
 
   // 선택된 날짜의 거래 필터링 (메모이제이션)

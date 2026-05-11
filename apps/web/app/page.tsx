@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModalStore } from '@/stores';
 import MainLayout from '@/components/layout/MainLayout';
@@ -13,11 +13,9 @@ export default function Home() {
   const router = useRouter();
   const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
   const { openEditModal, openSavingsTransactionModal } = useModalStore();
-  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     initAuth();
-    setIsInitialized(true);
   }, [initAuth]);
 
   const handleTransactionClick = (tx: TransactionWithCategory) => {
@@ -44,7 +42,7 @@ export default function Home() {
     router.push('/recurring');
   };
 
-  if (!isInitialized || isAuthLoading) {
+  if (isAuthLoading) {
     return null;
   }
 

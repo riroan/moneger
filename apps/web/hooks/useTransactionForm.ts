@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { TransactionWithCategory } from '@/types';
 import { AMOUNT_LIMITS } from '@/lib/constants';
 
@@ -33,29 +33,29 @@ interface UseTransactionFormOptions {
 
 export function useTransactionForm(options: UseTransactionFormOptions = {}) {
   const { initialTransaction, mode = 'add' } = options;
+  const isEdit = mode === 'edit' && !!initialTransaction;
 
-  // Form state
-  const [type, setType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState('');
+  // Form state (lazy-initialized from initialTransaction in edit mode)
+  const [type, setType] = useState<'INCOME' | 'EXPENSE'>(() =>
+    isEdit ? initialTransaction.type : 'EXPENSE'
+  );
+  const [amount, setAmount] = useState(() =>
+    isEdit ? initialTransaction.amount.toLocaleString('ko-KR') : ''
+  );
+  const [description, setDescription] = useState(() =>
+    isEdit ? initialTransaction.description || '' : ''
+  );
+  const [selectedCategory, setSelectedCategory] = useState(() =>
+    isEdit ? initialTransaction.categoryId || '' : ''
+  );
+  const [selectedGroup, setSelectedGroup] = useState(() =>
+    isEdit ? initialTransaction.groupId || '' : ''
+  );
 
   // Error state
   const [amountError, setAmountError] = useState('');
   const [descriptionError, setDescriptionError] = useState('');
   const [categoryError, setCategoryError] = useState('');
-
-  // Initialize form with transaction data (for edit mode)
-  useEffect(() => {
-    if (initialTransaction && mode === 'edit') {
-      setType(initialTransaction.type);
-      setAmount(initialTransaction.amount.toLocaleString('ko-KR'));
-      setDescription(initialTransaction.description || '');
-      setSelectedCategory(initialTransaction.categoryId || '');
-      setSelectedGroup(initialTransaction.groupId || '');
-    }
-  }, [initialTransaction, mode]);
 
   const handleAmountChange = useCallback((value: string) => {
     const rawValue = value.replace(/,/g, '');

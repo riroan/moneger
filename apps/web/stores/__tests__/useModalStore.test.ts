@@ -4,16 +4,12 @@ import type { TransactionWithCategory } from '@/types';
 describe('useModalStore', () => {
   const mockTransaction: TransactionWithCategory = {
     id: 'tx-1',
-    userId: 'user-1',
     type: 'EXPENSE',
     amount: 10000,
     description: '점심',
-    date: new Date('2024-01-15'),
+    date: '2024-01-15T00:00:00.000Z',
     categoryId: 'cat-1',
     savingsGoalId: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    deletedAt: null,
     category: {
       id: 'cat-1',
       name: '식비',

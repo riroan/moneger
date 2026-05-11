@@ -21,17 +21,13 @@ describe('useTransactionStore', () => {
       const transactions: TransactionWithCategory[] = [
         {
           id: '1',
-          userId: 'user-1',
           type: 'EXPENSE',
           amount: 10000,
           description: '점심',
-          date: new Date(),
+          date: new Date().toISOString(),
           categoryId: 'cat-1',
           savingsGoalId: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          deletedAt: null,
-          category: { id: 'cat-1', name: '식비', icon: 'restaurant', color: '#EF4444', type: 'EXPENSE', userId: 'user-1', defaultBudget: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
+          category: { id: 'cat-1', name: '식비', icon: 'restaurant', color: '#EF4444', type: 'EXPENSE' },
         },
       ];
 
@@ -41,11 +37,9 @@ describe('useTransactionStore', () => {
 
     it('should set summary', () => {
       const summary: TransactionSummary = {
-        period: { year: 2024, month: 1 },
-        summary: { totalIncome: 100000, totalExpense: 50000, totalSavings: 0, netAmount: 50000, balance: 50000 },
-        budget: { amount: 200000, used: 50000, remaining: 150000, usagePercent: 25 },
+        summary: { totalIncome: 100000, totalExpense: 50000, totalSavings: 0, netAmount: 50000, balance: 50000, carryOverBalance: 0 },
         categories: [],
-        transactionCount: { income: 1, expense: 2, total: 3 },
+        transactionCount: { income: 1, expense: 2 },
         savings: { totalAmount: 0, targetAmount: 0, count: 0, primaryGoal: null },
       };
 

@@ -40,7 +40,6 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
   const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
   const { openEditModal, openSavingsTransactionModal, transactionVersion } = useModalStore();
-  const [isInitialized, setIsInitialized] = useState(false);
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [transactions, setTransactions] = useState<TransactionWithCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,7 +48,6 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     initAuth();
-    setIsInitialized(true);
   }, [initAuth]);
 
   const fetchGroupDetail = useCallback(async () => {
@@ -121,12 +119,12 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   };
 
   useEffect(() => {
-    if (isInitialized && !isAuthLoading && !userId) {
+    if (!isAuthLoading && !userId) {
       router.push('/');
     }
-  }, [isInitialized, isAuthLoading, userId, router]);
+  }, [isAuthLoading, userId, router]);
 
-  if (!isInitialized || isAuthLoading || !userId) {
+  if (isAuthLoading || !userId) {
     return null;
   }
 

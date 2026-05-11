@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState, useEffect, useCallback } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { MdClose, MdNotificationsActive } from 'react-icons/md';
 import { useAuthStore } from '@/stores';
@@ -17,22 +17,24 @@ function RecurringAlertBanner() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [dismissed, setDismissed] = useState(false);
 
-  const fetchAlerts = useCallback(async () => {
-    if (!userId) return;
-    try {
-      const res = await fetch(`/api/recurring/summary?userId=${userId}`);
-      const json = await res.json();
-      if (json.success && json.data.alerts?.length > 0) {
-        setAlerts(json.data.alerts);
-      }
-    } catch {
-      // 에러 시 배너 미표시
-    }
-  }, [userId]);
-
   useEffect(() => {
-    fetchAlerts();
-  }, [fetchAlerts]);
+    if (!userId) return;
+    let cancelled = false;
+    fetch(`/api/recurring/summary?userId=${userId}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return;
+        if (json.success && json.data.alerts?.length > 0) {
+          setAlerts(json.data.alerts);
+        }
+      })
+      .catch(() => {
+        // 에러 시 배너 미표시
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   if (dismissed || alerts.length === 0) return null;
 

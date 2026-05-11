@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { formatNumber, formatDate } from '@/utils/formatters';
 import { MdSavings } from 'react-icons/md';
 import type { TransactionWithCategory } from '@/types';
@@ -20,15 +20,29 @@ export default function EditSavingsTransactionModal({
   onDelete,
   isSubmitting = false,
 }: EditSavingsTransactionModalProps) {
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setIsDeleteConfirmOpen(false);
-    }
-  }, [isOpen]);
-
   if (!isOpen || !transaction) return null;
+  return (
+    <EditSavingsTransactionModalContent
+      transaction={transaction}
+      onClose={onClose}
+      onDelete={onDelete}
+      isSubmitting={isSubmitting}
+    />
+  );
+}
+
+function EditSavingsTransactionModalContent({
+  transaction,
+  onClose,
+  onDelete,
+  isSubmitting,
+}: {
+  transaction: TransactionWithCategory;
+  onClose: () => void;
+  onDelete: () => void;
+  isSubmitting: boolean;
+}) {
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const handleDelete = () => {
     setIsDeleteConfirmOpen(true);

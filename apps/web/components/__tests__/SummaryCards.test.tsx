@@ -16,9 +16,9 @@ describe('SummaryCards', () => {
   it('should render all four summary cards', () => {
     render(<SummaryCards {...defaultProps} />);
 
-    expect(screen.getByText('이번 달 수입')).toBeInTheDocument();
-    expect(screen.getByText('이번 달 지출')).toBeInTheDocument();
-    expect(screen.getByText('저축')).toBeInTheDocument();
+    expect(screen.getByText('월 수입')).toBeInTheDocument();
+    expect(screen.getByText('월 지출')).toBeInTheDocument();
+    expect(screen.getByText('월 저축')).toBeInTheDocument();
     expect(screen.getByText('잔액')).toBeInTheDocument();
   });
 
@@ -68,7 +68,7 @@ describe('SummaryCards', () => {
     const handleIncomeClick = jest.fn();
     render(<SummaryCards {...defaultProps} onIncomeClick={handleIncomeClick} />);
 
-    fireEvent.click(screen.getByText('이번 달 수입').closest('div[class*="bg-bg-card"]')!);
+    fireEvent.click(screen.getByText('월 수입').closest('div[class*="bg-bg-card"]')!);
 
     expect(handleIncomeClick).toHaveBeenCalledTimes(1);
   });
@@ -77,7 +77,7 @@ describe('SummaryCards', () => {
     const handleExpenseClick = jest.fn();
     render(<SummaryCards {...defaultProps} onExpenseClick={handleExpenseClick} />);
 
-    fireEvent.click(screen.getByText('이번 달 지출').closest('div[class*="bg-bg-card"]')!);
+    fireEvent.click(screen.getByText('월 지출').closest('div[class*="bg-bg-card"]')!);
 
     expect(handleExpenseClick).toHaveBeenCalledTimes(1);
   });
@@ -86,7 +86,7 @@ describe('SummaryCards', () => {
     const handleSavingsClick = jest.fn();
     render(<SummaryCards {...defaultProps} onSavingsClick={handleSavingsClick} />);
 
-    fireEvent.click(screen.getByText('저축').closest('div[class*="bg-bg-card"]')!);
+    fireEvent.click(screen.getByText('월 저축').closest('div[class*="bg-bg-card"]')!);
 
     expect(handleSavingsClick).toHaveBeenCalledTimes(1);
   });

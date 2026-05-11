@@ -16,6 +16,7 @@ export default function AnalyticsTab() {
     if (!userId) return;
 
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading/error reset for fetch
     setIsLoading(true);
     setError(null);
 
