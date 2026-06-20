@@ -45,7 +45,7 @@ describe('summary.service', () => {
     // 1. aggregate: incomeAgg
     // 2. aggregate: expenseAgg
     // 3. groupBy: categoryStats (by categoryId)
-    // 4. groupBy: transactionCounts (by type)
+    // 4. groupBy: transactionCounts (by type, excluding savings from EXPENSE)
     // 5. savingsGoal.findMany: activeSavingsData
     // 6. aggregate: monthlySavingsAgg
     // 7. aggregate: previousIncomeAgg
@@ -201,6 +201,55 @@ describe('summary.service', () => {
         targetAmount: 2000000,
         progressPercent: 25,
       });
+    });
+
+    it('일반 지출/카테고리/예산 집계에서 저축 거래를 제외해야 함', async () => {
+      setupDefaultMocks();
+
+      const result = await getTransactionSummary(userId, year, month);
+
+      expect(result.summary.totalExpense).toBe(1500000);
+      expect(result.summary.totalSavings).toBe(100000);
+      expect(result.budget.used).toBe(1500000);
+      expect(result.summary.balance).toBe(1400000);
+
+      const aggregateCalls = (prisma.transaction.aggregate as jest.Mock).mock.calls;
+      expect(aggregateCalls[1][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: 'EXPENSE',
+            savingsGoalId: null,
+          }),
+        })
+      );
+      expect(aggregateCalls[2][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            savingsGoalId: { not: null },
+          }),
+        })
+      );
+
+      const groupByCalls = (prisma.transaction.groupBy as jest.Mock).mock.calls;
+      expect(groupByCalls[0][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: 'EXPENSE',
+            savingsGoalId: null,
+            categoryId: { not: null },
+          }),
+        })
+      );
+      expect(groupByCalls[1][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { type: 'INCOME' },
+              { type: 'EXPENSE', savingsGoalId: null },
+            ],
+          }),
+        })
+      );
     });
 
     it('저축 목표가 없으면 primaryGoal이 null이어야 함', async () => {

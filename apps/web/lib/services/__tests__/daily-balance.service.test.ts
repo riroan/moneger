@@ -75,6 +75,44 @@ describe('daily-balance.service', () => {
         })
       );
     });
+
+    it('일반 지출과 저축 거래를 별도 집계해야 함', async () => {
+      (prisma.dailyBalance.findUnique as jest.Mock).mockResolvedValue({ balance: 100000 });
+      (prisma.transaction.aggregate as jest.Mock)
+        .mockResolvedValueOnce({ _sum: { amount: 50000 } }) // income
+        .mockResolvedValueOnce({ _sum: { amount: 20000 } }) // expense excluding savings
+        .mockResolvedValueOnce({ _sum: { amount: 10000 } }); // savings
+      (prisma.dailyBalance.upsert as jest.Mock).mockResolvedValue({});
+
+      await updateDailyBalance('user-1', new Date('2024-01-15'));
+
+      const aggregateCalls = (prisma.transaction.aggregate as jest.Mock).mock.calls;
+      expect(aggregateCalls[1][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: 'EXPENSE',
+            savingsGoalId: null,
+          }),
+        })
+      );
+      expect(aggregateCalls[2][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            savingsGoalId: { not: null },
+          }),
+        })
+      );
+      expect(prisma.dailyBalance.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: {
+            balance: 120000,
+            income: 50000,
+            expense: 20000,
+            savings: 10000,
+          },
+        })
+      );
+    });
   });
 
   describe('saveDailyBalance', () => {

@@ -45,13 +45,19 @@ async function fetchMonthlyAggregations(
     }),
     prisma.transaction.groupBy({
       by: ['categoryId'],
-      where: { ...whereClause, type: 'EXPENSE', categoryId: { not: null } },
+      where: { ...whereClause, type: 'EXPENSE', savingsGoalId: null, categoryId: { not: null } },
       _sum: { amount: true },
       _count: true,
     }),
     prisma.transaction.groupBy({
       by: ['type'],
-      where: whereClause,
+      where: {
+        ...whereClause,
+        OR: [
+          { type: 'INCOME' },
+          { type: 'EXPENSE', savingsGoalId: null },
+        ],
+      },
       _count: true,
     }),
     prisma.savingsGoal.findMany({

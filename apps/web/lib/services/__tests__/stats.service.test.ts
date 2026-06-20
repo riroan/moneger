@@ -82,6 +82,55 @@ describe('stats.service', () => {
       });
     });
 
+    it('일반 지출/예산/최근 지출 집계에서 저축 거래를 제외해야 함', async () => {
+      setupDefaultMocks();
+
+      const result = await getMonthlyStats(userId, year, month);
+
+      expect(result.summary.totalExpense).toBe(1500000);
+      expect(result.summary.expenseCount).toBe(23);
+      expect(result.budget.used).toBe(1500000);
+
+      const aggregateCalls = (prisma.transaction.aggregate as jest.Mock).mock.calls;
+      expect(aggregateCalls[1][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: 'EXPENSE',
+            savingsGoalId: null,
+          }),
+        })
+      );
+
+      const countCalls = (prisma.transaction.count as jest.Mock).mock.calls;
+      expect(countCalls[1][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: 'EXPENSE',
+            savingsGoalId: null,
+          }),
+        })
+      );
+
+      const groupByCalls = (prisma.transaction.groupBy as jest.Mock).mock.calls;
+      expect(groupByCalls[0][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: 'EXPENSE',
+            savingsGoalId: null,
+            categoryId: { not: null },
+          }),
+        })
+      );
+      expect(groupByCalls[1][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: 'EXPENSE',
+            savingsGoalId: null,
+          }),
+        })
+      );
+    });
+
     it('카테고리별 지출 통계를 반환해야 함', async () => {
       setupDefaultMocks();
       const result = await getMonthlyStats(userId, year, month);

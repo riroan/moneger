@@ -29,6 +29,8 @@ model User {
   savingsGoals       SavingsGoal[]
   transactionGroups  TransactionGroup[]
   recurringExpenses  RecurringExpense[]
+  assetItems         AssetItem[]
+  assetSnapshots     AssetSnapshot[]
 }
 
 model Category {
@@ -187,6 +189,40 @@ model RecurringExpenseHistory {
   recurringExpense RecurringExpense @relation(fields: [recurringExpenseId], references: [id], onDelete: Cascade)
 
   @@index([recurringExpenseId])
+}
+
+model AssetItem {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  icon      String?
+  order     Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots AssetSnapshot[]
+
+  @@unique([userId, name, deletedAt])
+  @@index([userId, deletedAt])
+}
+
+model AssetSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  assetItemId String
+  month       DateTime @db.Date
+  amount      Float
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetItem AssetItem @relation(fields: [assetItemId], references: [id], onDelete: Cascade)
+
+  @@unique([assetItemId, month])
+  @@index([userId, month])
 }
 
 enum TransactionType {
