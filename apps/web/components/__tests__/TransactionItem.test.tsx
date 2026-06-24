@@ -17,7 +17,6 @@ describe('TransactionItem', () => {
       icon: 'restaurant',
       color: '#EF4444',
       type: 'EXPENSE',
-      categoryGroup: 'SPENDING',
     },
   };
 
@@ -35,7 +34,6 @@ describe('TransactionItem', () => {
       icon: 'money',
       color: '#10B981',
       type: 'INCOME',
-      categoryGroup: 'SPENDING',
     },
   };
 
@@ -70,7 +68,7 @@ describe('TransactionItem', () => {
     render(<TransactionItem transaction={mockSavingsTransaction} />);
 
     expect(screen.getByText('비상금 저축')).toBeInTheDocument();
-    expect(screen.getByText('저축 납입')).toBeInTheDocument();
+    expect(screen.getByText('저축')).toBeInTheDocument();
     expect(screen.getByText('500,000')).toBeInTheDocument();
   });
 

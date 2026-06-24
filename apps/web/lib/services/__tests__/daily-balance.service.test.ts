@@ -30,13 +30,12 @@ describe('daily-balance.service', () => {
 
   describe('updateDailyBalance', () => {
     it('일별 잔액을 업데이트해야 함', async () => {
-      // computeAndUpsertDailyBalance: findUnique (prev balance) + 4 aggregates (income, expense, savings, investment)
+      // computeAndUpsertDailyBalance: findUnique (prev balance) + 3 aggregates (income, expense, savings)
       (prisma.dailyBalance.findUnique as jest.Mock).mockResolvedValue({ balance: 400000 });
       (prisma.transaction.aggregate as jest.Mock)
         .mockResolvedValueOnce({ _sum: { amount: 100000 } }) // 당일 수입
         .mockResolvedValueOnce({ _sum: { amount: 50000 } }) // 당일 지출
-        .mockResolvedValueOnce({ _sum: { amount: 0 } }) // 당일 저축
-        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // 당일 투자 납입
+        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // 당일 저축
 
       (prisma.dailyBalance.upsert as jest.Mock).mockResolvedValue({
         balance: 450000,
@@ -64,7 +63,6 @@ describe('daily-balance.service', () => {
       (prisma.transaction.aggregate as jest.Mock)
         .mockResolvedValueOnce({ _sum: { amount: null } })
         .mockResolvedValueOnce({ _sum: { amount: null } })
-        .mockResolvedValueOnce({ _sum: { amount: null } })
         .mockResolvedValueOnce({ _sum: { amount: null } });
 
       (prisma.dailyBalance.upsert as jest.Mock).mockResolvedValue({});
@@ -83,8 +81,7 @@ describe('daily-balance.service', () => {
       (prisma.transaction.aggregate as jest.Mock)
         .mockResolvedValueOnce({ _sum: { amount: 50000 } }) // income
         .mockResolvedValueOnce({ _sum: { amount: 20000 } }) // expense excluding savings
-        .mockResolvedValueOnce({ _sum: { amount: 10000 } }) // savings
-        .mockResolvedValueOnce({ _sum: { amount: 5000 } }); // investment deposit
+        .mockResolvedValueOnce({ _sum: { amount: 10000 } }); // savings
       (prisma.dailyBalance.upsert as jest.Mock).mockResolvedValue({});
 
       await updateDailyBalance('user-1', new Date('2024-01-15'));
@@ -105,22 +102,13 @@ describe('daily-balance.service', () => {
           }),
         })
       );
-      expect(aggregateCalls[3][0]).toEqual(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            type: 'EXPENSE',
-            savingsGoalId: null,
-            category: { categoryGroup: 'ASSET_FORMATION' },
-          }),
-        })
-      );
       expect(prisma.dailyBalance.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           update: {
-            balance: 115000,
+            balance: 120000,
             income: 50000,
             expense: 20000,
-            savings: 15000,
+            savings: 10000,
           },
         })
       );
@@ -172,30 +160,19 @@ describe('daily-balance.service', () => {
 
   describe('getMonthlyDailyBalances', () => {
     // Helper to setup mocks for calculateMonthlyDailyBalancesFromTransactions
-    // 기존 테스트 입력 형태를 유지하되 서비스 쿼리 구조에 맞춰 분리한다.
+    // 4 parallel queries: groupBy(previousByType), aggregate(previousSavingsAgg), groupBy(currentByDateType), groupBy(savingsGrouped)
     const setupMonthlyMocks = (
       previousByType: { type: string; _sum: { amount: number | null } }[],
       previousSavingsAgg: { _sum: { amount: number | null } },
       currentByDateType: { date: Date; type: string; _sum: { amount: number | null } }[],
       savingsGrouped: { date: Date; _sum: { amount: number | null } }[],
-      investmentGrouped: { date: Date; _sum: { amount: number | null } }[] = [],
     ) => {
-      const previousIncome = previousByType.find((row) => row.type === 'INCOME')?._sum.amount ?? null;
-      const previousExpense = previousByType.find((row) => row.type === 'EXPENSE')?._sum.amount ?? null;
-      const incomeGrouped = currentByDateType.filter((row) => row.type === 'INCOME');
-      const expenseGrouped = currentByDateType.filter((row) => row.type === 'EXPENSE');
-
-      (prisma.transaction.aggregate as jest.Mock)
-        .mockResolvedValueOnce({ _sum: { amount: previousIncome } })
-        .mockResolvedValueOnce({ _sum: { amount: previousExpense } })
-        .mockResolvedValueOnce(previousSavingsAgg)
-        .mockResolvedValueOnce({ _sum: { amount: null } });
-
       (prisma.transaction.groupBy as jest.Mock)
-        .mockResolvedValueOnce(incomeGrouped)
-        .mockResolvedValueOnce(expenseGrouped)
-        .mockResolvedValueOnce(savingsGrouped)
-        .mockResolvedValueOnce(investmentGrouped);
+        .mockResolvedValueOnce(previousByType)
+        .mockResolvedValueOnce(currentByDateType)
+        .mockResolvedValueOnce(savingsGrouped);
+      (prisma.transaction.aggregate as jest.Mock)
+        .mockResolvedValueOnce(previousSavingsAgg);
     };
 
     it('특정 월의 일별 잔액을 반환해야 함', async () => {

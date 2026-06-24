@@ -4,7 +4,6 @@ import { updateDailyBalanceInTransaction } from './daily-balance.service';
 import { CATEGORY_SELECT } from '@/lib/prisma-selects';
 import { getMonthRangeKST, getKSTDayStartUTC, getKSTDayEndUTC, getKSTDateParts } from '@/lib/date-utils';
 import { PAGINATION } from '@/lib/constants';
-import { assetFormationCategoryWhere, assetFormationWhere, spendingExpenseWhere } from './cash-flow-filters';
 
 interface CreateTransactionInput {
   userId: string;
@@ -43,7 +42,6 @@ interface GetTransactionsInput {
   minAmount?: number;
   maxAmount?: number;
   savingsOnly?: boolean;
-  assetFormationOnly?: boolean;
   groupId?: string;
   recurring?: 'all' | 'only' | 'none';
 }
@@ -203,13 +201,23 @@ function buildTransactionWhere(input: GetTransactionsInput): Prisma.TransactionW
   }
 
   // 타입 필터
-  if (type && type !== 'EXPENSE') {
+  if (type) {
     where.type = type;
+    if (type === 'EXPENSE') {
+      where.savingsGoalId = null;
+    }
   }
 
   if (categoryIds?.length) where.categoryId = { in: categoryIds };
   if (search) where.description = { contains: search };
   if (input.groupId) where.groupId = input.groupId;
+
+  // 저축 전용 필터
+  if (input.savingsOnly) {
+    where.savingsGoalId = { not: null };
+  } else {
+    where.savingsGoalId = null;
+  }
 
   // 금액 범위 필터
   if (input.minAmount !== undefined || input.maxAmount !== undefined) {
@@ -223,21 +231,6 @@ function buildTransactionWhere(input: GetTransactionsInput): Prisma.TransactionW
     where.recurringExpenseId = { not: null };
   } else if (input.recurring === 'none') {
     where.recurringExpenseId = null;
-  }
-
-  // 저축 전용 필터
-  if (input.savingsOnly) {
-    return { ...where, savingsGoalId: { not: null } };
-  }
-
-  // 자산 형성 전용 필터 (저축 목표 입금 + 투자/저축 납입 카테고리)
-  if (input.assetFormationOnly) {
-    return { AND: [where, assetFormationWhere()] };
-  }
-
-  // 소비 지출 필터: 저축/투자 납입 같은 자산 형성은 제외
-  if (type === 'EXPENSE') {
-    return { AND: [where, spendingExpenseWhere()] };
   }
 
   return where;
@@ -317,18 +310,9 @@ export async function getTodaySummary(userId: string) {
 
   const baseWhere = { userId, deletedAt: null, date: { gte: startOfDay, lte: endOfDay } };
 
-  const [
-    expenseAgg,
-    incomeAgg,
-    savingsAgg,
-    investmentAgg,
-    expenseCount,
-    incomeCount,
-    savingsCount,
-    investmentCount,
-  ] = await Promise.all([
+  const [expenseAgg, incomeAgg, savingsAgg, expenseCount, incomeCount, savingsCount] = await Promise.all([
     prisma.transaction.aggregate({
-      where: spendingExpenseWhere(baseWhere),
+      where: { ...baseWhere, type: 'EXPENSE', savingsGoalId: null },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
@@ -339,28 +323,16 @@ export async function getTodaySummary(userId: string) {
       where: { ...baseWhere, savingsGoalId: { not: null } },
       _sum: { amount: true },
     }),
-    prisma.transaction.aggregate({
-      where: assetFormationCategoryWhere(baseWhere),
-      _sum: { amount: true },
-    }),
     prisma.transaction.count({
-      where: spendingExpenseWhere(baseWhere),
+      where: { ...baseWhere, type: 'EXPENSE', savingsGoalId: null },
     }),
     prisma.transaction.count({
       where: { ...baseWhere, type: 'INCOME' },
     }),
     prisma.transaction.count({
       where: { ...baseWhere, savingsGoalId: { not: null } },
-    }),
-    prisma.transaction.count({
-      where: assetFormationCategoryWhere(baseWhere),
     }),
   ]);
-
-  const savingsTotal = savingsAgg._sum.amount || 0;
-  const investmentTotal = investmentAgg._sum.amount || 0;
-  const totalAssetFormation = savingsTotal + investmentTotal;
-  const totalAssetFormationCount = savingsCount + investmentCount;
 
   return {
     date: now.toISOString(),
@@ -371,6 +343,5 @@ export async function getTodaySummary(userId: string) {
     expense: { total: expenseAgg._sum.amount || 0, count: expenseCount },
     income: { total: incomeAgg._sum.amount || 0, count: incomeCount },
     savings: { total: savingsAgg._sum.amount || 0, count: savingsCount },
-    assetFormation: { total: totalAssetFormation, count: totalAssetFormationCount },
   };
 }

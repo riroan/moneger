@@ -5,14 +5,12 @@ import { ICON_LIST, ICON_MAP, COLOR_LIST } from './constants';
 import { CurrencyInput } from '@/components/common';
 import { useEscapeKey } from '@/hooks';
 import type { Category } from '@/types';
-import { CATEGORY_GROUP } from '@/lib/cash-flow';
 
 interface CategoryFormModalProps {
   isOpen: boolean;
   mode: 'add' | 'edit';
   initialCategory?: Category | null;
   initialType: 'INCOME' | 'EXPENSE';
-  initialCategoryGroup?: Category['categoryGroup'];
   onClose: () => void;
   onSubmit: (data: CategoryFormData) => Promise<void>;
   onDelete?: () => void;
@@ -24,7 +22,6 @@ export interface CategoryFormData {
   icon: string;
   color: string;
   defaultBudget: string;
-  categoryGroup: Category['categoryGroup'];
 }
 
 export default function CategoryFormModal({
@@ -32,14 +29,12 @@ export default function CategoryFormModal({
   mode,
   initialCategory,
   initialType,
-  initialCategoryGroup = CATEGORY_GROUP.SPENDING,
   onClose,
   onSubmit,
   onDelete,
 }: CategoryFormModalProps) {
   const [categoryName, setCategoryName] = useState('');
   const [categoryType, setCategoryType] = useState<'INCOME' | 'EXPENSE'>(initialType);
-  const [categoryGroup, setCategoryGroup] = useState<Category['categoryGroup']>(initialCategoryGroup);
   const [categoryIcon, setCategoryIcon] = useState('box');
   const [categoryColor, setCategoryColor] = useState('#EF4444');
   const [categoryDefaultBudget, setCategoryDefaultBudget] = useState('');
@@ -53,33 +48,19 @@ export default function CategoryFormModal({
       if (mode === 'edit' && initialCategory) {
         setCategoryName(initialCategory.name);
         setCategoryType(initialCategory.type);
-        setCategoryGroup(initialCategory.categoryGroup);
         setCategoryIcon(initialCategory.icon || 'money');
         setCategoryColor(initialCategory.color || '#6366F1');
         setCategoryDefaultBudget(initialCategory.defaultBudget ? initialCategory.defaultBudget.toString() : '');
       } else {
         setCategoryName('');
         setCategoryType(initialType);
-        setCategoryGroup(initialType === 'EXPENSE' ? initialCategoryGroup : CATEGORY_GROUP.SPENDING);
-        setCategoryIcon(
-          initialType === 'INCOME'
-            ? 'money'
-            : initialCategoryGroup === CATEGORY_GROUP.ASSET_FORMATION
-              ? 'chart'
-              : 'cart'
-        );
-        setCategoryColor(
-          initialType === 'INCOME'
-            ? '#10B981'
-            : initialCategoryGroup === CATEGORY_GROUP.ASSET_FORMATION
-              ? '#8B5CF6'
-              : '#EF4444'
-        );
+        setCategoryIcon(initialType === 'INCOME' ? 'money' : 'cart');
+        setCategoryColor(initialType === 'INCOME' ? '#10B981' : '#EF4444');
         setCategoryDefaultBudget('');
       }
       setNameError('');
     }
-  }, [isOpen, mode, initialCategory, initialType, initialCategoryGroup]);
+  }, [isOpen, mode, initialCategory, initialType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,8 +77,7 @@ export default function CategoryFormModal({
         type: categoryType,
         icon: categoryIcon,
         color: categoryColor,
-        defaultBudget: categoryGroup === CATEGORY_GROUP.ASSET_FORMATION ? '' : categoryDefaultBudget,
-        categoryGroup,
+        defaultBudget: categoryDefaultBudget,
       });
       handleClose();
     } catch (error) {
@@ -112,7 +92,6 @@ export default function CategoryFormModal({
   const handleClose = () => {
     setCategoryName('');
     setCategoryType('EXPENSE');
-    setCategoryGroup(CATEGORY_GROUP.SPENDING);
     setCategoryIcon('box');
     setCategoryColor('#EF4444');
     setCategoryDefaultBudget('');
@@ -166,44 +145,6 @@ export default function CategoryFormModal({
               수입
             </div>
           </div>
-
-          {categoryType === 'EXPENSE' && (
-            <div className="mb-5">
-              <label className="block text-sm font-medium text-text-secondary mb-2">
-                분류
-              </label>
-              <div className="grid grid-cols-2 gap-2 rounded-[14px] bg-bg-secondary p-1.5">
-                {[
-                  { value: CATEGORY_GROUP.SPENDING, label: '소비 지출' },
-                  { value: CATEGORY_GROUP.ASSET_FORMATION, label: '자산 형성' },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => {
-                      setCategoryGroup(option.value);
-                      if (option.value === CATEGORY_GROUP.ASSET_FORMATION && categoryIcon === 'cart') {
-                        setCategoryIcon('chart');
-                        setCategoryColor('#8B5CF6');
-                      }
-                    }}
-                    className={`rounded-[10px] font-medium transition-all p-2.5 ${
-                      categoryGroup === option.value
-                        ? option.value === CATEGORY_GROUP.ASSET_FORMATION
-                          ? 'bg-gradient-to-br from-accent-blue to-accent-purple text-bg-primary shadow-lg'
-                          : 'bg-gradient-to-br from-accent-coral to-accent-yellow text-bg-primary shadow-lg'
-                        : 'text-text-secondary hover:bg-bg-card-hover'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-text-muted mt-1.5">
-                자산 형성은 현금흐름에서는 차감되지만 소비 통계와 예산에서는 제외됩니다.
-              </p>
-            </div>
-          )}
 
           {/* Name Input */}
           <div className="mb-5">
@@ -277,7 +218,7 @@ export default function CategoryFormModal({
           </div>
 
           {/* Default Budget (Expense only) */}
-          {categoryType === 'EXPENSE' && categoryGroup === CATEGORY_GROUP.SPENDING && (
+          {categoryType === 'EXPENSE' && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-text-secondary mb-2">
                 기본 예산 (선택)

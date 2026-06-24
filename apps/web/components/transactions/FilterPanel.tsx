@@ -1,18 +1,16 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { MdSearch, MdAccountBalanceWallet, MdEventRepeat } from 'react-icons/md';
+import { MdSearch, MdSavings, MdEventRepeat } from 'react-icons/md';
 import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 import { getIconComponent } from '@/components/settings/constants';
 import { AMOUNT_LIMITS } from '@/lib/constants';
-import { CATEGORY_GROUP } from '@/lib/cash-flow';
 
 interface Category {
   id: string;
   name: string;
   type: 'INCOME' | 'EXPENSE';
   icon: string | null;
-  categoryGroup: 'SPENDING' | 'ASSET_FORMATION';
 }
 
 interface DateRange {
@@ -28,8 +26,8 @@ interface AmountRange {
 }
 
 interface FilterPanelProps {
-  filterType: 'ALL' | 'INCOME' | 'EXPENSE' | 'ASSET_FORMATION';
-  setFilterType: (type: 'ALL' | 'INCOME' | 'EXPENSE' | 'ASSET_FORMATION') => void;
+  filterType: 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
+  setFilterType: (type: 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS') => void;
   filterCategories: string[];
   setFilterCategories: (categories: string[] | ((prev: string[]) => string[])) => void;
   searchKeyword: string;
@@ -430,11 +428,11 @@ export default function FilterPanel({
               { value: 'ALL', label: '전체', activeClass: 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary' },
               { value: 'INCOME', label: '수입', activeClass: 'bg-accent-mint text-bg-primary' },
               { value: 'EXPENSE', label: '지출', activeClass: 'bg-accent-coral text-bg-primary' },
-              { value: 'ASSET_FORMATION', label: '자산 형성', activeClass: 'bg-accent-blue text-bg-primary' },
+              { value: 'SAVINGS', label: '저축', activeClass: 'bg-accent-blue text-bg-primary' },
             ].map((option) => (
               <button
                 key={option.value}
-                onClick={() => setFilterType(option.value as 'ALL' | 'INCOME' | 'EXPENSE' | 'ASSET_FORMATION')}
+                onClick={() => setFilterType(option.value as 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS')}
                 className={`rounded-[8px] text-sm font-medium transition-all cursor-pointer py-2 px-3 ${
                   filterType === option.value
                     ? option.activeClass
@@ -498,8 +496,8 @@ export default function FilterPanel({
           </div>
         </div>
 
-        {/* 카테고리 - 자산 형성 필터일 때는 숨김 */}
-        {filterType !== 'ASSET_FORMATION' && (
+        {/* 카테고리 - 저축 필터일 때는 숨김 */}
+        {filterType !== 'SAVINGS' && (
         <div className="mb-4">
           <label className="block text-sm text-text-muted mb-2">
             카테고리 {filterCategories.length > 0 && <span className="text-accent-mint">({filterCategories.length})</span>}
@@ -562,7 +560,7 @@ export default function FilterPanel({
               </div>
             )}
 
-            {/* 소비 지출 카테고리 */}
+            {/* 지출 카테고리 */}
             {(filterType === 'ALL' || filterType === 'EXPENSE') && (
               <div className="bg-bg-secondary rounded-[10px] overflow-hidden">
                 <button
@@ -571,9 +569,9 @@ export default function FilterPanel({
                   className="w-full flex items-center justify-between text-left cursor-pointer hover:bg-bg-card-hover transition-colors py-2.5 px-3"
                 >
                   <span className="text-sm font-medium text-accent-coral flex items-center gap-2">
-                    <FaCreditCard className="text-sm" /> 소비 지출
+                    <FaCreditCard className="text-sm" /> 지출
                     <span className="text-text-muted font-normal">
-                      ({categories.filter(c => c.type === 'EXPENSE' && c.categoryGroup !== CATEGORY_GROUP.ASSET_FORMATION).length})
+                      ({categories.filter(c => c.type === 'EXPENSE').length})
                     </span>
                   </span>
                   <span className="text-text-muted text-xs">
@@ -582,7 +580,7 @@ export default function FilterPanel({
                 </button>
                 {isExpenseCategoryOpen && (
                   <div className="flex flex-col gap-1 px-2 pb-2">
-                    {categories.filter(c => c.type === 'EXPENSE' && c.categoryGroup !== CATEGORY_GROUP.ASSET_FORMATION).map((cat) => {
+                    {categories.filter(c => c.type === 'EXPENSE').map((cat) => {
                       const isChecked = filterCategories.includes(cat.id);
                       const IconComponent = getIconComponent(cat.icon);
                       return (
@@ -609,9 +607,9 @@ export default function FilterPanel({
                         </label>
                       );
                     })}
-                    {categories.filter(c => c.type === 'EXPENSE' && c.categoryGroup !== CATEGORY_GROUP.ASSET_FORMATION).length === 0 && (
+                    {categories.filter(c => c.type === 'EXPENSE').length === 0 && (
                       <div className="text-xs text-text-muted text-center py-2">
-                        소비 지출 카테고리가 없습니다
+                        지출 카테고리가 없습니다
                       </div>
                     )}
                   </div>
@@ -622,12 +620,12 @@ export default function FilterPanel({
         </div>
         )}
 
-        {/* 자산 형성 필터 안내 */}
-        {filterType === 'ASSET_FORMATION' && (
+        {/* 저축 필터 안내 */}
+        {filterType === 'SAVINGS' && (
           <div className="bg-accent-blue/10 rounded-[10px] text-center p-4 mb-4">
-            <MdAccountBalanceWallet className="text-2xl text-accent-blue mx-auto mb-2" />
+            <MdSavings className="text-2xl text-accent-blue mx-auto mb-2" />
             <p className="text-sm text-text-secondary">
-              저축 납입과 투자 납입 내역만 표시됩니다
+              저축 목표에 입금한 내역만 표시됩니다
             </p>
           </div>
         )}

@@ -18,7 +18,7 @@ describe('SummaryCards', () => {
 
     expect(screen.getByText('월 수입')).toBeInTheDocument();
     expect(screen.getByText('월 지출')).toBeInTheDocument();
-    expect(screen.getByText('자산 형성')).toBeInTheDocument();
+    expect(screen.getByText('월 저축')).toBeInTheDocument();
     expect(screen.getByText('잔액')).toBeInTheDocument();
   });
 
@@ -36,11 +36,11 @@ describe('SummaryCards', () => {
     expect(screen.getByText('15건의 지출')).toBeInTheDocument();
   });
 
-  it('should display formatted asset formation amount', () => {
+  it('should display formatted savings amount', () => {
     render(<SummaryCards {...defaultProps} />);
 
     expect(screen.getByText('500,000')).toBeInTheDocument();
-    expect(screen.getByText('3건의 자산 형성')).toBeInTheDocument();
+    expect(screen.getByText('3건의 저축')).toBeInTheDocument();
   });
 
   it('should display positive balance difference', () => {
@@ -82,11 +82,11 @@ describe('SummaryCards', () => {
     expect(handleExpenseClick).toHaveBeenCalledTimes(1);
   });
 
-  it('should call onSavingsClick when asset formation card is clicked', () => {
+  it('should call onSavingsClick when savings card is clicked', () => {
     const handleSavingsClick = jest.fn();
     render(<SummaryCards {...defaultProps} onSavingsClick={handleSavingsClick} />);
 
-    fireEvent.click(screen.getByText('자산 형성').closest('div[class*="bg-bg-card"]')!);
+    fireEvent.click(screen.getByText('월 저축').closest('div[class*="bg-bg-card"]')!);
 
     expect(handleSavingsClick).toHaveBeenCalledTimes(1);
   });
@@ -116,6 +116,6 @@ describe('SummaryCards', () => {
 
     expect(screen.getByText('0건의 수입')).toBeInTheDocument();
     expect(screen.getByText('0건의 지출')).toBeInTheDocument();
-    expect(screen.getByText('0건의 자산 형성')).toBeInTheDocument();
+    expect(screen.getByText('0건의 저축')).toBeInTheDocument();
   });
 });

@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { TransactionType } from '@prisma/client';
-import { CATEGORY_GROUP, type CategoryGroup } from '@/lib/cash-flow';
 import {
   listResponse,
   successResponseWithMessage,
@@ -38,9 +37,6 @@ export const GET = apiHandler('fetch categories', async (request: NextRequest) =
 export const POST = apiHandler('create category', async (request: NextRequest) => {
   const body = await request.json();
   const { userId, name, type, color, icon, defaultBudget } = body;
-  const categoryGroup: CategoryGroup = body.categoryGroup === CATEGORY_GROUP.ASSET_FORMATION
-    ? CATEGORY_GROUP.ASSET_FORMATION
-    : CATEGORY_GROUP.SPENDING;
 
   // 유효성 검사
   const userIdError = validateUserId(userId);
@@ -62,12 +58,12 @@ export const POST = apiHandler('create category', async (request: NextRequest) =
   // 소프트 삭제된 카테고리가 있으면 복구
   const softDeletedCategory = await findSoftDeletedCategory(userId, name, type);
   if (softDeletedCategory) {
-    const restoredCategory = await restoreCategory(softDeletedCategory.id, { color, icon, defaultBudget, categoryGroup, type });
+    const restoredCategory = await restoreCategory(softDeletedCategory.id, { color, icon, defaultBudget });
     return successResponseWithMessage(restoredCategory, 'Category restored successfully', 201);
   }
 
   // 카테고리 생성
-  const category = await createCategory({ userId, name, type, color, icon, defaultBudget, categoryGroup });
+  const category = await createCategory({ userId, name, type, color, icon, defaultBudget });
 
   return successResponseWithMessage(category, 'Category created successfully', 201);
 });

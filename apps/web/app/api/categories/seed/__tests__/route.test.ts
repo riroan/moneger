@@ -32,13 +32,12 @@ describe('POST /api/categories/seed', () => {
       { id: '6', name: '주거비', type: 'EXPENSE', icon: '🏠', color: '#6366F1' },
       { id: '7', name: '통신비', type: 'EXPENSE', icon: '📱', color: '#3B82F6' },
       { id: '8', name: '대출이자', type: 'EXPENSE', icon: '💳', color: '#DC2626' },
-      { id: '9', name: '저축 납입', type: 'EXPENSE', icon: 'savings', color: '#FBBF24' },
-      { id: '10', name: '투자 납입', type: 'EXPENSE', icon: 'chart', color: '#8B5CF6' },
-      { id: '11', name: '기타지출', type: 'EXPENSE', icon: 'etc', color: '#64748B' },
-      { id: '12', name: '급여', type: 'INCOME', icon: 'money', color: '#10B981' },
-      { id: '13', name: '부수입', type: 'INCOME', icon: 'wallet', color: '#059669' },
-      { id: '14', name: '용돈', type: 'INCOME', icon: 'gift', color: '#34D399' },
-      { id: '15', name: '기타수입', type: 'INCOME', icon: 'etc', color: '#6EE7B7' },
+      { id: '9', name: '저축', type: 'EXPENSE', icon: '🏦', color: '#FBBF24' },
+      { id: '10', name: '기타지출', type: 'EXPENSE', icon: '💸', color: '#64748B' },
+      { id: '11', name: '급여', type: 'INCOME', icon: '💰', color: '#10B981' },
+      { id: '12', name: '부수입', type: 'INCOME', icon: '💵', color: '#059669' },
+      { id: '13', name: '용돈', type: 'INCOME', icon: '🎁', color: '#34D399' },
+      { id: '14', name: '기타수입', type: 'INCOME', icon: '💎', color: '#6EE7B7' },
     ];
     (prisma.category.create as jest.Mock).mockImplementation(() => {
       return Promise.resolve(mockCategories[callCount++]);
@@ -55,7 +54,7 @@ describe('POST /api/categories/seed', () => {
     expect(response.status).toBe(201);
     expect(data.success).toBe(true);
     expect(data.message).toBe('Default categories created successfully');
-    expect(data.count).toBe(15); // 11 expense + 4 income
+    expect(data.count).toBe(14); // 10 expense + 4 income
   });
 
   it('userId가 없으면 400 에러를 반환해야 함', async () => {

@@ -7,7 +7,6 @@ jest.mock('@/lib/prisma', () => ({
     transaction: {
       aggregate: jest.fn(),
       groupBy: jest.fn(),
-      count: jest.fn(),
     },
     category: {
       findMany: jest.fn(),
@@ -29,14 +28,12 @@ jest.mock('@/lib/prisma-selects', () => ({
     icon: true,
     color: true,
     defaultBudget: true,
-    categoryGroup: true,
   },
 }));
 
 describe('summary.service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (prisma.transaction.count as jest.Mock).mockResolvedValue(0);
   });
 
   describe('getTransactionSummary', () => {
@@ -44,19 +41,17 @@ describe('summary.service', () => {
     const year = 2024;
     const month = 1;
 
-    // fetchMonthlyAggregations runs parallel queries:
+    // fetchMonthlyAggregations runs 10 parallel queries:
     // 1. aggregate: incomeAgg
     // 2. aggregate: expenseAgg
     // 3. groupBy: categoryStats (by categoryId)
-    // 4. count: income/expense transactionCounts
+    // 4. groupBy: transactionCounts (by type, excluding savings from EXPENSE)
     // 5. savingsGoal.findMany: activeSavingsData
     // 6. aggregate: monthlySavingsAgg
-    // 7. aggregate: monthlyInvestmentAgg
-    // 8. aggregate: previousIncomeAgg
-    // 9. aggregate: previousExpenseAgg
-    // 10. aggregate: previousSavingsAgg
-    // 11. aggregate: previousInvestmentAgg
-    // 12. groupBy: prevCategoryStats (이전 달 카테고리별 지출)
+    // 7. aggregate: previousIncomeAgg
+    // 8. aggregate: previousExpenseAgg
+    // 9. aggregate: previousSavingsAgg
+    // 10. groupBy: prevCategoryStats (이전 달 카테고리별 지출)
     //
     // Then buildCategoryStats runs 2 parallel queries:
     // 1. category.findMany
@@ -65,26 +60,24 @@ describe('summary.service', () => {
     // Then another budget.findMany (for overall budget)
 
     const setupDefaultMocks = () => {
-      // aggregate calls: income, expense, monthlySavings, monthlyInvestment, previousIncome, previousExpense, previousSavings, previousInvestment
+      // aggregate calls: income, expense, monthlySavings, previousIncome, previousExpense, previousSavings
       (prisma.transaction.aggregate as jest.Mock)
         .mockResolvedValueOnce({ _sum: { amount: 3000000 } }) // incomeAgg
         .mockResolvedValueOnce({ _sum: { amount: 1500000 } }) // expenseAgg
         .mockResolvedValueOnce({ _sum: { amount: 100000 }, _count: 2 }) // monthlySavingsAgg
-        .mockResolvedValueOnce({ _sum: { amount: 250000 }, _count: 1 }) // monthlyInvestmentAgg
         .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousIncomeAgg
         .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousExpenseAgg
-        .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousSavingsAgg
-        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // previousInvestmentAgg
+        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // previousSavingsAgg
 
-      (prisma.transaction.count as jest.Mock)
-        .mockResolvedValueOnce(2)
-        .mockResolvedValueOnce(23);
-
-      // groupBy calls: categoryStats, prevCategoryStats
+      // groupBy calls: categoryStats, transactionCounts, prevCategoryStats
       (prisma.transaction.groupBy as jest.Mock)
         .mockResolvedValueOnce([ // categoryStats
           { categoryId: 'cat-1', _sum: { amount: 500000 }, _count: 15 },
           { categoryId: 'cat-2', _sum: { amount: 300000 }, _count: 8 },
+        ])
+        .mockResolvedValueOnce([ // transactionCounts
+          { type: 'INCOME', _count: 2 },
+          { type: 'EXPENSE', _count: 23 },
         ])
         .mockResolvedValueOnce([ // prevCategoryStats
           { categoryId: 'cat-1', _sum: { amount: 400000 } },
@@ -129,10 +122,8 @@ describe('summary.service', () => {
       expect(result.summary.totalIncome).toBe(3000000);
       expect(result.summary.totalExpense).toBe(1500000);
       expect(result.summary.totalSavings).toBe(100000);
-      expect(result.summary.totalInvestment).toBe(250000);
-      expect(result.summary.totalAssetFormation).toBe(350000);
-      expect(result.summary.netAmount).toBe(1150000); // 3000000 - 1500000 - 350000
-      expect(result.summary.balance).toBe(1150000); // carryOver(0) + 3000000 - 1500000 - 350000
+      expect(result.summary.netAmount).toBe(1500000); // 3000000 - 1500000
+      expect(result.summary.balance).toBe(1400000); // carryOver(0) + 3000000 - 1500000 - 100000
     });
 
     it('예산 정보를 포함해야 함', async () => {
@@ -212,18 +203,6 @@ describe('summary.service', () => {
       });
     });
 
-    it('자산 형성 정보에 저축과 투자 납입을 함께 포함해야 함', async () => {
-      setupDefaultMocks();
-      const result = await getTransactionSummary(userId, year, month);
-
-      expect(result.assetFormation).toEqual({
-        totalAmount: 350000,
-        savingsAmount: 100000,
-        investmentAmount: 250000,
-        count: 3,
-      });
-    });
-
     it('일반 지출/카테고리/예산 집계에서 저축 거래를 제외해야 함', async () => {
       setupDefaultMocks();
 
@@ -232,8 +211,7 @@ describe('summary.service', () => {
       expect(result.summary.totalExpense).toBe(1500000);
       expect(result.summary.totalSavings).toBe(100000);
       expect(result.budget.used).toBe(1500000);
-      expect(result.summary.totalInvestment).toBe(250000);
-      expect(result.summary.balance).toBe(1150000);
+      expect(result.summary.balance).toBe(1400000);
 
       const aggregateCalls = (prisma.transaction.aggregate as jest.Mock).mock.calls;
       expect(aggregateCalls[1][0]).toEqual(
@@ -251,15 +229,6 @@ describe('summary.service', () => {
           }),
         })
       );
-      expect(aggregateCalls[3][0]).toEqual(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            type: 'EXPENSE',
-            savingsGoalId: null,
-            category: { categoryGroup: 'ASSET_FORMATION' },
-          }),
-        })
-      );
 
       const groupByCalls = (prisma.transaction.groupBy as jest.Mock).mock.calls;
       expect(groupByCalls[0][0]).toEqual(
@@ -271,6 +240,16 @@ describe('summary.service', () => {
           }),
         })
       );
+      expect(groupByCalls[1][0]).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { type: 'INCOME' },
+              { type: 'EXPENSE', savingsGoalId: null },
+            ],
+          }),
+        })
+      );
     });
 
     it('저축 목표가 없으면 primaryGoal이 null이어야 함', async () => {
@@ -279,14 +258,13 @@ describe('summary.service', () => {
         .mockResolvedValueOnce({ _sum: { amount: 3000000 } }) // income
         .mockResolvedValueOnce({ _sum: { amount: 1500000 } }) // expense
         .mockResolvedValueOnce({ _sum: { amount: null }, _count: 0 }) // monthlySavings
-        .mockResolvedValueOnce({ _sum: { amount: null }, _count: 0 }) // monthlyInvestment
         .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousIncome
         .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousExpense
-        .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousSavings
-        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // previousInvestment
+        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // previousSavings
 
       (prisma.transaction.groupBy as jest.Mock)
         .mockResolvedValueOnce([]) // categoryStats
+        .mockResolvedValueOnce([]) // transactionCounts
         .mockResolvedValueOnce([]); // prevCategoryStats
 
       (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
@@ -307,14 +285,13 @@ describe('summary.service', () => {
         .mockResolvedValueOnce({ _sum: { amount: null } }) // income
         .mockResolvedValueOnce({ _sum: { amount: null } }) // expense
         .mockResolvedValueOnce({ _sum: { amount: null }, _count: 0 }) // monthlySavings
-        .mockResolvedValueOnce({ _sum: { amount: null }, _count: 0 }) // monthlyInvestment
         .mockResolvedValueOnce({ _sum: { amount: null } }) // previousIncome
         .mockResolvedValueOnce({ _sum: { amount: null } }) // previousExpense
-        .mockResolvedValueOnce({ _sum: { amount: null } }) // previousSavings
-        .mockResolvedValueOnce({ _sum: { amount: null } }); // previousInvestment
+        .mockResolvedValueOnce({ _sum: { amount: null } }); // previousSavings
 
       (prisma.transaction.groupBy as jest.Mock)
         .mockResolvedValueOnce([]) // categoryStats
+        .mockResolvedValueOnce([]) // transactionCounts
         .mockResolvedValueOnce([]); // prevCategoryStats
 
       (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
@@ -336,16 +313,18 @@ describe('summary.service', () => {
         .mockResolvedValueOnce({ _sum: { amount: 3000000 } }) // income
         .mockResolvedValueOnce({ _sum: { amount: 1500000 } }) // expense
         .mockResolvedValueOnce({ _sum: { amount: 100000 }, _count: 2 }) // monthlySavings
-        .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: 0 }) // monthlyInvestment
         .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousIncome
         .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousExpense
-        .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousSavings
-        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // previousInvestment
+        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // previousSavings
 
       (prisma.transaction.groupBy as jest.Mock)
         .mockResolvedValueOnce([ // categoryStats
           { categoryId: 'cat-1', _sum: { amount: 500000 }, _count: 15 },
           { categoryId: 'cat-2', _sum: { amount: 300000 }, _count: 8 },
+        ])
+        .mockResolvedValueOnce([ // transactionCounts
+          { type: 'INCOME', _count: 2 },
+          { type: 'EXPENSE', _count: 23 },
         ])
         .mockResolvedValueOnce([]); // prevCategoryStats
 

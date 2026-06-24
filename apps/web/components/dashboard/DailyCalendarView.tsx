@@ -224,7 +224,7 @@ function DailyCalendarView({
                   {isMobile ? (
                     <div className="flex justify-center items-center gap-1 mt-1">
                       {hasIncome && hasExpense && hasSavings ? (
-                        /* 수입, 지출, 자산 형성 모두 있을 때 */
+                        /* 수입, 지출, 저축 모두 있을 때: 금색 점 */
                         <div
                           style={{
                             width: '12px',
@@ -289,7 +289,7 @@ function DailyCalendarView({
               <span className="text-emerald-600">+{formatNumber(selectedDayData.income)}</span>
               <span className="text-red-600">-{formatNumber(selectedDayData.expense)}</span>
               {(selectedDayData.savings || 0) > 0 && (
-                <span className="text-cyan-600">자산 형성 ₩{formatNumber(selectedDayData.savings)}</span>
+                <span className="text-cyan-600">₩{formatNumber(selectedDayData.savings)}</span>
               )}
             </div>
           )}

@@ -41,7 +41,6 @@ model Category {
   color         String?
   icon          String?
   defaultBudget Float?
-  categoryGroup CategoryGroup   @default(SPENDING)
   userId        String
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime        @default(now())
@@ -230,11 +229,6 @@ model AssetSnapshot {
 enum TransactionType {
   INCOME
   EXPENSE
-}
-
-enum CategoryGroup {
-  SPENDING
-  ASSET_FORMATION
 }
 
 enum Broker {

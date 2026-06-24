@@ -32,8 +32,7 @@ describe('analytics.service', () => {
       (prisma.transaction.aggregate as jest.Mock)
         .mockResolvedValueOnce({ _sum: { amount: 1000000 } }) // income
         .mockResolvedValueOnce({ _sum: { amount: 300000 } }) // expense excluding savings
-        .mockResolvedValueOnce({ _sum: { amount: 200000 } }) // savings
-        .mockResolvedValueOnce({ _sum: { amount: 100000 } }); // investment deposit
+        .mockResolvedValueOnce({ _sum: { amount: 200000 } }); // savings
 
       (prisma.transaction.groupBy as jest.Mock).mockResolvedValueOnce([
         { categoryId: 'cat-food', _sum: { amount: 300000 } },
@@ -61,9 +60,7 @@ describe('analytics.service', () => {
           income: 1000000,
           expense: 300000,
           savingsDeposit: 200000,
-          investmentDeposit: 100000,
-          assetFormation: 300000,
-          net: 400000,
+          net: 500000,
         },
       ]);
       expect(result.averages.expense).toBe(300000);
@@ -84,15 +81,6 @@ describe('analytics.service', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             savingsGoalId: { not: null },
-          }),
-        })
-      );
-      expect(aggregateCalls[3][0]).toEqual(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            type: 'EXPENSE',
-            savingsGoalId: null,
-            category: { categoryGroup: 'ASSET_FORMATION' },
           }),
         })
       );

@@ -10,8 +10,6 @@ import {
   toKST,
   getKSTDayRangeUTC,
 } from '@/lib/date-utils';
-import { isAssetFormationCategory } from '@/lib/cash-flow';
-import { assetFormationCategoryWhere, spendingExpenseWhere } from './cash-flow-filters';
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -39,7 +37,7 @@ async function computeAndUpsertDailyBalance(
     kstDate.getUTCDate() - 1
   ));
 
-  const [previousBalance, dayIncomeAgg, dayExpenseAgg, daySavingsAgg, dayInvestmentAgg] = await Promise.all([
+  const [previousBalance, dayIncomeAgg, dayExpenseAgg, daySavingsAgg] = await Promise.all([
     client.dailyBalance.findUnique({
       where: { userId_date: { userId, date: previousDateForDB } },
       select: { balance: true },
@@ -49,15 +47,11 @@ async function computeAndUpsertDailyBalance(
       _sum: { amount: true },
     }),
     client.transaction.aggregate({
-      where: spendingExpenseWhere({ userId, date: { gte: startOfDay, lte: endOfDay }, deletedAt: null }),
+      where: { userId, date: { gte: startOfDay, lte: endOfDay }, type: 'EXPENSE', deletedAt: null, savingsGoalId: null },
       _sum: { amount: true },
     }),
     client.transaction.aggregate({
       where: { userId, date: { gte: startOfDay, lte: endOfDay }, deletedAt: null, savingsGoalId: { not: null } },
-      _sum: { amount: true },
-    }),
-    client.transaction.aggregate({
-      where: assetFormationCategoryWhere({ userId, date: { gte: startOfDay, lte: endOfDay }, deletedAt: null }),
       _sum: { amount: true },
     }),
   ]);
@@ -65,7 +59,7 @@ async function computeAndUpsertDailyBalance(
   const prevBalance = previousBalance?.balance || 0;
   const income = dayIncomeAgg._sum.amount || 0;
   const expense = dayExpenseAgg._sum.amount || 0;
-  const savings = (daySavingsAgg._sum.amount || 0) + (dayInvestmentAgg._sum.amount || 0);
+  const savings = daySavingsAgg._sum.amount || 0;
   const balance = prevBalance + income - expense - savings;
 
   await client.dailyBalance.upsert({
@@ -165,46 +159,27 @@ function mapGroupedToDaily(
 
 /**
  * 거래 데이터로부터 특정 월의 일별 잔액 계산
- * savings 필드는 저축 목표 입금 + 투자 납입을 포함한 자산 형성 현금흐름이다.
+ * 최적화: 6개 쿼리 → 4개 쿼리 (이전 잔액 type별 groupBy 1개 + 이전 저축 1개 + 당월 date+type별 groupBy 1개 + 당월 저축 1개)
  */
 async function calculateMonthlyDailyBalancesFromTransactions(userId: string, year: number, month: number) {
   const { startDate, endDate } = getMonthRangeKST(year, month);
   const daysInMonth = getDaysInMonth(year, month);
 
-  const [
-    previousIncomeAgg,
-    previousExpenseAgg,
-    previousSavingsAgg,
-    previousInvestmentAgg,
-    incomeGrouped,
-    expenseGrouped,
-    savingsGrouped,
-    investmentGrouped,
-  ] = await Promise.all([
-    prisma.transaction.aggregate({
-      where: { userId, date: { lt: startDate }, type: 'INCOME', deletedAt: null },
-      _sum: { amount: true },
-    }),
-    prisma.transaction.aggregate({
-      where: spendingExpenseWhere({ userId, date: { lt: startDate }, deletedAt: null }),
+  const [previousByType, previousSavingsAgg, currentByDateType, savingsGrouped] = await Promise.all([
+    // 이전 달까지 type별 합계 (2개 aggregate → 1개 groupBy)
+    prisma.transaction.groupBy({
+      by: ['type'],
+      where: { userId, date: { lt: startDate }, savingsGoalId: null, deletedAt: null },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
       where: { userId, date: { lt: startDate }, savingsGoalId: { not: null }, deletedAt: null },
       _sum: { amount: true },
     }),
-    prisma.transaction.aggregate({
-      where: assetFormationCategoryWhere({ userId, date: { lt: startDate }, deletedAt: null }),
-      _sum: { amount: true },
-    }),
+    // 당월 date+type별 합계 (2개 groupBy → 1개 groupBy)
     prisma.transaction.groupBy({
-      by: ['date'],
-      where: { userId, date: { gte: startDate, lte: endDate }, type: 'INCOME', deletedAt: null },
-      _sum: { amount: true },
-    }),
-    prisma.transaction.groupBy({
-      by: ['date'],
-      where: spendingExpenseWhere({ userId, date: { gte: startDate, lte: endDate }, deletedAt: null }),
+      by: ['date', 'type'],
+      where: { userId, date: { gte: startDate, lte: endDate }, deletedAt: null, savingsGoalId: null },
       _sum: { amount: true },
     }),
     prisma.transaction.groupBy({
@@ -212,18 +187,12 @@ async function calculateMonthlyDailyBalancesFromTransactions(userId: string, yea
       where: { userId, date: { gte: startDate, lte: endDate }, deletedAt: null, savingsGoalId: { not: null } },
       _sum: { amount: true },
     }),
-    prisma.transaction.groupBy({
-      by: ['date'],
-      where: assetFormationCategoryWhere({ userId, date: { gte: startDate, lte: endDate }, deletedAt: null }),
-      _sum: { amount: true },
-    }),
   ]);
 
-  const prevIncome = previousIncomeAgg._sum.amount || 0;
-  const prevExpense = previousExpenseAgg._sum.amount || 0;
+  const prevIncome = previousByType.find(g => g.type === 'INCOME')?._sum.amount || 0;
+  const prevExpense = previousByType.find(g => g.type === 'EXPENSE')?._sum.amount || 0;
   const prevSavings = previousSavingsAgg._sum.amount || 0;
-  const prevInvestment = previousInvestmentAgg._sum.amount || 0;
-  const initialBalance = prevIncome - prevExpense - prevSavings - prevInvestment;
+  const initialBalance = prevIncome - prevExpense - prevSavings;
 
   // 일별 데이터 초기화
   const dailyData: { [day: number]: { income: number; expense: number; savings: number } } = {};
@@ -231,11 +200,19 @@ async function calculateMonthlyDailyBalancesFromTransactions(userId: string, yea
     dailyData[day] = { income: 0, expense: 0, savings: 0 };
   }
 
-  // 당월 수입/소비 지출/자산 형성 매핑
-  mapGroupedToDaily(incomeGrouped, dailyData, 'income');
-  mapGroupedToDaily(expenseGrouped, dailyData, 'expense');
+  // 당월 수입/지출 매핑
+  currentByDateType.forEach((item) => {
+    const day = getKSTDay(new Date(item.date));
+    if (!dailyData[day]) return;
+    if (item.type === 'INCOME') {
+      dailyData[day].income += item._sum.amount || 0;
+    } else {
+      dailyData[day].expense += item._sum.amount || 0;
+    }
+  });
+
+  // 당월 저축 매핑
   mapGroupedToDaily(savingsGrouped, dailyData, 'savings');
-  mapGroupedToDaily(investmentGrouped, dailyData, 'savings');
 
   // 누적 잔액 계산
   const result: { date: Date; income: number; expense: number; savings: number; balance: number }[] = [];
@@ -272,7 +249,6 @@ export async function calculateDailyBalancesFromTransactions(userId: string, day
   const [transactions, previousDailyBalance] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId, date: { gte: startDate, lte: endDate }, deletedAt: null },
-      include: { category: { select: { categoryGroup: true } } },
       orderBy: { date: 'asc' },
     }),
     prisma.dailyBalance.findUnique({
@@ -297,7 +273,7 @@ export async function calculateDailyBalancesFromTransactions(userId: string, day
     const kstDate = new Date(new Date(transaction.date).getTime() + KST_OFFSET_MS);
     const dateKey = `${kstDate.getUTCFullYear()}-${String(kstDate.getUTCMonth() + 1).padStart(2, '0')}-${String(kstDate.getUTCDate()).padStart(2, '0')}`;
     if (dailyData[dateKey]) {
-      if (transaction.savingsGoalId || isAssetFormationCategory(transaction.category)) {
+      if (transaction.savingsGoalId) {
         dailyData[dateKey].savings += transaction.amount;
       } else if (transaction.type === 'INCOME') {
         dailyData[dateKey].income += transaction.amount;

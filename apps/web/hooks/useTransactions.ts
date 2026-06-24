@@ -17,7 +17,7 @@ interface AmountRange {
 
 interface UseTransactionsProps {
   userId: string | null;
-  filterType: 'ALL' | 'INCOME' | 'EXPENSE' | 'ASSET_FORMATION';
+  filterType: 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
   filterCategories: string[];
   searchKeyword: string;
   sortOrder: 'recent' | 'oldest' | 'expensive' | 'cheapest';
@@ -61,8 +61,8 @@ export function useTransactions({
         params.append('cursor', cursor);
       }
 
-      if (filterType === 'ASSET_FORMATION') {
-        params.append('assetFormationOnly', 'true');
+      if (filterType === 'SAVINGS') {
+        params.append('savingsOnly', 'true');
       } else if (filterType !== 'ALL') {
         params.append('type', filterType);
       }

@@ -23,7 +23,6 @@ import {
   MdPets,
   MdStar,
   MdInventory,
-  MdShowChart,
 } from 'react-icons/md';
 import { IconType } from 'react-icons';
 
@@ -53,7 +52,6 @@ export const ICON_MAP: Record<string, IconType> = {
   music: MdMusicNote,
   fitness: MdFitnessCenter,
   pet: MdPets,
-  chart: MdShowChart,
 };
 
 // 아이콘 ID 목록 (DB에 저장되는 값)

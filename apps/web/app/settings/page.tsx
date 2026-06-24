@@ -9,7 +9,6 @@ import { useToast } from '@/contexts/ToastContext';
 import { useOutsideClick, useBodyScrollLock } from '@/hooks';
 import type { Category, Budget } from '@/types';
 import { MdDarkMode, MdLightMode, MdDashboard, MdLogout, MdPerson, MdCategory, MdAccountBalanceWallet } from 'react-icons/md';
-import { CATEGORY_GROUP } from '@/lib/cash-flow';
 import Footer from '@/components/layout/Footer';
 import { AccountTab, CategoryTab, BudgetTab } from '@/components/settings';
 import type { CategoryFormData } from '@/components/settings';
@@ -37,7 +36,6 @@ export default function SettingsPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryModalMode, setCategoryModalMode] = useState<'add' | 'edit'>('add');
   const [categoryModalType, setCategoryModalType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
-  const [categoryModalGroup, setCategoryModalGroup] = useState<Category['categoryGroup']>(CATEGORY_GROUP.SPENDING);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isDeleteCategoryConfirmOpen, setIsDeleteCategoryConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -148,10 +146,9 @@ export default function SettingsPage() {
   };
 
   // 카테고리 모달 열기
-  const handleOpenAddCategoryModal = (type: 'INCOME' | 'EXPENSE', categoryGroup: Category['categoryGroup'] = CATEGORY_GROUP.SPENDING) => {
+  const handleOpenAddCategoryModal = (type: 'INCOME' | 'EXPENSE') => {
     setCategoryModalMode('add');
     setCategoryModalType(type);
-    setCategoryModalGroup(type === 'EXPENSE' ? categoryGroup : CATEGORY_GROUP.SPENDING);
     setEditingCategory(null);
     setIsCategoryModalOpen(true);
   };
@@ -170,22 +167,14 @@ export default function SettingsPage() {
     const defaultBudgetAmount = data.type === 'EXPENSE' && data.defaultBudget
       ? parseInt(data.defaultBudget, 10)
       : null;
-    const isAssetFormationCategory = data.type === 'EXPENSE' && data.categoryGroup === CATEGORY_GROUP.ASSET_FORMATION;
 
     let categoryId: string | null = null;
 
     if (categoryModalMode === 'add') {
       // 카테고리 개수 제한 (최대 20개)
-      const currentSectionCategories = categories.filter(c =>
-        c.type === data.type && (data.type === 'INCOME' || c.categoryGroup === data.categoryGroup)
-      );
-      if (currentSectionCategories.length >= 20) {
-        const categoryLabel = data.type === 'INCOME'
-          ? '수입'
-          : data.categoryGroup === CATEGORY_GROUP.ASSET_FORMATION
-            ? '자산 형성'
-            : '소비 지출';
-        throw new Error(`${categoryLabel} 카테고리는 최대 20개까지만 추가할 수 있습니다`);
+      const currentTypeCategories = categories.filter(c => c.type === data.type);
+      if (currentTypeCategories.length >= 20) {
+        throw new Error(`${data.type === 'INCOME' ? '수입' : '지출'} 카테고리는 최대 20개까지만 추가할 수 있습니다`);
       }
 
       const response = await fetch('/api/categories', {
@@ -197,8 +186,7 @@ export default function SettingsPage() {
           type: data.type,
           icon: data.icon,
           color: data.color,
-          defaultBudget: isAssetFormationCategory ? null : defaultBudgetAmount,
-          categoryGroup: data.categoryGroup,
+          defaultBudget: defaultBudgetAmount,
         }),
       });
 
@@ -216,8 +204,7 @@ export default function SettingsPage() {
           name: data.name,
           icon: data.icon,
           color: data.color,
-          defaultBudget: isAssetFormationCategory ? null : defaultBudgetAmount,
-          categoryGroup: data.categoryGroup,
+          defaultBudget: defaultBudgetAmount,
         }),
       });
 
@@ -229,7 +216,7 @@ export default function SettingsPage() {
     }
 
     // 기본 예산이 설정되어 있으면 이번 달 예산도 자동 설정
-    if (categoryId && defaultBudgetAmount !== null && !isAssetFormationCategory) {
+    if (categoryId && defaultBudgetAmount !== null) {
       const now = new Date();
       await fetch('/api/budgets', {
         method: 'POST',
@@ -552,7 +539,6 @@ export default function SettingsPage() {
         mode={categoryModalMode}
         initialCategory={editingCategory}
         initialType={categoryModalType}
-        initialCategoryGroup={categoryModalGroup}
         onClose={() => {
           setIsCategoryModalOpen(false);
           setEditingCategory(null);

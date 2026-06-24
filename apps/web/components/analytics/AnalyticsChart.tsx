@@ -84,19 +84,19 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
   const isMobile = useAppStore((state) => state.isMobile);
   const { months, averages, monthlyTarget, categoryTrends, dowPattern } = data;
 
-  // --- 차트 1: 수입/지출/자산 형성/남은 현금 ---
+  // --- 차트 1: 수입/지출/저축/순저축 ---
   const barData = months.map((m) => ({
     label: monthLabel(m.year, m.month),
     수입: m.income,
     지출: m.expense,
-    '자산 형성': m.assetFormation ?? m.savingsDeposit,
-    '남은 현금': m.net,
+    저축: m.savingsDeposit,
+    순저축: m.net,
   }));
 
-  // --- 차트 2: 자산 형성률 트렌드 ---
+  // --- 차트 2: 저축률 트렌드 ---
   const rateData = months.map((m) => ({
     label: monthLabel(m.year, m.month),
-    '자산 형성액': m.assetFormation ?? m.savingsDeposit,
+    저축액: m.savingsDeposit,
   }));
 
   // 요약 카드
@@ -109,10 +109,10 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
   const recentN = months.slice(-selectedMonths);
   const savingsTrend =
     recentN.length >= 2
-      ? (recentN[recentN.length - 1].assetFormation ?? recentN[recentN.length - 1].savingsDeposit) >= (recentN[0].assetFormation ?? recentN[0].savingsDeposit) ? '상승' : '하락'
+      ? recentN[recentN.length - 1].savingsDeposit >= recentN[0].savingsDeposit ? '상승' : '하락'
       : '-';
   const avgSavingsRate =
-    months.filter((m) => m.income > 0).reduce((sum, m) => sum + ((m.assetFormation ?? m.savingsDeposit) / m.income) * 100, 0) /
+    months.filter((m) => m.income > 0).reduce((sum, m) => sum + m.savingsDeposit / m.income * 100, 0) /
     (months.filter((m) => m.income > 0).length || 1);
   const totalNet = months.reduce((sum, m) => sum + m.net, 0);
 
@@ -142,7 +142,7 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
         </div>
 
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
-          <div className="text-xs text-text-muted mb-1">평균 자산 형성률</div>
+          <div className="text-xs text-text-muted mb-1">평균 저축률</div>
           <div className="text-base sm:text-lg font-bold text-text-primary whitespace-nowrap overflow-hidden">{Math.round(avgSavingsRate)}%</div>
           <div className="text-xs mt-1">
             {savingsTrend === '상승' ? (
@@ -156,7 +156,7 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
         </div>
 
         <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
-          <div className="text-xs text-text-muted mb-1">{selectedMonths}개월 누적 남은 현금</div>
+          <div className="text-xs text-text-muted mb-1">{selectedMonths}개월 누적 순저축</div>
           <div className={`text-base sm:text-lg font-bold whitespace-nowrap overflow-hidden ${totalNet >= 0 ? 'text-accent-mint' : 'text-accent-coral'}`}>
             {totalNet >= 0 ? '+' : ''}₩{formatNumber(Math.abs(totalNet))}
           </div>
@@ -166,11 +166,11 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
         </div>
       </div>
 
-      {/* ① 수입 / 지출 / 자산 형성 */}
+      {/* ① 수입 / 지출 / 저축 */}
       <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
         <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
           <MdBarChart className="text-accent-blue text-lg sm:text-xl" />
-          월별 수입 / 지출 / 자산 형성
+          월별 수입 / 지출 / 저축
         </h2>
         <ResponsiveContainer width="100%" height={isMobile ? 180 : 240}>
           <ComposedChart data={barData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -184,15 +184,15 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
             />
             <Bar dataKey="수입"   fill={COLOR_MINT}   radius={[4,4,0,0]} maxBarSize={28} />
             <Bar dataKey="지출"   fill={COLOR_CORAL}  radius={[4,4,0,0]} maxBarSize={28} />
-            <Bar dataKey="자산 형성"   fill={COLOR_BLUE}   radius={[4,4,0,0]} maxBarSize={28} />
-            <Line type="monotone" dataKey="남은 현금" stroke={COLOR_PURPLE} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: COLOR_PURPLE }} />
+            <Bar dataKey="저축"   fill={COLOR_BLUE}   radius={[4,4,0,0]} maxBarSize={28} />
+            <Line type="monotone" dataKey="순저축" stroke={COLOR_PURPLE} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: COLOR_PURPLE }} />
           </ComposedChart>
         </ResponsiveContainer>
         <ChartLegend items={[
           { label: '수입',   color: COLOR_MINT,   type: 'rect' },
           { label: '지출',   color: COLOR_CORAL,  type: 'rect' },
-          { label: '자산 형성',   color: COLOR_BLUE,   type: 'rect' },
-          { label: '남은 현금', color: COLOR_PURPLE, type: 'line' },
+          { label: '저축',   color: COLOR_BLUE,   type: 'rect' },
+          { label: '순저축', color: COLOR_PURPLE, type: 'line' },
         ]} />
       </div>
 
@@ -229,11 +229,11 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
         ]} />
       </div>
 
-      {/* ③ 자산 형성률 트렌드 */}
+      {/* ③ 저축률 트렌드 */}
       <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
         <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
           <MdSavings className="text-accent-mint text-lg sm:text-xl" />
-          자산 형성률 트렌드
+          저축률 트렌드
         </h2>
         <ResponsiveContainer width="100%" height={isMobile ? 160 : 200}>
           <ComposedChart data={rateData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -248,11 +248,11 @@ export default function AnalyticsChart({ data, months: selectedMonths }: Analyti
             {monthlyTarget != null && (
               <ReferenceLine y={monthlyTarget} stroke={COLOR_YELLOW} strokeDasharray="4 3" strokeWidth={1.5} label={{ value: `목표 ${formatKRW(monthlyTarget)}`, position: 'insideTopRight', fontSize: 11, fill: COLOR_YELLOW }} />
             )}
-            <Line type="monotone" dataKey="자산 형성액" stroke={COLOR_MINT} strokeWidth={2} dot={{ r: 4, fill: COLOR_MINT }} activeDot={{ r: 5 }} />
+            <Line type="monotone" dataKey="저축액" stroke={COLOR_MINT} strokeWidth={2} dot={{ r: 4, fill: COLOR_MINT }} activeDot={{ r: 5 }} />
           </ComposedChart>
         </ResponsiveContainer>
         <ChartLegend items={[
-          { label: '자산 형성액', color: COLOR_MINT, type: 'line' },
+          { label: '저축액', color: COLOR_MINT, type: 'line' },
           ...(monthlyTarget != null ? [{ label: '목표 저축액', color: COLOR_YELLOW, type: 'line' as const }] : []),
         ]} />
       </div>

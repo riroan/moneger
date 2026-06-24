@@ -8,7 +8,6 @@ export interface Category {
   color: string | null;
   icon: string | null;
   defaultBudget: number | null;
-  categoryGroup: 'SPENDING' | 'ASSET_FORMATION';
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -21,7 +20,6 @@ export interface CategoryWithSelect {
   type: TransactionType;
   color: string | null;
   icon: string | null;
-  categoryGroup: 'SPENDING' | 'ASSET_FORMATION';
 }
 
 // Transaction Types
@@ -86,8 +84,6 @@ export interface TransactionSummary {
     totalIncome: number;
     totalExpense: number;
     totalSavings: number;
-    totalAssetFormation: number;
-    totalInvestment: number;
     netAmount: number;
     balance: number;
     carryOverBalance: number;
@@ -111,12 +107,6 @@ export interface TransactionSummary {
       progressPercent: number;
     } | null;
   };
-  assetFormation: {
-    totalAmount: number;
-    savingsAmount: number;
-    investmentAmount: number;
-    count: number;
-  };
 }
 
 export interface TodaySummary {
@@ -137,10 +127,6 @@ export interface TodaySummary {
     total: number;
     count: number;
   };
-  assetFormation: {
-    total: number;
-    count: number;
-  };
 }
 
 // Daily Balance Types
@@ -151,7 +137,6 @@ export interface DailyBalance {
   balance: number;
   income: number;
   expense: number;
-  savings: number;
 }
 
 // API Response Types

@@ -51,16 +51,15 @@ export function useFilterHandlers() {
     [navigateWithFilter]
   );
 
-  const handleAssetFormationClick = useCallback(
-    () => navigateWithFilter('ASSET_FORMATION'),
-    [navigateWithFilter]
-  );
+  const handleSavingsClick = useCallback(() => {
+    router.push('/savings');
+  }, [router]);
 
   return {
     handleCategoryClick,
     handleIncomeClick,
     handleExpenseClick,
     handleBalanceClick,
-    handleAssetFormationClick,
+    handleSavingsClick,
   };
 }

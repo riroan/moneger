@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { CATEGORY_SELECT } from '@/lib/prisma-selects';
 import { getMonthRangeKST, getLastNDaysRange, getDateKey } from '@/lib/date-utils';
-import { spendingExpenseWhere } from './cash-flow-filters';
 
 interface CategoryStat {
   categoryId: string;
@@ -35,7 +34,7 @@ export async function getMonthlyStats(userId: string, year: number, month: numbe
     }),
     // 총 지출
     prisma.transaction.aggregate({
-      where: spendingExpenseWhere({ userId, deletedAt: null, date: { gte: startDate, lte: endDate } }),
+      where: { userId, deletedAt: null, date: { gte: startDate, lte: endDate }, type: 'EXPENSE', savingsGoalId: null },
       _sum: { amount: true },
     }),
     // 수입 건수
@@ -44,17 +43,19 @@ export async function getMonthlyStats(userId: string, year: number, month: numbe
     }),
     // 지출 건수
     prisma.transaction.count({
-      where: spendingExpenseWhere({ userId, deletedAt: null, date: { gte: startDate, lte: endDate } }),
+      where: { userId, deletedAt: null, date: { gte: startDate, lte: endDate }, type: 'EXPENSE', savingsGoalId: null },
     }),
     // 카테고리별 지출 집계
     prisma.transaction.groupBy({
       by: ['categoryId'],
-      where: spendingExpenseWhere({
+      where: {
         userId,
         deletedAt: null,
         date: { gte: startDate, lte: endDate },
+        type: 'EXPENSE',
+        savingsGoalId: null,
         categoryId: { not: null },
-      }),
+      },
       _sum: { amount: true },
       _count: true,
     }),
@@ -133,11 +134,13 @@ async function getLast7DaysExpensesFromDB(userId: string) {
   // DB에서 일별 지출 집계
   const dailyExpenses = await prisma.transaction.groupBy({
     by: ['date'],
-    where: spendingExpenseWhere({
+    where: {
       userId,
       deletedAt: null,
+      type: 'EXPENSE',
+      savingsGoalId: null,
       date: { gte: startDate, lte: endDate },
-    }),
+    },
     _sum: { amount: true },
   });
 

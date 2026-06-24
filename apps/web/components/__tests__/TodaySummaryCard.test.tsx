@@ -11,7 +11,6 @@ describe('TodaySummaryCard', () => {
     expense: { total: 30000, count: 2 },
     income: { total: 100000, count: 1 },
     savings: { total: 50000, count: 1 },
-    assetFormation: { total: 50000, count: 1 },
   };
 
   it('should render loading state', () => {
@@ -50,10 +49,10 @@ describe('TodaySummaryCard', () => {
     expect(screen.getByText('(2건)')).toBeInTheDocument();
   });
 
-  it('should display asset formation data', () => {
+  it('should display savings data', () => {
     render(<TodaySummaryCard data={mockData} isLoading={false} />);
 
-    expect(screen.getByText('자산 형성')).toBeInTheDocument();
+    expect(screen.getByText('저축')).toBeInTheDocument();
     expect(screen.getByText('50,000')).toBeInTheDocument();
   });
 
@@ -96,7 +95,6 @@ describe('TodaySummaryCard', () => {
       expense: { total: 0, count: 0 },
       income: { total: 0, count: 0 },
       savings: { total: 0, count: 0 },
-      assetFormation: { total: 0, count: 0 },
     };
 
     render(<TodaySummaryCard data={emptyData} isLoading={false} />);

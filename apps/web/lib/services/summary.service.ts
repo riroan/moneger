@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { getMonthRangeKST } from '@/lib/date-utils';
 import { CATEGORY_WITH_BUDGET_SELECT } from '@/lib/prisma-selects';
-import { assetFormationCategoryWhere, spendingExpenseWhere } from './cash-flow-filters';
 
 interface CategorySummary {
   id: string;
@@ -32,8 +31,8 @@ async function fetchMonthlyAggregations(
 
   const [
     incomeAgg, expenseAgg, categoryStats, transactionCounts,
-    activeSavingsData, monthlySavingsAgg, monthlyInvestmentAgg,
-    previousIncomeAgg, previousExpenseAgg, previousSavingsAgg, previousInvestmentAgg,
+    activeSavingsData, monthlySavingsAgg,
+    previousIncomeAgg, previousExpenseAgg, previousSavingsAgg,
     prevCategoryStats,
   ] = await Promise.all([
     prisma.transaction.aggregate({
@@ -41,19 +40,26 @@ async function fetchMonthlyAggregations(
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
-      where: spendingExpenseWhere(whereClause),
+      where: { ...whereClause, type: 'EXPENSE', savingsGoalId: null },
       _sum: { amount: true },
     }),
     prisma.transaction.groupBy({
       by: ['categoryId'],
-      where: spendingExpenseWhere({ ...whereClause, categoryId: { not: null } }),
+      where: { ...whereClause, type: 'EXPENSE', savingsGoalId: null, categoryId: { not: null } },
       _sum: { amount: true },
       _count: true,
     }),
-    Promise.all([
-      prisma.transaction.count({ where: { ...whereClause, type: 'INCOME' } }),
-      prisma.transaction.count({ where: spendingExpenseWhere(whereClause) }),
-    ]),
+    prisma.transaction.groupBy({
+      by: ['type'],
+      where: {
+        ...whereClause,
+        OR: [
+          { type: 'INCOME' },
+          { type: 'EXPENSE', savingsGoalId: null },
+        ],
+      },
+      _count: true,
+    }),
     prisma.savingsGoal.findMany({
       where: {
         userId, deletedAt: null,
@@ -74,42 +80,35 @@ async function fetchMonthlyAggregations(
       _count: true,
     }),
     prisma.transaction.aggregate({
-      where: assetFormationCategoryWhere(whereClause),
-      _sum: { amount: true },
-      _count: true,
-    }),
-    prisma.transaction.aggregate({
       where: { userId, date: { lt: startDate }, type: 'INCOME', savingsGoalId: null, deletedAt: null },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
-      where: spendingExpenseWhere({ userId, date: { lt: startDate }, deletedAt: null }),
+      where: { userId, date: { lt: startDate }, type: 'EXPENSE', savingsGoalId: null, deletedAt: null },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
       where: { userId, date: { lt: startDate }, savingsGoalId: { not: null }, deletedAt: null },
       _sum: { amount: true },
     }),
-    prisma.transaction.aggregate({
-      where: assetFormationCategoryWhere({ userId, date: { lt: startDate }, deletedAt: null }),
-      _sum: { amount: true },
-    }),
     prisma.transaction.groupBy({
       by: ['categoryId'],
-      where: spendingExpenseWhere({
+      where: {
         userId,
         deletedAt: null,
+        type: 'EXPENSE',
         categoryId: { not: null },
+        savingsGoalId: null,
         date: { gte: prevMonthStart, lte: prevMonthEnd },
-      }),
+      },
       _sum: { amount: true },
     }),
   ]);
 
   return {
     incomeAgg, expenseAgg, categoryStats, transactionCounts,
-    activeSavingsData, monthlySavingsAgg, monthlyInvestmentAgg,
-    previousIncomeAgg, previousExpenseAgg, previousSavingsAgg, previousInvestmentAgg,
+    activeSavingsData, monthlySavingsAgg,
+    previousIncomeAgg, previousExpenseAgg, previousSavingsAgg,
     prevCategoryStats,
   };
 }
@@ -198,16 +197,12 @@ export async function getTransactionSummary(userId: string, year: number, month:
   const carryOverBalance =
     (agg.previousIncomeAgg._sum.amount || 0) -
     (agg.previousExpenseAgg._sum.amount || 0) -
-    (agg.previousSavingsAgg._sum.amount || 0) -
-    (agg.previousInvestmentAgg?._sum.amount || 0);
+    (agg.previousSavingsAgg._sum.amount || 0);
 
   const totalIncome = agg.incomeAgg._sum.amount || 0;
   const totalExpense = agg.expenseAgg._sum.amount || 0;
   const monthlySavingsAmount = agg.monthlySavingsAgg._sum.amount || 0;
-  const monthlyInvestmentAmount = agg.monthlyInvestmentAgg?._sum.amount || 0;
-  const monthlyAssetFormationAmount = monthlySavingsAmount + monthlyInvestmentAmount;
   const monthlySavingsCount = agg.monthlySavingsAgg._count || 0;
-  const monthlyInvestmentCount = agg.monthlyInvestmentAgg?._count || 0;
 
   // 3. 카테고리 통계 + 예산 조합
   const categoryList = await buildCategoryStats(userId, startDate, agg.categoryStats, agg.prevCategoryStats);
@@ -224,7 +219,8 @@ export async function getTransactionSummary(userId: string, year: number, month:
     : 0;
 
   // 5. 거래 건수
-  const [incomeCount, expenseCount] = agg.transactionCounts;
+  const incomeCount = agg.transactionCounts.find((t) => t.type === 'INCOME')?._count || 0;
+  const expenseCount = agg.transactionCounts.find((t) => t.type === 'EXPENSE')?._count || 0;
 
   // 6. 저축 목표 요약
   const totalSavingsTarget = agg.activeSavingsData.reduce((sum, goal) => sum + goal.targetAmount, 0);
@@ -236,10 +232,8 @@ export async function getTransactionSummary(userId: string, year: number, month:
       totalIncome,
       totalExpense,
       totalSavings: monthlySavingsAmount,
-      totalAssetFormation: monthlyAssetFormationAmount,
-      totalInvestment: monthlyInvestmentAmount,
-      netAmount: totalIncome - totalExpense - monthlyAssetFormationAmount,
-      balance: carryOverBalance + totalIncome - totalExpense - monthlyAssetFormationAmount,
+      netAmount: totalIncome - totalExpense,
+      balance: carryOverBalance + totalIncome - totalExpense - monthlySavingsAmount,
       carryOverBalance,
     },
     budget: {
@@ -271,12 +265,6 @@ export async function getTransactionSummary(userId: string, year: number, month:
               : 0,
           }
         : null,
-    },
-    assetFormation: {
-      totalAmount: monthlyAssetFormationAmount,
-      savingsAmount: monthlySavingsAmount,
-      investmentAmount: monthlyInvestmentAmount,
-      count: monthlySavingsCount + monthlyInvestmentCount,
     },
   };
 }

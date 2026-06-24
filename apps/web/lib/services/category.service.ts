@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma';
-import { TransactionType, CategoryGroup, Prisma } from '@prisma/client';
+import { TransactionType, Prisma } from '@prisma/client';
 import { DEFAULT_CATEGORY } from '@/lib/constants';
-import { CATEGORY_GROUP } from '@/lib/cash-flow';
 
 interface CreateCategoryInput {
   userId: string;
@@ -10,7 +9,6 @@ interface CreateCategoryInput {
   color?: string;
   icon?: string;
   defaultBudget?: number | null;
-  categoryGroup?: CategoryGroup;
 }
 
 interface UpdateCategoryInput {
@@ -19,14 +17,6 @@ interface UpdateCategoryInput {
   color?: string;
   icon?: string;
   defaultBudget?: number | null;
-  categoryGroup?: CategoryGroup;
-}
-
-function normalizeCategoryGroup(type: TransactionType, categoryGroup?: CategoryGroup): CategoryGroup {
-  if (type === 'EXPENSE' && categoryGroup === CATEGORY_GROUP.ASSET_FORMATION) {
-    return CATEGORY_GROUP.ASSET_FORMATION;
-  }
-  return CATEGORY_GROUP.SPENDING;
 }
 
 /**
@@ -82,27 +72,15 @@ export async function findSoftDeletedCategory(
 /**
  * 소프트 삭제된 카테고리 복구
  */
-export async function restoreCategory(
-  id: string,
-  updates?: { color?: string; icon?: string; defaultBudget?: number | null; categoryGroup?: CategoryGroup; type?: TransactionType }
-) {
-  const categoryGroup = normalizeCategoryGroup(updates?.type ?? 'EXPENSE', updates?.categoryGroup);
-  const updateData: Prisma.CategoryUpdateInput = {
-    deletedAt: null,
-    categoryGroup,
-  };
-
-  if (updates?.color) updateData.color = updates.color;
-  if (updates?.icon) updateData.icon = updates.icon;
-  if (categoryGroup === CATEGORY_GROUP.ASSET_FORMATION) {
-    updateData.defaultBudget = null;
-  } else if (updates?.defaultBudget !== undefined) {
-    updateData.defaultBudget = updates.defaultBudget;
-  }
-
+export async function restoreCategory(id: string, updates?: { color?: string; icon?: string; defaultBudget?: number | null }) {
   return prisma.category.update({
     where: { id },
-    data: updateData,
+    data: {
+      deletedAt: null,
+      ...(updates?.color && { color: updates.color }),
+      ...(updates?.icon && { icon: updates.icon }),
+      ...(updates?.defaultBudget !== undefined && { defaultBudget: updates.defaultBudget }),
+    },
   });
 }
 
@@ -110,7 +88,6 @@ export async function restoreCategory(
  * 카테고리 생성
  */
 export async function createCategory(input: CreateCategoryInput) {
-  const categoryGroup = normalizeCategoryGroup(input.type, input.categoryGroup);
   return prisma.category.create({
     data: {
       userId: input.userId,
@@ -118,8 +95,7 @@ export async function createCategory(input: CreateCategoryInput) {
       type: input.type,
       color: input.color || DEFAULT_CATEGORY.color,
       icon: input.icon || DEFAULT_CATEGORY.icon,
-      categoryGroup,
-      defaultBudget: input.type === 'EXPENSE' && categoryGroup === CATEGORY_GROUP.SPENDING ? input.defaultBudget : null,
+      defaultBudget: input.type === 'EXPENSE' ? input.defaultBudget : null,
     },
   });
 }
@@ -134,16 +110,7 @@ export async function updateCategory(id: string, input: UpdateCategoryInput) {
   if (input.type !== undefined) updateData.type = input.type;
   if (input.color !== undefined) updateData.color = input.color;
   if (input.icon !== undefined) updateData.icon = input.icon;
-  if (input.categoryGroup !== undefined) {
-    const categoryGroup = normalizeCategoryGroup(input.type ?? 'EXPENSE', input.categoryGroup);
-    updateData.categoryGroup = categoryGroup;
-    if (categoryGroup === CATEGORY_GROUP.ASSET_FORMATION) {
-      updateData.defaultBudget = null;
-    }
-  }
-  if (input.defaultBudget !== undefined && input.categoryGroup !== CATEGORY_GROUP.ASSET_FORMATION) {
-    updateData.defaultBudget = input.defaultBudget;
-  }
+  if (input.defaultBudget !== undefined) updateData.defaultBudget = input.defaultBudget;
 
   return prisma.category.update({
     where: { id },

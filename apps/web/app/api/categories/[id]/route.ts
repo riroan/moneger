@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { CATEGORY_GROUP, type CategoryGroup } from '@/lib/cash-flow';
 import {
   successResponseWithMessage,
   errorResponse,
@@ -18,11 +17,6 @@ import {
 export const PATCH = apiHandlerWithParams<{ id: string }>('update category', async (request: NextRequest, { id }) => {
   const body = await request.json();
   const { userId, name, type, color, icon, defaultBudget } = body;
-  const categoryGroup: CategoryGroup | undefined = body.categoryGroup === CATEGORY_GROUP.ASSET_FORMATION
-    ? CATEGORY_GROUP.ASSET_FORMATION
-    : body.categoryGroup === CATEGORY_GROUP.SPENDING
-      ? CATEGORY_GROUP.SPENDING
-      : undefined;
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
@@ -50,7 +44,7 @@ export const PATCH = apiHandlerWithParams<{ id: string }>('update category', asy
   }
 
   // 카테고리 업데이트
-  const updatedCategory = await updateCategory(id, { name, type, color, icon, defaultBudget, categoryGroup });
+  const updatedCategory = await updateCategory(id, { name, type, color, icon, defaultBudget });
 
   return successResponseWithMessage(updatedCategory, 'Category updated successfully');
 });

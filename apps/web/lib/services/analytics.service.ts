@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma';
 import { getMonthRangeKST } from '@/lib/date-utils';
-import { assetFormationCategoryWhere, spendingExpenseWhere } from './cash-flow-filters';
 
 export interface MonthlyAnalytics {
   year: number;
@@ -8,8 +7,6 @@ export interface MonthlyAnalytics {
   income: number;
   expense: number;
   savingsDeposit: number;
-  investmentDeposit: number;
-  assetFormation: number;
   net: number;
 }
 
@@ -58,6 +55,8 @@ export async function getAnalytics(userId: string, months: number): Promise<Anal
 
   const expenseWhereBase = {
     userId, deletedAt: null,
+    type: 'EXPENSE' as const,
+    savingsGoalId: null,
   };
 
   // 전체 병렬 조회
@@ -73,24 +72,18 @@ export async function getAnalytics(userId: string, months: number): Promise<Anal
         const { startDate, endDate } = getMonthRangeKST(year, month);
         const whereBase = { userId, deletedAt: null, date: { gte: startDate, lte: endDate } };
 
-        const [incomeAgg, expenseAgg, savingsAgg, investmentAgg] = await Promise.all([
+        const [incomeAgg, expenseAgg, savingsAgg] = await Promise.all([
           prisma.transaction.aggregate({ where: { ...whereBase, type: 'INCOME' }, _sum: { amount: true } }),
-          prisma.transaction.aggregate({ where: spendingExpenseWhere(whereBase), _sum: { amount: true } }),
+          prisma.transaction.aggregate({ where: { ...whereBase, type: 'EXPENSE', savingsGoalId: null }, _sum: { amount: true } }),
           prisma.transaction.aggregate({ where: { ...whereBase, savingsGoalId: { not: null } }, _sum: { amount: true } }),
-          prisma.transaction.aggregate({ where: assetFormationCategoryWhere(whereBase), _sum: { amount: true } }),
         ]);
 
-        const savingsDeposit = savingsAgg._sum.amount ?? 0;
-        const investmentDeposit = investmentAgg._sum.amount ?? 0;
-        const assetFormation = savingsDeposit + investmentDeposit;
         return {
           year, month,
           income: incomeAgg._sum.amount ?? 0,
           expense: expenseAgg._sum.amount ?? 0,
-          savingsDeposit,
-          investmentDeposit,
-          assetFormation,
-          net: (incomeAgg._sum.amount ?? 0) - (expenseAgg._sum.amount ?? 0) - assetFormation,
+          savingsDeposit: savingsAgg._sum.amount ?? 0,
+          net: (incomeAgg._sum.amount ?? 0) - (expenseAgg._sum.amount ?? 0) - (savingsAgg._sum.amount ?? 0),
         };
       })
     ),
@@ -101,7 +94,7 @@ export async function getAnalytics(userId: string, months: number): Promise<Anal
         const { startDate, endDate } = getMonthRangeKST(year, month);
         return prisma.transaction.groupBy({
           by: ['categoryId'],
-          where: spendingExpenseWhere({ ...expenseWhereBase, date: { gte: startDate, lte: endDate }, categoryId: { not: null } }),
+          where: { ...expenseWhereBase, date: { gte: startDate, lte: endDate }, categoryId: { not: null } },
           _sum: { amount: true },
         });
       })
@@ -109,7 +102,7 @@ export async function getAnalytics(userId: string, months: number): Promise<Anal
 
     // 3. 전체 기간 지출 (요일 패턴 + 상위 건 + 고정/변동용)
     prisma.transaction.findMany({
-      where: spendingExpenseWhere({ ...expenseWhereBase, date: { gte: periodStart, lte: periodEnd } }),
+      where: { ...expenseWhereBase, date: { gte: periodStart, lte: periodEnd } },
       select: {
         id: true, amount: true, description: true, date: true,
 
