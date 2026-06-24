@@ -107,7 +107,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       <FAB
         onClick={openTransactionModal}
-        visible={pathname !== '/savings' && pathname !== '/groups' && pathname !== '/assets'}
+        visible={pathname !== '/savings' && pathname !== '/groups'}
       />
 
       <TransactionModal
