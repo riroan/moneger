@@ -30,3 +30,17 @@
 - Recurring reminders: daily 09:00 KST (3-day-ahead check)
 
 **Depends on:** Phase 1 (Insights Engine) — budget alert needs `/api/insights` to be live
+
+---
+
+## 증권 연동: AES 마스터 키 회전 자동화 (P3)
+
+**What:** `BROKERAGE_ENC_KEY` 회전(교체) 시 기존 자격증명 재암호화 경로.
+**Why:** 현재 설계는 단일 마스터 키. 키를 바꾸면 기존 `BrokerageConnection` 자격증명이 전부 복호 불가. 키 유출/주기적 회전 대응이 없음.
+**현재 상태:** PR1a에서 `BrokerageConnection.keyVersion` 컬럼만 미리 둠(기본 1). 회전 로직은 미구현.
+**Implementation (나중):**
+1. env에 `BROKERAGE_ENC_KEY_V2` 추가, 복호화는 `keyVersion`으로 old/new 키 선택.
+2. 마이그레이션 스크립트: 모든 connection을 old 키로 복호 → new 키로 재암호화 → `keyVersion` 증가.
+3. 신규 저장은 항상 최신 키.
+**Depends on:** 증권 연동 PR1a(`BrokerageConnection` + `keyVersion` 컬럼) 선행.
+**Source:** /plan-eng-review 2026-06-24 (codex outside voice).

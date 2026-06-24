@@ -10,6 +10,7 @@ import CommittedSpendingCard from '@/components/dashboard/CommittedSpendingCard'
 import RecurringAlertBanner from '@/components/dashboard/RecurringAlertBanner';
 import SavingsCard from '@/components/dashboard/SavingsCard';
 import GroupsCard from '@/components/dashboard/GroupsCard';
+import InvestmentsSummaryCard from '@/components/dashboard/InvestmentsSummaryCard';
 import TransactionItem from '@/components/transactions/TransactionItem';
 import { MdPieChart, MdHistory, MdCalendarMonth } from 'react-icons/md';
 import type { TransactionWithCategory, CategoryChartData } from '@/types';
@@ -159,6 +160,8 @@ export default function DashboardTab({
           />
 
           <GroupsCard userId={userId || ''} onViewAll={onViewGroups} />
+
+          <InvestmentsSummaryCard userId={userId || ''} />
         </div>
 
         {/* 가운데: 차트/캘린더 */}

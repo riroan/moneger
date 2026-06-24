@@ -22,28 +22,29 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  transactions   Transaction[]
-  categories     Category[]
-  budgets        Budget[]
-  dailyBalances  DailyBalance[]
-  savingsGoals       SavingsGoal[]
-  transactionGroups  TransactionGroup[]
-  recurringExpenses  RecurringExpense[]
-  assetItems         AssetItem[]
-  assetSnapshots     AssetSnapshot[]
+  transactions         Transaction[]
+  categories           Category[]
+  budgets              Budget[]
+  dailyBalances        DailyBalance[]
+  savingsGoals         SavingsGoal[]
+  transactionGroups    TransactionGroup[]
+  recurringExpenses    RecurringExpense[]
+  assetItems           AssetItem[]
+  assetSnapshots       AssetSnapshot[]
+  brokerageConnections BrokerageConnection[]
 }
 
 model Category {
-  id            String    @id @default(cuid())
+  id            String          @id @default(cuid())
   name          String
   type          TransactionType
   color         String?
   icon          String?
   defaultBudget Float?
   userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   deletedAt     DateTime?
 
   transactions      Transaction[]
@@ -55,24 +56,24 @@ model Category {
 }
 
 model Transaction {
-  id            String          @id @default(cuid())
-  amount        Float
-  type          TransactionType
-  description   String?
-  date          DateTime        @default(now())
-  categoryId    String?
-  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  savingsGoalId String?
-  savingsGoal   SavingsGoal?    @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
+  id                 String            @id @default(cuid())
+  amount             Float
+  type               TransactionType
+  description        String?
+  date               DateTime          @default(now())
+  categoryId         String?
+  category           Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  savingsGoalId      String?
+  savingsGoal        SavingsGoal?      @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
   groupId            String?
   group              TransactionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   recurringExpenseId String?
   recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
   userId             String
-  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  deletedAt     DateTime?
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  deletedAt          DateTime?
 
   @@index([userId, type])
   @@index([userId, deletedAt, date])
@@ -228,4 +229,97 @@ model AssetSnapshot {
 enum TransactionType {
   INCOME
   EXPENSE
+}
+
+enum Broker {
+  KIS
+  TOSS
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  ERROR
+  DISABLED
+}
+
+// 증권사 연결. 자격증명은 AES-256-GCM으로 암호화 저장(평문 미저장).
+// 복호화는 서버에서 호출 시점에만, AAD = userId+connectionId로 바인딩.
+model BrokerageConnection {
+  id            String           @id @default(cuid())
+  userId        String
+  broker        Broker
+  label         String?
+  ciphertext    Bytes // 암호화된 자격증명 JSON
+  iv            Bytes
+  authTag       Bytes
+  keyVersion    Int              @default(1) // 마스터 키 회전 대비 (회전 자동화는 TODOS.md)
+  status        ConnectionStatus @default(ACTIVE)
+  lastSuccessAt DateTime?
+  lastFailureAt DateTime?
+  failureReason String?          @db.Text
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  deletedAt     DateTime?
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts BrokerageAccount[]
+
+  @@unique([userId, broker, label])
+  @@index([userId, deletedAt])
+  @@index([status])
+}
+
+model BrokerageAccount {
+  id                String   @id @default(cuid())
+  connectionId      String
+  externalAccountId String
+  displayName       String
+  accountType       String // domestic | overseas | isa | unknown
+  baseCurrency      String // KRW 등
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  connection BrokerageConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  snapshots  BrokerageSnapshot[]
+
+  @@unique([connectionId, externalAccountId])
+  @@index([connectionId])
+}
+
+// 일별 스냅샷. 멱등 키 = (accountId, date). 금액은 KRW 정규화 + Decimal.
+model BrokerageSnapshot {
+  id                String   @id @default(cuid())
+  accountId         String
+  date              DateTime @db.Date
+  cashKrw           Decimal  @db.Decimal(20, 2)
+  totalEquityKrw    Decimal  @db.Decimal(20, 2)
+  positionsValueKrw Decimal  @db.Decimal(20, 2)
+  asOf              DateTime // 증권사 평가 기준시각
+  createdAt         DateTime @default(now())
+
+  account   BrokerageAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  positions BrokeragePosition[]
+
+  @@unique([accountId, date])
+  @@index([accountId, date])
+}
+
+model BrokeragePosition {
+  id             String   @id @default(cuid())
+  snapshotId     String
+  symbol         String
+  name           String
+  market         String? // KRX, NASDAQ ...
+  currency       String // KRW, USD ...
+  quantity       Decimal  @db.Decimal(28, 8)
+  avgCost        Decimal? @db.Decimal(20, 4)
+  lastPrice      Decimal? @db.Decimal(20, 4)
+  marketValue    Decimal  @db.Decimal(20, 4) // 원통화 평가액
+  marketValueKrw Decimal  @db.Decimal(20, 2) // 환산 평가액
+  unrealizedPnl  Decimal? @db.Decimal(20, 4)
+  fxRateToKrw    Decimal? @db.Decimal(18, 6)
+
+  snapshot BrokerageSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@index([snapshotId])
 }

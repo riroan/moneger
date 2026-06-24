@@ -75,3 +75,19 @@ export const GROUP_SELECT = {
   icon: true,
   color: true,
 } as const;
+
+/**
+ * 증권사 연결 Select — 암호화된 자격증명(ciphertext/iv/authTag/keyVersion)은
+ * 절대 노출하지 않는다. 모든 연결 조회는 이 allowlist select를 사용해야 한다.
+ */
+export const BROKERAGE_CONNECTION_SELECT = {
+  id: true,
+  broker: true,
+  label: true,
+  status: true,
+  lastSuccessAt: true,
+  lastFailureAt: true,
+  failureReason: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;

@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { formatYearMonth } from '@/utils/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
-import { MdSettings, MdLogout, MdDarkMode, MdLightMode, MdBarChart, MdAccountBalanceWallet } from 'react-icons/md';
+import { MdSettings, MdLogout, MdDarkMode, MdLightMode, MdBarChart, MdAccountBalanceWallet, MdShowChart } from 'react-icons/md';
 
 interface HeaderProps {
   userName: string;
@@ -260,6 +260,15 @@ export default function Header({
                   }}
                 >
                   <span className="flex items-center gap-2"><MdAccountBalanceWallet className="text-lg" /> 자산 리포트</span>
+                </button>
+                <button
+                  className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    router.push('/investments');
+                  }}
+                >
+                  <span className="flex items-center gap-2"><MdShowChart className="text-lg" /> 증권 투자</span>
                 </button>
                 <button
                   className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
