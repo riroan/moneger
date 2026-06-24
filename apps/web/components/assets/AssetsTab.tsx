@@ -223,19 +223,19 @@ export default function AssetsTab({ userId }: AssetsTabProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-bg-secondary rounded-lg p-3">
             <div className="text-text-muted text-xs mb-1">{formatMonthLabel(months[months.length - 1])} 총자산</div>
-            <div className="font-mono tabular-nums text-text-primary text-lg sm:text-xl">
+            <div className="tabular-nums text-text-primary text-lg sm:text-xl">
               ₩{formatNumber(Math.round(report.summary.currentTotal))}
             </div>
           </div>
           <div className="bg-bg-secondary rounded-lg p-3">
             <div className="text-text-muted text-xs mb-1">전월 대비 변화</div>
-            <div className={`font-mono tabular-nums text-lg sm:text-xl ${deltaClass(report.summary.totalMomDelta)}`}>
+            <div className={`tabular-nums text-lg sm:text-xl ${deltaClass(report.summary.totalMomDelta)}`}>
               {deltaText(report.summary.totalMomDelta)}
             </div>
           </div>
           <div className="bg-bg-secondary rounded-lg p-3">
             <div className="text-text-muted text-xs mb-1">변화율</div>
-            <div className={`font-mono tabular-nums text-lg sm:text-xl ${deltaClass(report.summary.totalMomPercent)}`}>
+            <div className={`tabular-nums text-lg sm:text-xl ${deltaClass(report.summary.totalMomPercent)}`}>
               {report.summary.totalMomPercent === null
                 ? '—'
                 : `${report.summary.totalMomPercent > 0 ? '+' : ''}${report.summary.totalMomPercent.toFixed(1)}%`}
@@ -263,7 +263,7 @@ export default function AssetsTab({ userId }: AssetsTabProps) {
               <tr className="text-text-muted text-xs">
                 <th className="text-left font-medium py-2 px-2 sticky left-0 bg-bg-card z-10 min-w-[120px]">항목</th>
                 {months.map((m) => (
-                  <th key={m} className="text-right font-medium py-2 px-2 font-mono tabular-nums">
+                  <th key={m} className="text-right font-medium py-2 px-2 tabular-nums">
                     {formatMonthLabel(m)}
                   </th>
                 ))}
@@ -295,11 +295,11 @@ export default function AssetsTab({ userId }: AssetsTabProps) {
               <tr className="border-t border-[var(--border)] font-semibold">
                 <td className="py-2 px-2 sticky left-0 bg-bg-card z-10">합계</td>
                 {totalRow.map((v, i) => (
-                  <td key={i} className="text-right py-2 px-2 font-mono tabular-nums">
+                  <td key={i} className="text-right py-2 px-2 tabular-nums">
                     ₩{formatNumber(Math.round(v))}
                   </td>
                 ))}
-                <td className={`text-right py-2 px-2 font-mono tabular-nums ${deltaClass(totalDelta)}`}>
+                <td className={`text-right py-2 px-2 tabular-nums ${deltaClass(totalDelta)}`}>
                   {deltaText(totalDelta)}
                 </td>
                 <td />
@@ -390,7 +390,7 @@ function AssetRowView({
           editingCell?.itemId === row.assetItemId &&
           editingCell?.month === m;
         return (
-          <td key={m} className="text-right py-1 px-2 font-mono tabular-nums">
+          <td key={m} className="text-right py-1 px-2 tabular-nums">
             {isEditing ? (
               <input
                 autoFocus
@@ -427,7 +427,7 @@ function AssetRowView({
           </td>
         );
       })}
-      <td className={`text-right py-2 px-2 font-mono tabular-nums ${deltaClass(row.momDelta)}`}>
+      <td className={`text-right py-2 px-2 tabular-nums ${deltaClass(row.momDelta)}`}>
         {deltaText(row.momDelta)}
       </td>
       <td className="py-2 px-1 relative">
