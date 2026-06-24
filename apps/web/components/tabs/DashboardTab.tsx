@@ -66,7 +66,7 @@ export default function DashboardTab({
   // 전월 마지막 날 잔액 (carryOverBalance)
   const lastMonthBalance = summary?.summary?.carryOverBalance || 0;
 
-  const { handleCategoryClick, handleIncomeClick, handleExpenseClick, handleBalanceClick } = useFilterHandlers();
+  const { handleCategoryClick, handleIncomeClick, handleExpenseClick, handleBalanceClick, handleAssetFormationClick } = useFilterHandlers();
 
   const [chartViewMode, setChartViewMode] = useState<ChartViewMode>('category');
   const [calendarData, setCalendarData] = useState<DailyBalanceData[]>([]);
@@ -137,12 +137,12 @@ export default function DashboardTab({
         lastMonthBalance={lastMonthBalance}
         incomeCount={summary?.transactionCount?.income || 0}
         expenseCount={summary?.transactionCount?.expense || 0}
-        totalSavings={summary?.savings?.totalAmount || 0}
-        savingsCount={summary?.savings?.count || 0}
+        totalSavings={summary?.assetFormation?.totalAmount ?? summary?.savings?.totalAmount ?? 0}
+        savingsCount={summary?.assetFormation?.count ?? summary?.savings?.count ?? 0}
         onIncomeClick={handleIncomeClick}
         onExpenseClick={handleExpenseClick}
         onBalanceClick={handleBalanceClick}
-        onSavingsClick={onViewSavings}
+        onSavingsClick={handleAssetFormationClick}
       />
 
       <RecurringAlertBanner />

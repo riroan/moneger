@@ -147,6 +147,7 @@ describe('category.service', () => {
           color: '#6366F1',
           icon: '💰',
           defaultBudget: 100000,
+          categoryGroup: 'SPENDING',
         },
       });
       expect(result).toEqual(mockCreated);
@@ -181,6 +182,7 @@ describe('category.service', () => {
           color: '#10B981',
           icon: '💵',
           defaultBudget: null,
+          categoryGroup: 'SPENDING',
         },
       });
     });
@@ -198,6 +200,26 @@ describe('category.service', () => {
         data: expect.objectContaining({
           color: '#6366F1',
           icon: '💰',
+        }),
+      });
+    });
+
+    it('자산 형성 카테고리는 defaultBudget을 null로 설정해야 함', async () => {
+      (prisma.category.create as jest.Mock).mockResolvedValue({});
+
+      await createCategory({
+        userId: 'user-1',
+        name: '투자 납입',
+        type: 'EXPENSE',
+        defaultBudget: 100000,
+        categoryGroup: 'ASSET_FORMATION',
+      });
+
+      expect(prisma.category.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: '투자 납입',
+          categoryGroup: 'ASSET_FORMATION',
+          defaultBudget: null,
         }),
       });
     });
@@ -246,6 +268,20 @@ describe('category.service', () => {
       expect(prisma.category.update).toHaveBeenCalledWith({
         where: { id: 'cat-1' },
         data: { name: '이름만' },
+      });
+    });
+
+    it('자산 형성으로 변경하면 defaultBudget을 제거해야 함', async () => {
+      (prisma.category.update as jest.Mock).mockResolvedValue({});
+
+      await updateCategory('cat-1', { categoryGroup: 'ASSET_FORMATION' });
+
+      expect(prisma.category.update).toHaveBeenCalledWith({
+        where: { id: 'cat-1' },
+        data: {
+          categoryGroup: 'ASSET_FORMATION',
+          defaultBudget: null,
+        },
       });
     });
   });

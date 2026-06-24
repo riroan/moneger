@@ -342,10 +342,19 @@ describe('transaction.service', () => {
 
       expect(prisma.transaction.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            type: 'EXPENSE',
-            savingsGoalId: null, // 지출 필터 시 저축 거래 제외
-          }),
+          where: {
+            AND: [
+              expect.objectContaining({ userId: 'user-1', deletedAt: null }),
+              expect.objectContaining({
+                type: 'EXPENSE',
+                savingsGoalId: null,
+                OR: [
+                  { categoryId: null },
+                  { category: { categoryGroup: 'SPENDING' } },
+                ],
+              }),
+            ],
+          },
         })
       );
     });
@@ -388,6 +397,32 @@ describe('transaction.service', () => {
           where: expect.objectContaining({
             savingsGoalId: { not: null },
           }),
+        })
+      );
+    });
+
+    it('자산 형성 거래만 필터링해야 함', async () => {
+      (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
+
+      await getTransactions({ userId: 'user-1', assetFormationOnly: true });
+
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            AND: [
+              expect.objectContaining({ userId: 'user-1', deletedAt: null }),
+              expect.objectContaining({
+                OR: [
+                  { savingsGoalId: { not: null } },
+                  {
+                    type: 'EXPENSE',
+                    savingsGoalId: null,
+                    category: { categoryGroup: 'ASSET_FORMATION' },
+                  },
+                ],
+              }),
+            ],
+          },
         })
       );
     });

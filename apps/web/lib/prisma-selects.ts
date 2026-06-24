@@ -11,6 +11,7 @@ export const CATEGORY_SELECT = {
   type: true,
   color: true,
   icon: true,
+  categoryGroup: true,
 } as const;
 
 /**
@@ -23,6 +24,7 @@ export const CATEGORY_WITH_BUDGET_SELECT = {
   color: true,
   icon: true,
   defaultBudget: true,
+  categoryGroup: true,
 } as const;
 
 /**

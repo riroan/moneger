@@ -27,7 +27,7 @@ describe('useTransactionStore', () => {
           date: new Date().toISOString(),
           categoryId: 'cat-1',
           savingsGoalId: null,
-          category: { id: 'cat-1', name: '식비', icon: 'restaurant', color: '#EF4444', type: 'EXPENSE' },
+          category: { id: 'cat-1', name: '식비', icon: 'restaurant', color: '#EF4444', type: 'EXPENSE', categoryGroup: 'SPENDING' },
         },
       ];
 
@@ -37,10 +37,20 @@ describe('useTransactionStore', () => {
 
     it('should set summary', () => {
       const summary: TransactionSummary = {
-        summary: { totalIncome: 100000, totalExpense: 50000, totalSavings: 0, netAmount: 50000, balance: 50000, carryOverBalance: 0 },
+        summary: {
+          totalIncome: 100000,
+          totalExpense: 50000,
+          totalSavings: 0,
+          totalAssetFormation: 0,
+          totalInvestment: 0,
+          netAmount: 50000,
+          balance: 50000,
+          carryOverBalance: 0,
+        },
         categories: [],
         transactionCount: { income: 1, expense: 2 },
         savings: { totalAmount: 0, targetAmount: 0, count: 0, primaryGoal: null },
+        assetFormation: { totalAmount: 0, savingsAmount: 0, investmentAmount: 0, count: 0 },
       };
 
       useTransactionStore.getState().setSummary(summary);
@@ -57,6 +67,7 @@ describe('useTransactionStore', () => {
         expense: { total: 30000, count: 2 },
         income: { total: 0, count: 0 },
         savings: { total: 0, count: 0 },
+        assetFormation: { total: 0, count: 0 },
       };
 
       useTransactionStore.getState().setTodaySummary(todaySummary);

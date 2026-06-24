@@ -71,9 +71,9 @@ function SummaryCards({
     {
       type: 'savings',
       icon: SavingsIcon,
-      label: '월 저축',
+      label: '자산 형성',
       amount: `₩${formatNumber(totalSavings)}`,
-      change: `${savingsCount}건의 저축`,
+      change: `${savingsCount}건의 자산 형성`,
       positive: true,
       iconBg: 'bg-[#0891B2]',
       barColor: 'bg-[#06B6D4]',

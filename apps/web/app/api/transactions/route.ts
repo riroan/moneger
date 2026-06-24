@@ -40,6 +40,7 @@ export const GET = apiHandler('fetch transactions', async (request: NextRequest)
     minAmount: searchParams.get('minAmount') ? parseInt(searchParams.get('minAmount')!) : undefined,
     maxAmount: searchParams.get('maxAmount') ? parseInt(searchParams.get('maxAmount')!) : undefined,
     savingsOnly: searchParams.get('savingsOnly') === 'true',
+    assetFormationOnly: searchParams.get('assetFormationOnly') === 'true',
     groupId: searchParams.get('groupId') || undefined,
     recurring: (searchParams.get('recurring') as 'all' | 'only' | 'none' | null) || undefined,
   });

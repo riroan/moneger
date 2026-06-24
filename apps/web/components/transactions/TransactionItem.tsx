@@ -5,6 +5,7 @@ import { formatNumber, formatDate, formatCurrencyDisplay } from '@/utils/formatt
 import { getIconComponent } from '@/components/settings/constants';
 import { MdSavings, MdEventRepeat } from 'react-icons/md';
 import type { TransactionWithCategory } from '@/types';
+import { isAssetFormationCategory, isAssetFormationTransaction } from '@/lib/cash-flow';
 
 interface TransactionItemProps {
   transaction: TransactionWithCategory;
@@ -30,9 +31,11 @@ CurrencyDisplay.displayName = 'CurrencyDisplay';
 
 function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
   const isSavings = !!tx.savingsGoalId;
+  const isAssetFormation = isAssetFormationTransaction(tx);
   const isRecurring = !!tx.recurringExpenseId;
 
   const iconType = isSavings ? MdSavings : getIconComponent(tx.category?.icon);
+  const iconColor = isAssetFormation ? 'var(--accent-blue)' : (tx.category?.color || 'var(--text-primary)');
 
   return (
     <div
@@ -43,7 +46,7 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
         {/* 아이콘 */}
         <div
           className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-[10px] bg-bg-card flex items-center justify-center text-base sm:text-lg flex-shrink-0 mr-3 relative"
-          style={{ color: isSavings ? 'var(--accent-blue)' : (tx.category?.color || 'var(--text-primary)') }}
+          style={{ color: iconColor }}
         >
           {createElement(iconType)}
           {isRecurring && (
@@ -64,7 +67,7 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
               {tx.description || tx.category?.name || '거래'}
             </div>
             <div className={`text-sm sm:text-base font-semibold whitespace-nowrap ${
-              tx.savingsGoalId ? 'text-accent-blue' : tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
+              isAssetFormation ? 'text-accent-blue' : tx.type === 'EXPENSE' ? 'text-accent-coral' : 'text-accent-mint'
             }`}>
               <CurrencyDisplay amount={`${tx.type === 'EXPENSE' ? '-' : '+'}₩${formatNumber(tx.amount)}`} />
             </div>
@@ -76,7 +79,7 @@ function TransactionItem({ transaction: tx, onClick }: TransactionItemProps) {
               {isRecurring && !isSavings && (
                 <span className="text-[10px] font-medium bg-accent-coral/15 text-accent-coral px-1.5 py-0.5 rounded-full">정기</span>
               )}
-              {isSavings ? '저축' : (tx.category?.name || '미분류')}
+              {isSavings ? '저축 납입' : isAssetFormationCategory(tx.category) ? (tx.category?.name || '자산 형성') : (tx.category?.name || '미분류')}
             </span>
           </div>
         </div>
@@ -92,6 +95,7 @@ export default memo(TransactionItem, (prevProps, nextProps) => {
     prevProps.transaction.amount === nextProps.transaction.amount &&
     prevProps.transaction.description === nextProps.transaction.description &&
     prevProps.transaction.recurringExpenseId === nextProps.transaction.recurringExpenseId &&
+    prevProps.transaction.category?.categoryGroup === nextProps.transaction.category?.categoryGroup &&
     prevProps.onClick === nextProps.onClick
   );
 });

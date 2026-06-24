@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { TransactionWithCategory, TransactionSummary, TodaySummary, DateRange, AmountRange } from '@/types';
 
-export type FilterType = 'ALL' | 'INCOME' | 'EXPENSE' | 'SAVINGS';
+export type FilterType = 'ALL' | 'INCOME' | 'EXPENSE' | 'ASSET_FORMATION';
 export type SortOrder = 'recent' | 'oldest' | 'expensive' | 'cheapest';
 export type RecurringFilter = 'all' | 'only' | 'none';
 

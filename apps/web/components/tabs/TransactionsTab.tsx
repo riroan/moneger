@@ -7,6 +7,7 @@ import FilterPanel from '@/components/transactions/FilterPanel';
 import TransactionList from '@/components/transactions/TransactionList';
 import { MdReceipt } from 'react-icons/md';
 import type { TransactionWithCategory } from '@/types';
+import { isAssetFormationTransaction, isSpendingTransaction } from '@/lib/cash-flow';
 
 interface TransactionsTabProps {
   onTransactionClick: (tx: TransactionWithCategory) => void;
@@ -87,11 +88,11 @@ export default function TransactionsTab({ onTransactionClick }: TransactionsTabP
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const savings = allTransactions
-      .filter((tx) => tx.type === 'EXPENSE' && (tx.savingsGoalId || tx.category?.name === '저축'))
+      .filter(isAssetFormationTransaction)
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const expense = allTransactions
-      .filter((tx) => tx.type === 'EXPENSE' && !tx.savingsGoalId && tx.category?.name !== '저축')
+      .filter(isSpendingTransaction)
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     return {
@@ -149,7 +150,7 @@ export default function TransactionsTab({ onTransactionClick }: TransactionsTabP
             className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right p-3"
           >
             <p className="text-xs text-text-muted mb-1">
-              지출
+              소비 지출
             </p>
             <p className="text-sm sm:text-base font-bold text-accent-coral">
               -₩{allTransactionsSummary.totalExpense.toLocaleString()}
@@ -159,7 +160,7 @@ export default function TransactionsTab({ onTransactionClick }: TransactionsTabP
             className="bg-bg-secondary rounded-[12px] border border-[var(--border)] text-right p-3"
           >
             <p className="text-xs text-text-muted mb-1">
-              저축
+              자산 형성
             </p>
             <p className="text-sm sm:text-base font-bold text-accent-blue">
               ₩{allTransactionsSummary.totalSavings.toLocaleString()}

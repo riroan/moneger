@@ -3,6 +3,7 @@
 import { useCategoryDropdown } from '@/hooks/useCategoryDropdown';
 import { getIconComponent } from '@/components/settings/constants';
 import type { Category } from '@/types';
+import { CATEGORY_GROUP } from '@/lib/cash-flow';
 
 interface CategoryDropdownProps {
   categories: Category[];
@@ -32,6 +33,8 @@ export default function CategoryDropdown({
   } = useCategoryDropdown({ categories, type });
 
   const selectedCategory = currentCategories.find((c) => c.id === selectedId);
+  const spendingCategories = filteredCategories.filter((category) => category.categoryGroup !== CATEGORY_GROUP.ASSET_FORMATION);
+  const assetFormationCategories = filteredCategories.filter((category) => category.categoryGroup === CATEGORY_GROUP.ASSET_FORMATION);
 
   const handleSelect = (categoryId: string) => {
     onSelect(categoryId);
@@ -91,7 +94,11 @@ export default function CategoryDropdown({
             className="absolute top-full left-0 right-0 mt-2 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-y-auto z-10 shadow-2xl max-h-60"
           >
             {filteredCategories.length > 0 ? (
-              filteredCategories.map((category) => {
+              <div>
+                {type === 'EXPENSE' && spendingCategories.length > 0 && (
+                  <div className="px-4 pb-1 pt-3 text-[11px] font-medium text-text-muted">소비 지출</div>
+                )}
+                {(type === 'EXPENSE' ? spendingCategories : filteredCategories).map((category) => {
                 const IconComponent = getIconComponent(category.icon);
                 const categoryColor = category.color || '#6B7280';
                 return (
@@ -107,7 +114,31 @@ export default function CategoryDropdown({
                     <span>{category.name}</span>
                   </button>
                 );
-              })
+                })}
+                {type === 'EXPENSE' && assetFormationCategories.length > 0 && (
+                  <>
+                    <div className="px-4 pb-1 pt-3 text-[11px] font-medium text-text-muted">자산 형성</div>
+                    {assetFormationCategories.map((category) => {
+                      const IconComponent = getIconComponent(category.icon);
+                      const categoryColor = category.color || '#6B7280';
+                      return (
+                        <button
+                          key={category.id}
+                          type="button"
+                          onClick={() => handleSelect(category.id)}
+                          className={`w-full text-left hover:bg-bg-card-hover transition-colors border-b border-[var(--border)] last:border-b-0 cursor-pointer flex items-center gap-3 py-3 px-4 text-[15px] ${
+                            selectedId === category.id ? 'bg-bg-card-hover' : 'text-text-primary'
+                          }`}
+                        >
+                          <span style={{ color: categoryColor }}><IconComponent /></span>
+                          <span className="flex-1">{category.name}</span>
+                          <span className="rounded-full bg-accent-blue/15 px-2 py-0.5 text-[11px] text-accent-blue">통계 제외</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
             ) : (
               <div className="text-text-muted text-center py-3 px-4 text-sm">
                 일치하는 카테고리가 없습니다

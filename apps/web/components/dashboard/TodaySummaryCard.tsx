@@ -3,7 +3,7 @@
 import { memo } from 'react';
 import { formatNumber } from '@/utils/formatters';
 import { CurrencyDisplay } from '@/components/transactions/TransactionItem';
-import { MdToday, MdSavings } from 'react-icons/md';
+import { MdToday, MdAccountBalanceWallet } from 'react-icons/md';
 import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 
 interface TodaySummary {
@@ -21,6 +21,10 @@ interface TodaySummary {
     count: number;
   };
   savings: {
+    total: number;
+    count: number;
+  };
+  assetFormation?: {
     total: number;
     count: number;
   };
@@ -49,9 +53,10 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
   }
 
   const { month, day, dayOfWeek, expense, income, savings } = data;
+  const assetFormation = data.assetFormation ?? savings;
   const hasExpense = expense.count > 0;
   const hasIncome = income.count > 0;
-  const hasSavings = savings.count > 0;
+  const hasAssetFormation = assetFormation.count > 0;
 
   return (
     <div
@@ -111,20 +116,20 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
           </div>
         </div>
 
-        {/* 저축 */}
+        {/* 자산 형성 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MdSavings className="text-base sm:text-lg text-accent-blue" />
-            <span className="text-xs sm:text-sm text-text-secondary">저축</span>
+            <MdAccountBalanceWallet className="text-base sm:text-lg text-accent-blue" />
+            <span className="text-xs sm:text-sm text-text-secondary">자산 형성</span>
           </div>
           <div className="text-right">
-            {hasSavings ? (
+            {hasAssetFormation ? (
               <>
                 <span className="text-base sm:text-lg font-bold text-accent-blue">
-                  <CurrencyDisplay amount={`₩${formatNumber(savings.total)}`} />
+                  <CurrencyDisplay amount={`₩${formatNumber(assetFormation.total)}`} />
                 </span>
                 <span className="text-[10px] sm:text-xs text-text-muted ml-1.5">
-                  ({savings.count}건)
+                  ({assetFormation.count}건)
                 </span>
               </>
             ) : (
@@ -135,7 +140,7 @@ function TodaySummaryCard({ data, isLoading }: TodaySummaryCardProps) {
       </div>
 
       {/* 거래 없음 메시지 */}
-      {!hasExpense && !hasIncome && !hasSavings && (
+      {!hasExpense && !hasIncome && !hasAssetFormation && (
         <div className="text-center text-text-muted text-xs sm:text-sm mt-2">
           오늘 거래 내역이 없습니다<br />
           <span className="text-[10px] sm:text-xs">+ 버튼으로 내역을 추가해보세요</span>

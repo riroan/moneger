@@ -21,12 +21,14 @@ describe('GET /api/transactions/today', () => {
     (prisma.transaction.aggregate as jest.Mock)
       .mockResolvedValueOnce({ _sum: { amount: 30000 } }) // expense
       .mockResolvedValueOnce({ _sum: { amount: 100000 } }) // income
-      .mockResolvedValueOnce({ _sum: { amount: 50000 } }); // savings
+      .mockResolvedValueOnce({ _sum: { amount: 50000 } }) // savings
+      .mockResolvedValueOnce({ _sum: { amount: 20000 } }); // investment deposit
 
     (prisma.transaction.count as jest.Mock)
       .mockResolvedValueOnce(2) // expense count
       .mockResolvedValueOnce(1) // income count
-      .mockResolvedValueOnce(1); // savings count
+      .mockResolvedValueOnce(1) // savings count
+      .mockResolvedValueOnce(1); // investment deposit count
 
     const url = new URL('http://localhost:3000/api/transactions/today');
     url.searchParams.set('userId', 'user-1');
@@ -43,6 +45,8 @@ describe('GET /api/transactions/today', () => {
     expect(data.data.income.count).toBe(1);
     expect(data.data.savings.total).toBe(50000);
     expect(data.data.savings.count).toBe(1);
+    expect(data.data.assetFormation.total).toBe(70000);
+    expect(data.data.assetFormation.count).toBe(2);
     expect(data.data.year).toBeDefined();
     expect(data.data.month).toBeDefined();
     expect(data.data.day).toBeDefined();
@@ -53,12 +57,14 @@ describe('GET /api/transactions/today', () => {
     (prisma.transaction.aggregate as jest.Mock)
       .mockResolvedValueOnce({ _sum: { amount: null } }) // expense
       .mockResolvedValueOnce({ _sum: { amount: null } }) // income
-      .mockResolvedValueOnce({ _sum: { amount: null } }); // savings
+      .mockResolvedValueOnce({ _sum: { amount: null } }) // savings
+      .mockResolvedValueOnce({ _sum: { amount: null } }); // investment deposit
 
     (prisma.transaction.count as jest.Mock)
       .mockResolvedValueOnce(0) // expense count
       .mockResolvedValueOnce(0) // income count
-      .mockResolvedValueOnce(0); // savings count
+      .mockResolvedValueOnce(0) // savings count
+      .mockResolvedValueOnce(0); // investment deposit count
 
     const url = new URL('http://localhost:3000/api/transactions/today');
     url.searchParams.set('userId', 'user-1');
@@ -75,6 +81,8 @@ describe('GET /api/transactions/today', () => {
     expect(data.data.income.count).toBe(0);
     expect(data.data.savings.total).toBe(0);
     expect(data.data.savings.count).toBe(0);
+    expect(data.data.assetFormation.total).toBe(0);
+    expect(data.data.assetFormation.count).toBe(0);
   });
 
   it('userId가 없으면 400 에러를 반환해야 함', async () => {

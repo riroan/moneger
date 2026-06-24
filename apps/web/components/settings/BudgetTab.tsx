@@ -6,6 +6,7 @@ import { useOutsideClick } from '@/hooks';
 import type { Category, Budget } from '@/types';
 import { FaCreditCard } from 'react-icons/fa';
 import { getIconComponent } from './constants';
+import { CATEGORY_GROUP } from '@/lib/cash-flow';
 
 interface BudgetTabProps {
   categories: Category[];
@@ -34,7 +35,7 @@ export default function BudgetTab({
   const closeDatePicker = useCallback(() => setIsBudgetDatePickerOpen(false), []);
   const budgetDatePickerRef = useOutsideClick<HTMLDivElement>(closeDatePicker, isBudgetDatePickerOpen);
 
-  const expenseCategories = categories.filter(cat => cat.type === 'EXPENSE');
+  const expenseCategories = categories.filter(cat => cat.type === 'EXPENSE' && cat.categoryGroup !== CATEGORY_GROUP.ASSET_FORMATION);
 
   const isBudgetPreviousMonthDisabled = () => {
     if (!oldestTransactionDate) return false;

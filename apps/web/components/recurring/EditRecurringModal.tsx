@@ -7,6 +7,7 @@ import { CurrencyInput } from '@/components/common';
 import { useOutsideClickWithRef, useEscapeKey } from '@/hooks';
 import CategoryDropdown from '@/components/forms/CategoryDropdown';
 import type { Category } from '@/types';
+import { CATEGORY_GROUP } from '@/lib/cash-flow';
 
 interface RecurringExpense {
   id: string;
@@ -16,7 +17,7 @@ interface RecurringExpense {
   dayOfMonth: number;
   nextDueDate: string;
   isActive: boolean;
-  category: { id: string; name: string; type: string; color: string | null; icon: string | null } | null;
+  category: { id: string; name: string; type: string; color: string | null; icon: string | null; categoryGroup?: string } | null;
   history: { id: string; previousAmount: number; newAmount: number; changedAt: string }[];
 }
 
@@ -61,7 +62,9 @@ export default function EditRecurringModal({ isOpen, userId, expense, onClose, o
     try {
       const res = await fetch(`/api/categories?userId=${userId}`);
       const json = await res.json();
-      if (json.data) setCategories(json.data);
+      if (json.data) {
+        setCategories(json.data.filter((category: Category) => category.categoryGroup !== CATEGORY_GROUP.ASSET_FORMATION));
+      }
     } catch { /* ignore */ }
   }, [userId]);
 

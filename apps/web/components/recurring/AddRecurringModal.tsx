@@ -6,6 +6,7 @@ import { CurrencyInput } from '@/components/common';
 import { useOutsideClickWithRef, useEscapeKey } from '@/hooks';
 import CategoryDropdown from '@/components/forms/CategoryDropdown';
 import type { Category } from '@/types';
+import { CATEGORY_GROUP } from '@/lib/cash-flow';
 
 interface AddRecurringModalProps {
   isOpen: boolean;
@@ -42,7 +43,9 @@ export default function AddRecurringModal({ isOpen, userId, onClose, onSave }: A
     try {
       const res = await fetch(`/api/categories?userId=${userId}`);
       const json = await res.json();
-      if (json.data) setCategories(json.data);
+      if (json.data) {
+        setCategories(json.data.filter((category: Category) => category.categoryGroup !== CATEGORY_GROUP.ASSET_FORMATION));
+      }
     } catch { /* ignore */ }
   }, [userId]);
 
