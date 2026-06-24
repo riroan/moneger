@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatCurrency } from '@moneger/shared';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import {
   FaBuilding,
-  FaChartLine,
   FaCheckCircle,
   FaClock,
   FaLock,
@@ -305,17 +305,17 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
       {summary.hasConnections && data && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
-            <div className="order-3 xl:order-1">
+            <div className="order-1 xl:order-2">
+              <PortfolioDonut data={data} />
+            </div>
+            <div className="order-2 xl:order-1">
               <BrokerSelector
                 connections={data.connections}
                 selectedConnectionId={selectedConnection?.id ?? null}
                 onSelect={setSelectedConnectionId}
               />
             </div>
-            <div className="order-1 xl:order-2">
-              <MonthlyReport data={data} />
-            </div>
-            <div className="order-2 xl:order-3">
+            <div className="order-4">
               <BreakdownPanel data={data} />
             </div>
           </aside>
@@ -383,17 +383,24 @@ function PortfolioHeader({
           <div className="mt-1 break-words tabular-nums text-3xl font-bold text-text-primary sm:text-4xl">
             {formatCurrency(Number(data?.totalEquityKrw ?? 0))}
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
+          {change != null ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className={`text-xl font-semibold tabular-nums ${pnlClass(change)}`}>
+                {pnlMark(change)} {signedCurrency(change)}
+              </span>
+              <span className={`text-sm opacity-70 ${pnlClass(change)}`}>
+                ({percent(latest?.changeRate ?? null)}) 전월 대비
+              </span>
+            </div>
+          ) : (
+            <div className="mt-2 text-xs text-text-muted">전월 데이터 누적 중</div>
+          )}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
             <span className="inline-flex items-center gap-1.5">
               <FaClock className="text-[11px]" />
               {formatDateTime(summary.latest)}
             </span>
             <span>{summary.positions}개 종목</span>
-            {change != null && (
-              <span className={pnlClass(change)}>
-                전월 대비 {signedCurrency(change)} · {percent(latest?.changeRate ?? null)}
-              </span>
-            )}
           </div>
         </div>
 
@@ -805,54 +812,81 @@ function PositionMetric({ label, value, subValue }: { label: string; value: stri
   );
 }
 
-function MonthlyReport({ data }: { data: Overview }) {
-  const rows = data.monthlyReport.slice(-6);
-  const max = Math.max(...rows.map((r) => Number(r.totalEquityKrw)), 1);
+const POSITION_COLORS = ['#60a5fa', '#4ade80', '#a78bfa', '#ff6b6b', '#fbbf24', '#38bdf8'];
+
+function PortfolioDonut({ data }: { data: Overview }) {
+  const allPositions = data.connections.flatMap((c) => c.accounts.flatMap((a) => a.positions));
+  const sorted = [...allPositions].sort((a, b) => money(b.marketValueKrw) - money(a.marketValueKrw));
+  const top = sorted.slice(0, 5);
+  const rest = sorted.slice(5);
+
+  const entries = [
+    ...top.map((p, i) => ({
+      name: p.name,
+      value: money(p.marketValueKrw),
+      color: POSITION_COLORS[i],
+    })),
+    ...(rest.length > 0
+      ? [{ name: '기타', value: rest.reduce((s, p) => s + money(p.marketValueKrw), 0), color: '#475569' }]
+      : []),
+  ];
+  const total = entries.reduce((s, e) => s + e.value, 0);
+
+  if (entries.length === 0 || total <= 0) return null;
 
   return (
     <section className={CARD}>
-      <div className="mb-4 flex items-center gap-2">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent-purple/15 text-accent-purple">
-          <FaChartLine />
-        </span>
-        <div>
-          <h2 className="text-base font-semibold text-text-primary">월별 리포트</h2>
-          <div className="text-[11px] text-text-muted">최근 {rows.length || 0}개월</div>
+      <h2 className="mb-3 text-base font-semibold text-text-primary">포트폴리오 비중</h2>
+      <div className="relative">
+        <ResponsiveContainer width="100%" height={160}>
+          <PieChart>
+            <Pie
+              data={entries}
+              cx="50%"
+              cy="50%"
+              innerRadius={50}
+              outerRadius={72}
+              paddingAngle={2}
+              dataKey="value"
+              strokeWidth={0}
+            >
+              {entries.map((e, i) => (
+                <Cell key={i} fill={e.color} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(v: number | undefined) => [formatCurrency(v ?? 0), '']}
+              contentStyle={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <div className="text-[10px] text-text-muted">총 평가액</div>
+          <div className="text-sm font-semibold tabular-nums text-text-primary">
+            {formatCurrency(total)}
+          </div>
         </div>
       </div>
-
-      {rows.length === 0 ? (
-        <div className="text-sm text-text-muted">스냅샷 없음</div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {rows.map((r) => {
-            const change = r.changeKrw == null ? null : Number(r.changeKrw);
-            const width = Math.max(6, Math.round((Number(r.totalEquityKrw) / max) * 100));
-            return (
-              <div key={r.month}>
-                <div className="mb-1 flex items-center justify-between gap-3 text-xs">
-                  <span className="text-text-secondary">{r.month}</span>
-                  <span className="tabular-nums text-text-primary">
-                    {formatCurrency(Number(r.totalEquityKrw))}
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-bg-secondary">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-accent-purple to-accent-blue"
-                    style={{ width: `${width}%` }}
-                  />
-                </div>
-                <div className={`mt-1 text-right text-[11px] ${change == null ? 'text-text-muted' : pnlClass(change)}`}>
-                  {change == null ? '전월 데이터 없음' : `${signedCurrency(change)} · ${percent(r.changeRate)}`}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+        {entries.map((e) => (
+          <div key={e.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: e.color }} />
+            {e.name}
+            <span className="text-text-muted tabular-nums">
+              {((e.value / total) * 100).toFixed(0)}%
+            </span>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
+
 
 function BreakdownPanel({ data }: { data: Overview }) {
   return (
