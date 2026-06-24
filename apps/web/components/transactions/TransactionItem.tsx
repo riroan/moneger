@@ -18,7 +18,7 @@ const CurrencyDisplay = memo(({ amount }: { amount: string }) => {
   const { sign, currencySymbol, number } = formatCurrencyDisplay(amount);
 
   return (
-    <span className="whitespace-nowrap">
+    <span className="tabular-nums whitespace-nowrap">
       {sign && <span className="mr-0.5">{sign}</span>}
       {currencySymbol && <span className="mr-px">{currencySymbol}</span>}
       {number}

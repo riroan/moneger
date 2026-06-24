@@ -10,6 +10,23 @@ interface CreateConnectionInput {
   credentials: unknown; // 증권사별 자격증명 객체 (KIS: {appKey, appSecret, accountNo, paper?})
 }
 
+export class DuplicateBrokerageConnectionError extends Error {
+  constructor(readonly broker: Broker) {
+    super('brokerage connection already exists');
+    this.name = 'DuplicateBrokerageConnectionError';
+  }
+}
+
+export async function ensureBrokerageSlotAvailable(userId: string, broker: Broker): Promise<void> {
+  const existing = await prisma.brokerageConnection.findFirst({
+    where: { userId, broker, deletedAt: null },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new DuplicateBrokerageConnectionError(broker);
+  }
+}
+
 /** 사용자의 연결 목록 (자격증명 제외). */
 export function listConnections(userId: string) {
   return prisma.brokerageConnection.findMany({
@@ -22,6 +39,8 @@ export function listConnections(userId: string) {
 /** 자격증명을 검증한 뒤 암호화 저장. 평문은 저장하지 않는다. */
 export async function createConnection(userId: string, input: CreateConnectionInput) {
   const { broker, label, credentials } = input;
+  await ensureBrokerageSlotAvailable(userId, broker);
+
   const blob = encryptCredentialObject(credentials, { userId, broker });
   return prisma.brokerageConnection.create({
     data: {

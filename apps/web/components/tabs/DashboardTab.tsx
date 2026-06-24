@@ -160,8 +160,6 @@ export default function DashboardTab({
           />
 
           <GroupsCard userId={userId || ''} onViewAll={onViewGroups} />
-
-          <InvestmentsSummaryCard userId={userId || ''} />
         </div>
 
         {/* 가운데: 차트/캘린더 */}
@@ -215,31 +213,35 @@ export default function DashboardTab({
           )}
         </div>
 
-        {/* 오른쪽: 최근 내역 */}
-        <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-3 self-start p-4"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-              <MdHistory className="text-lg sm:text-xl text-accent-mint" /> 최근 내역
-            </h2>
-            <button
-              onClick={onViewAllTransactions}
-              className="text-xs sm:text-sm text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
-            >
-              전체보기 →
-            </button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {isLoadingTransactions ? (
-              <div className="text-center text-text-muted py-6">로딩 중...</div>
-            ) : recentTransactions.length > 0 ? (
-              recentTransactions.slice(0, isMobile ? 5 : 10).map((tx) => (
-                <TransactionItem key={tx.id} transaction={tx} onClick={() => onTransactionClick(tx)} />
-              ))
-            ) : (
-              <div className="text-center text-text-muted py-6">거래 내역이 없습니다</div>
-            )}
+        {/* 오른쪽: 증권 자산 + 최근 내역 */}
+        <div className="order-3 flex flex-col gap-4 self-start">
+          <InvestmentsSummaryCard userId={userId || ''} />
+
+          <div
+            className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] p-4"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <MdHistory className="text-lg sm:text-xl text-accent-mint" /> 최근 내역
+              </h2>
+              <button
+                onClick={onViewAllTransactions}
+                className="text-xs sm:text-sm text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+              >
+                전체보기 →
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {isLoadingTransactions ? (
+                <div className="text-center text-text-muted py-6">로딩 중...</div>
+              ) : recentTransactions.length > 0 ? (
+                recentTransactions.slice(0, isMobile ? 5 : 10).map((tx) => (
+                  <TransactionItem key={tx.id} transaction={tx} onClick={() => onTransactionClick(tx)} />
+                ))
+              ) : (
+                <div className="text-center text-text-muted py-6">거래 내역이 없습니다</div>
+              )}
+            </div>
           </div>
         </div>
       </div>

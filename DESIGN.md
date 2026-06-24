@@ -21,7 +21,7 @@
 ## Typography
 
 - **Body/UI:** `Noto Sans KR` — 한국어 우선 앱이라 필수. weights 300/400/500/600/700 모두 로드.
-- **Mono/Data:** `Space Mono` — 금액 표시 전용. tabular-nums 적용, 숫자 폭이 고정돼 금액이 정렬되어 보임.
+- **Numeric/Data:** `Noto Sans KR` + `tabular-nums` — 프로덕션 기준 금액/숫자 표시. 앱 본문 폰트와 통일하고 숫자 폭 정렬만 유지.
 - **UI/Labels:** Noto Sans KR (body와 동일)
 - **Code:** Space Mono
 - **Loading:** Next.js `next/font/google` — `--font-noto-sans-kr`, `--font-space-mono` CSS 변수로 주입
@@ -153,6 +153,7 @@ bg-accent-blue/20 text-accent-blue font-medium rounded-lg px-2.5 py-1
 | 2026-04-11 | Dark-first, near-black background | 숫자 대시보드는 다크 배경이 눈의 피로를 줄이고 수치를 더 선명하게 만든다 |
 | 2026-04-11 | Noto Sans KR as primary font | 한국어 우선 앱. 시스템 폰트는 일관성이 없다. |
 | 2026-04-11 | Space Mono for currency display | tabular-nums 필수. 금액 컬럼이 정렬되어야 스캔하기 쉽다. |
+| 2026-06-24 | Noto Sans KR for production amount display | 실제 프로덕션 UI와 맞춰 금액도 본문 폰트와 통일. 숫자 정렬은 tabular-nums로 유지. |
 | 2026-04-11 | 5-accent color system (mint/coral/blue/purple/yellow) | 수입/지출/저축/분석/경고를 색으로 즉시 구분. 혼동 없이 의미를 전달한다. |
 | 2026-04-11 | Gradient orbs + noise overlay | 완전한 플랫 배경은 단조롭다. 저비용으로 공간감을 만드는 방법. |
 | 2026-04-11 | DESIGN.md created | /design-consultation 기반, 기존 코드베이스에서 추출 |

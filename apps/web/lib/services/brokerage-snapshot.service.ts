@@ -16,6 +16,19 @@ function decStr(v: { toString(): string } | null | undefined): string | null {
   return v == null ? null : v.toString();
 }
 
+function decNum(v: { toString(): string } | null | undefined): number {
+  const n = Number(decStr(v) ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function monthKey(date: Date): string {
+  return date.toISOString().slice(0, 7);
+}
+
+function roundedString(n: number): string {
+  return String(Math.round(n));
+}
+
 function mapPositionCreate(p: NormalizedPosition) {
   return {
     symbol: p.symbol,
@@ -55,7 +68,7 @@ export async function syncConnection(userId: string, connectionId: string) {
       { userId, broker: conn.broker }
     );
     const client = createBrokerageClient(conn.broker, creds);
-    const accounts = await client.listAccounts();
+    const accounts = (await client.listAccounts()).slice(0, 1);
     const date = toKSTDateForDB(new Date());
 
     for (const acct of accounts) {
@@ -129,8 +142,48 @@ export async function syncConnection(userId: string, connectionId: string) {
   }
 }
 
+/** 사용자의 모든 활성 연결을 동기화. 크론/전체 동기화 버튼에서 사용한다. */
+export async function syncAllConnections(userId: string) {
+  const connections = await prisma.brokerageConnection.findMany({
+    where: { userId, deletedAt: null, status: { not: 'DISABLED' } },
+    select: { id: true },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const results: Array<{ connectionId: string; ok: boolean; synced?: number; error?: string }> = [];
+  for (const conn of connections) {
+    try {
+      const result = await syncConnection(userId, conn.id);
+      results.push({ connectionId: conn.id, ok: true, synced: result?.synced ?? 0 });
+    } catch (err) {
+      results.push({ connectionId: conn.id, ok: false, error: failureMessage(err) });
+    }
+  }
+
+  return {
+    total: connections.length,
+    succeeded: results.filter((r) => r.ok).length,
+    failed: results.filter((r) => !r.ok).length,
+    results,
+  };
+}
+
 export interface InvestmentsOverview {
   totalEquityKrw: string;
+  monthlyReport: Array<{
+    month: string;
+    totalEquityKrw: string;
+    cashKrw: string;
+    positionsValueKrw: string;
+    changeKrw: string | null;
+    changeRate: string | null;
+  }>;
+  analysis: {
+    snapshotsCount: number;
+    positionCount: number;
+    brokerBreakdown: Array<{ broker: string; totalEquityKrw: string }>;
+    currencyBreakdown: Array<{ currency: string; marketValueKrw: string }>;
+  };
   connections: Array<{
     id: string;
     broker: string;
@@ -152,6 +205,7 @@ export interface InvestmentsOverview {
         currency: string;
         quantity: string;
         marketValueKrw: string;
+        marketValue: string;
         unrealizedPnl: string | null;
       }>;
     }>;
@@ -160,48 +214,66 @@ export interface InvestmentsOverview {
 
 /** /investments + 대시보드 카드용. 계좌별 최신 스냅샷 + 보유종목. Decimal→string. */
 export async function getInvestmentsOverview(userId: string): Promise<InvestmentsOverview> {
-  const connections = await prisma.brokerageConnection.findMany({
-    where: { userId, deletedAt: null },
-    orderBy: { createdAt: 'asc' },
-    select: {
-      id: true,
-      broker: true,
-      label: true,
-      status: true,
-      failureReason: true,
-      accounts: {
-        select: {
-          id: true,
-          displayName: true,
-          accountType: true,
-          snapshots: {
-            orderBy: { date: 'desc' },
-            take: 1,
-            select: {
-              asOf: true,
-              cashKrw: true,
-              totalEquityKrw: true,
-              positionsValueKrw: true,
-              positions: {
-                orderBy: { marketValueKrw: 'desc' },
-                select: {
-                  symbol: true,
-                  name: true,
-                  market: true,
-                  currency: true,
-                  quantity: true,
-                  marketValueKrw: true,
-                  unrealizedPnl: true,
+  const [connections, history] = await Promise.all([
+    prisma.brokerageConnection.findMany({
+      where: { userId, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        broker: true,
+        label: true,
+        status: true,
+        failureReason: true,
+        accounts: {
+          select: {
+            id: true,
+            displayName: true,
+            accountType: true,
+            snapshots: {
+              orderBy: { date: 'desc' },
+              take: 1,
+              select: {
+                asOf: true,
+                cashKrw: true,
+                totalEquityKrw: true,
+                positionsValueKrw: true,
+                positions: {
+                  orderBy: { marketValueKrw: 'desc' },
+                  select: {
+                    symbol: true,
+                    name: true,
+                    market: true,
+                    currency: true,
+                    quantity: true,
+                    marketValue: true,
+                    marketValueKrw: true,
+                    unrealizedPnl: true,
+                  },
                 },
               },
             },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.brokerageSnapshot.findMany({
+      where: { account: { connection: { userId, deletedAt: null } } },
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        accountId: true,
+        date: true,
+        cashKrw: true,
+        totalEquityKrw: true,
+        positionsValueKrw: true,
+      },
+    }),
+  ]);
 
   let total = 0;
+  let positionCount = 0;
+  const brokerTotals = new Map<string, number>();
+  const currencyTotals = new Map<string, number>();
+
   const shaped = connections.map((c) => ({
     id: c.id,
     broker: c.broker,
@@ -210,7 +282,12 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
     failureReason: c.failureReason,
     accounts: c.accounts.map((a) => {
       const snap = a.snapshots[0];
-      if (snap?.totalEquityKrw != null) total += Number(snap.totalEquityKrw);
+      const accountTotal = decNum(snap?.totalEquityKrw);
+      if (snap?.totalEquityKrw != null) {
+        total += accountTotal;
+        brokerTotals.set(c.broker, (brokerTotals.get(c.broker) ?? 0) + accountTotal);
+      }
+      positionCount += snap?.positions.length ?? 0;
       return {
         id: a.id,
         displayName: a.displayName,
@@ -225,12 +302,77 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
           market: p.market,
           currency: p.currency,
           quantity: p.quantity.toString(),
+          marketValue: p.marketValue.toString(),
           marketValueKrw: p.marketValueKrw.toString(),
           unrealizedPnl: decStr(p.unrealizedPnl),
-        })),
+        })).map((p) => {
+          currencyTotals.set(p.currency, (currencyTotals.get(p.currency) ?? 0) + Number(p.marketValueKrw));
+          return p;
+        }),
       };
     }),
   }));
 
-  return { totalEquityKrw: String(total), connections: shaped };
+  return {
+    totalEquityKrw: String(total),
+    monthlyReport: buildMonthlyReport(history),
+    analysis: {
+      snapshotsCount: history.length,
+      positionCount,
+      brokerBreakdown: [...brokerTotals.entries()].map(([broker, value]) => ({
+        broker,
+        totalEquityKrw: roundedString(value),
+      })),
+      currencyBreakdown: [...currencyTotals.entries()].map(([currency, value]) => ({
+        currency,
+        marketValueKrw: roundedString(value),
+      })),
+    },
+    connections: shaped,
+  };
+}
+
+function buildMonthlyReport(
+  history: Array<{
+    accountId: string;
+    date: Date;
+    cashKrw: { toString(): string };
+    totalEquityKrw: { toString(): string };
+    positionsValueKrw: { toString(): string };
+  }>
+) {
+  const latestByMonthAccount = new Map<string, (typeof history)[number]>();
+  for (const row of history) {
+    latestByMonthAccount.set(`${monthKey(row.date)}:${row.accountId}`, row);
+  }
+
+  const monthly = new Map<
+    string,
+    { totalEquityKrw: number; cashKrw: number; positionsValueKrw: number }
+  >();
+  for (const row of latestByMonthAccount.values()) {
+    const key = monthKey(row.date);
+    const prev = monthly.get(key) ?? { totalEquityKrw: 0, cashKrw: 0, positionsValueKrw: 0 };
+    prev.totalEquityKrw += decNum(row.totalEquityKrw);
+    prev.cashKrw += decNum(row.cashKrw);
+    prev.positionsValueKrw += decNum(row.positionsValueKrw);
+    monthly.set(key, prev);
+  }
+
+  const rows = [...monthly.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-12)
+    .map(([month, value], idx, arr) => {
+      const prev = idx > 0 ? arr[idx - 1][1].totalEquityKrw : null;
+      const change = prev == null ? null : value.totalEquityKrw - prev;
+      return {
+        month,
+        totalEquityKrw: roundedString(value.totalEquityKrw),
+        cashKrw: roundedString(value.cashKrw),
+        positionsValueKrw: roundedString(value.positionsValueKrw),
+        changeKrw: change == null ? null : roundedString(change),
+        changeRate: change == null || !prev ? null : (change / prev).toFixed(4),
+      };
+    });
+  return rows;
 }

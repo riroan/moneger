@@ -5,6 +5,7 @@ import {
   createConnection,
   deleteConnection,
   testCredentials,
+  DuplicateBrokerageConnectionError,
 } from '../brokerage.service';
 import { createBrokerageClient } from '../brokerage/factory';
 
@@ -41,7 +42,10 @@ describe('brokerage.service', () => {
   afterAll(() => {
     process.env.BROKERAGE_ENC_KEY = originalKey;
   });
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prismaMock.brokerageConnection.findFirst.mockResolvedValue(null);
+  });
 
   describe('createConnection', () => {
     it('자격증명을 암호화해 저장하고 평문은 넘기지 않는다', async () => {
@@ -65,6 +69,19 @@ describe('brokerage.service', () => {
       expect(JSON.stringify(arg.data)).not.toContain('AS');
       // 안전 select 사용 (ciphertext 미반환)
       expect(arg.select).not.toHaveProperty('ciphertext');
+    });
+
+    it('같은 사용자에게 같은 증권사 연결이 있으면 생성하지 않는다', async () => {
+      prismaMock.brokerageConnection.findFirst.mockResolvedValue({ id: 'existing' });
+
+      await expect(
+        createConnection('user-1', {
+          broker: 'KIS',
+          label: '두 번째 한투',
+          credentials: { appKey: 'AK', appSecret: 'AS', accountNo: '12345678-01' },
+        })
+      ).rejects.toBeInstanceOf(DuplicateBrokerageConnectionError);
+      expect(prismaMock.brokerageConnection.create).not.toHaveBeenCalled();
     });
   });
 

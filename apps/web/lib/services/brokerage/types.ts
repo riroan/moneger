@@ -31,7 +31,7 @@ export interface NormalizedPosition {
   lastPrice?: string; // 원통화
   marketValue: string; // 원통화 평가액
   marketValueKrw: string; // 환산 평가액
-  unrealizedPnl?: string; // 원통화 평가손익
+  unrealizedPnl?: string; // KRW 환산 평가손익(UI/집계 표시 기준)
   fxRateToKrw?: string; // currency !== KRW일 때
 }
 

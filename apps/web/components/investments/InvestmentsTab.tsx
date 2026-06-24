@@ -1,7 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatCurrency } from '@moneger/shared';
+import {
+  FaBuilding,
+  FaChartLine,
+  FaCheckCircle,
+  FaClock,
+  FaLock,
+  FaPlus,
+  FaSyncAlt,
+  FaTrash,
+  FaWallet,
+} from 'react-icons/fa';
 
 interface InvestmentsTabProps {
   userId: string;
@@ -13,6 +24,7 @@ interface Position {
   market: string | null;
   currency: string;
   quantity: string;
+  marketValue: string;
   marketValueKrw: string;
   unrealizedPnl: string | null;
 }
@@ -36,14 +48,34 @@ interface Connection {
 }
 interface Overview {
   totalEquityKrw: string;
+  monthlyReport: Array<{
+    month: string;
+    totalEquityKrw: string;
+    cashKrw: string;
+    positionsValueKrw: string;
+    changeKrw: string | null;
+    changeRate: string | null;
+  }>;
+  analysis: {
+    snapshotsCount: number;
+    positionCount: number;
+    brokerBreakdown: Array<{ broker: string; totalEquityKrw: string }>;
+    currencyBreakdown: Array<{ currency: string; marketValueKrw: string }>;
+  };
   connections: Connection[];
 }
 
-const CARD = 'bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4';
-const MUTED_BTN =
-  'text-xs text-text-muted hover:text-text-secondary bg-bg-secondary hover:bg-bg-card-hover rounded-lg transition-colors py-1.5 px-2.5';
+type Broker = 'KIS' | 'TOSS';
 
-// 손익 색: 한국 증시 관습 — 이익=빨강(coral)·손실=파랑(blue). 색만으로 표시하지 않고 ▲▼+부호 병행.
+const CARD = 'bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4';
+const ACTION_BTN =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-bg-secondary px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-card-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer';
+const PRIMARY_BTN =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent-blue/20 px-3 py-2 text-xs font-semibold text-accent-blue transition-colors hover:bg-accent-blue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer';
+const FIELD =
+  'w-full rounded-lg border border-[var(--border)] bg-bg-secondary px-3 py-2.5 text-base text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent-blue';
+const LABEL = 'block text-xs font-medium text-text-secondary mb-1.5';
+
 function pnlClass(v: number): string {
   return v > 0 ? 'text-accent-coral' : v < 0 ? 'text-accent-blue' : 'text-text-muted';
 }
@@ -54,12 +86,47 @@ function signedCurrency(v: number): string {
   const s = formatCurrency(Math.abs(v));
   return v > 0 ? `+${s}` : v < 0 ? `-${s}` : s;
 }
+function brokerName(broker: string): string {
+  if (broker === 'KIS') return '한국투자증권';
+  if (broker === 'TOSS') return '토스증권';
+  return broker;
+}
+function percent(v: string | null): string {
+  if (v == null) return '-';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '-';
+  return `${(n * 100).toFixed(1)}%`;
+}
+function money(value: string | null | undefined): number {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+function formatDateTime(value: string | null): string {
+  if (!value) return '동기화 전';
+  return new Date(value).toLocaleString('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+function latestAsOf(connections: Connection[]): string | null {
+  let latest = 0;
+  for (const conn of connections) {
+    for (const account of conn.accounts) {
+      if (!account.asOf) continue;
+      latest = Math.max(latest, new Date(account.asOf).getTime());
+    }
+  }
+  return latest ? new Date(latest).toISOString() : null;
+}
 
 export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
   const [data, setData] = useState<Overview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncingAll, setSyncingAll] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   const fetchOverview = useCallback(async () => {
@@ -83,6 +150,7 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
   const handleSync = useCallback(
     async (connectionId: string) => {
       setSyncingId(connectionId);
+      setError(null);
       try {
         const res = await fetch(`/api/brokerage/connections/${connectionId}/sync`, {
           method: 'POST',
@@ -103,45 +171,85 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
     [userId, fetchOverview]
   );
 
+  const handleSyncAll = useCallback(async () => {
+    setSyncingAll(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/brokerage/sync', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || '전체 동기화 실패');
+      }
+      await fetchOverview();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '전체 동기화 실패');
+    } finally {
+      setSyncingAll(false);
+    }
+  }, [userId, fetchOverview]);
+
   const handleDelete = useCallback(
     async (connectionId: string) => {
       if (!confirm('이 증권사 연결을 삭제할까요? 자격증명은 즉시 삭제되고 과거 스냅샷은 보존됩니다.')) {
         return;
       }
-      await fetch(`/api/brokerage/connections/${connectionId}?userId=${userId}`, {
-        method: 'DELETE',
-      });
+      await fetch(`/api/brokerage/connections/${connectionId}?userId=${userId}`, { method: 'DELETE' });
       await fetchOverview();
     },
     [userId, fetchOverview]
   );
 
+  const summary = useMemo(() => {
+    const connections = data?.connections ?? [];
+    const accountCount = connections.reduce((sum, c) => sum + c.accounts.length, 0);
+    const errorCount = connections.filter((c) => c.status === 'ERROR').length;
+    return {
+      hasConnections: connections.length > 0,
+      connectionCount: connections.length,
+      accountCount,
+      errorCount,
+      latest: latestAsOf(connections),
+      positions: data?.analysis.positionCount ?? 0,
+    };
+  }, [data]);
+  const connectedBrokers = useMemo(
+    () => new Set<Broker>((data?.connections ?? []).map((c) => c.broker).filter((b): b is Broker => b === 'KIS' || b === 'TOSS')),
+    [data]
+  );
+  const canAddBroker = connectedBrokers.size < 2;
+
   if (isLoading) {
     return <div className="text-text-muted text-sm py-8 text-center">불러오는 중...</div>;
   }
 
-  const hasConnections = (data?.connections.length ?? 0) > 0;
-
   return (
     <div className="flex flex-col gap-4 animate-[fadeIn_0.5s_ease-out]">
-      {/* 총 평가액 히어로 */}
-      <section className={CARD}>
-        <header className="flex items-center justify-between mb-2">
-          <h1 className="text-base sm:text-lg font-semibold flex items-center gap-2">증권 자산</h1>
-          <button className={MUTED_BTN} onClick={() => setIsAddOpen((v) => !v)}>
-            {isAddOpen ? '닫기' : '증권사 연결 추가'}
-          </button>
-        </header>
-        <div className="text-text-muted text-xs">총 평가액</div>
-        <div className="font-mono tabular-nums text-text-primary text-2xl sm:text-3xl mt-0.5">
-          {formatCurrency(Number(data?.totalEquityKrw ?? 0))}
+      <PortfolioHeader
+        data={data}
+        summary={summary}
+        isAddOpen={isAddOpen}
+        canAddBroker={canAddBroker}
+        syncingAll={syncingAll}
+        onSyncAll={handleSyncAll}
+        onToggleAdd={() => {
+          if (isAddOpen || canAddBroker) setIsAddOpen((v) => !v);
+        }}
+      />
+
+      {error && (
+        <div className="rounded-[12px] border border-accent-coral/30 bg-accent-coral/10 px-4 py-3 text-sm text-accent-coral">
+          {error}
         </div>
-        {error && <div className="mt-2 text-xs text-accent-coral">{error}</div>}
-      </section>
+      )}
 
       {isAddOpen && (
         <AddConnectionForm
           userId={userId}
+          connectedBrokers={connectedBrokers}
           onDone={async () => {
             setIsAddOpen(false);
             await fetchOverview();
@@ -149,125 +257,323 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
         />
       )}
 
-      {/* 빈 상태 */}
-      {!hasConnections && !isAddOpen && (
-        <section className={`${CARD} text-center py-10`}>
-          <div className="text-text-secondary text-sm">아직 연결된 증권사가 없습니다.</div>
-          <div className="text-text-muted text-xs mt-1">
-            한국투자증권 계좌를 연결하면 잔고와 보유 종목을 한 화면에서 볼 수 있어요.
+      {!summary.hasConnections && !isAddOpen && <EmptyState onAdd={() => setIsAddOpen(true)} />}
+
+      {summary.hasConnections && data && (
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4">
+          <div className="flex flex-col gap-4">
+            {data.connections.map((conn) => (
+              <ConnectionCard
+                key={conn.id}
+                connection={conn}
+                syncingId={syncingId}
+                onSync={handleSync}
+                onDelete={handleDelete}
+              />
+            ))}
           </div>
-          <button
-            className="mt-4 bg-accent-blue/20 text-accent-blue font-medium rounded-lg px-3 py-2 text-sm"
-            onClick={() => setIsAddOpen(true)}
-          >
-            증권사 연결하기
+          <aside className="flex flex-col gap-4">
+            <MonthlyReport data={data} />
+            <BreakdownPanel data={data} />
+          </aside>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PortfolioHeader({
+  data,
+  summary,
+  isAddOpen,
+  canAddBroker,
+  syncingAll,
+  onSyncAll,
+  onToggleAdd,
+}: {
+  data: Overview | null;
+  summary: {
+    hasConnections: boolean;
+    connectionCount: number;
+    accountCount: number;
+    errorCount: number;
+    latest: string | null;
+    positions: number;
+  };
+  isAddOpen: boolean;
+  canAddBroker: boolean;
+  syncingAll: boolean;
+  onSyncAll: () => void;
+  onToggleAdd: () => void;
+}) {
+  const latest = data?.monthlyReport.at(-1);
+  const change = latest?.changeKrw == null ? null : Number(latest.changeKrw);
+
+  return (
+    <section className={`${CARD} overflow-hidden`}>
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent-blue/15 text-accent-blue">
+              <FaWallet />
+            </span>
+            <span className="rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
+              {summary.connectionCount}개 연결
+            </span>
+            {summary.errorCount > 0 && (
+              <span className="rounded-full bg-accent-coral/15 px-2.5 py-1 text-[11px] font-medium text-accent-coral">
+                오류 {summary.errorCount}
+              </span>
+            )}
+          </div>
+          <h1 className="text-sm font-medium text-text-muted">증권 자산</h1>
+          <div className="mt-1 break-words tabular-nums text-3xl font-bold text-text-primary sm:text-4xl">
+            {formatCurrency(Number(data?.totalEquityKrw ?? 0))}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
+            <span className="inline-flex items-center gap-1.5">
+              <FaClock className="text-[11px]" />
+              {formatDateTime(summary.latest)}
+            </span>
+            <span>{summary.positions}개 종목</span>
+            {change != null && (
+              <span className={pnlClass(change)}>
+                전월 대비 {signedCurrency(change)} · {percent(latest?.changeRate ?? null)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
+          <HeaderStat label="계좌" value={`${summary.accountCount}`} />
+          <HeaderStat label="스냅샷" value={`${data?.analysis.snapshotsCount ?? 0}`} />
+          <HeaderStat label="보유" value={`${summary.positions}`} />
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-4">
+        {summary.hasConnections && (
+          <button type="button" className={ACTION_BTN} disabled={syncingAll} onClick={onSyncAll}>
+            <FaSyncAlt className={syncingAll ? 'animate-spin' : ''} />
+            {syncingAll ? '동기화 중' : '전체 동기화'}
           </button>
-        </section>
+        )}
+        <button
+          type="button"
+          className={PRIMARY_BTN}
+          disabled={!canAddBroker && !isAddOpen}
+          onClick={onToggleAdd}
+        >
+          <FaPlus />
+          {isAddOpen ? '연결 닫기' : canAddBroker ? '증권사 연결' : '연결 완료'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function HeaderStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 border-l border-[var(--border)] pl-3">
+      <div className="text-[11px] text-text-muted">{label}</div>
+      <div className="mt-1 text-lg font-semibold tabular-nums text-text-primary">{value}</div>
+    </div>
+  );
+}
+
+function EmptyState({ onAdd }: { onAdd: () => void }) {
+  return (
+    <section className={`${CARD} py-8`}>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-text-primary">연결된 증권사가 없습니다</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <BrokerChip broker="KIS" />
+            <BrokerChip broker="TOSS" />
+          </div>
+        </div>
+        <button type="button" className={PRIMARY_BTN} onClick={onAdd}>
+          <FaPlus />
+          증권사 연결
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function BrokerChip({ broker }: { broker: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-bg-secondary px-3 py-1.5 text-xs text-text-secondary">
+      <FaBuilding className={broker === 'TOSS' ? 'text-accent-mint' : 'text-accent-blue'} />
+      {brokerName(broker)}
+    </span>
+  );
+}
+
+function ConnectionCard({
+  connection,
+  syncingId,
+  onSync,
+  onDelete,
+}: {
+  connection: Connection;
+  syncingId: string | null;
+  onSync: (connectionId: string) => void;
+  onDelete: (connectionId: string) => void;
+}) {
+  const total = connection.accounts.reduce((sum, a) => sum + money(a.totalEquityKrw), 0);
+  const positions = connection.accounts.reduce((sum, a) => sum + a.positions.length, 0);
+  const isSyncing = syncingId === connection.id;
+
+  return (
+    <section className={CARD}>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-bg-secondary text-accent-blue">
+              <FaBuilding />
+            </span>
+            <h2 className="text-base font-semibold text-text-primary">{brokerName(connection.broker)}</h2>
+            {connection.label && <span className="text-xs text-text-muted">{connection.label}</span>}
+            <ConnectionStatus status={connection.status} />
+          </div>
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <div className="text-xl font-semibold tabular-nums text-text-primary">
+              {formatCurrency(total)}
+            </div>
+            <div className="text-xs text-text-muted">
+              {connection.accounts.length}개 계좌 · {positions}개 종목
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={ACTION_BTN}
+            disabled={isSyncing}
+            onClick={() => onSync(connection.id)}
+          >
+            <FaSyncAlt className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? '동기화 중' : '동기화'}
+          </button>
+          <button
+            type="button"
+            className="inline-flex min-h-9 items-center justify-center rounded-lg bg-bg-secondary px-3 py-2 text-xs text-text-muted transition-colors hover:bg-accent-coral/15 hover:text-accent-coral focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-coral/70 cursor-pointer"
+            onClick={() => onDelete(connection.id)}
+            aria-label={`${brokerName(connection.broker)} 연결 삭제`}
+            title="삭제"
+          >
+            <FaTrash />
+          </button>
+        </div>
+      </header>
+
+      {connection.status === 'ERROR' && (
+        <div className="mt-3 rounded-[12px] border border-accent-coral/25 bg-accent-coral/10 px-3 py-2 text-xs text-accent-coral">
+          마지막 동기화 실패{connection.failureReason ? ` (${connection.failureReason})` : ''}
+        </div>
       )}
 
-      {/* 연결별 카드 */}
-      {data?.connections.map((conn) => (
-        <section key={conn.id} className={CARD}>
-          <header className="flex items-center justify-between mb-3 gap-2">
-            <h2 className="text-base font-semibold flex items-center gap-2">
-              {conn.broker === 'KIS' ? '한국투자증권' : conn.broker}
-              {conn.label && <span className="text-text-muted text-xs">{conn.label}</span>}
-              {conn.status === 'ERROR' && (
-                <span className="bg-accent-coral/15 text-accent-coral text-[11px] rounded-lg px-2 py-0.5">
-                  연결 오류
-                </span>
-              )}
-            </h2>
-            <div className="flex items-center gap-2">
-              <button
-                className={MUTED_BTN}
-                disabled={syncingId === conn.id}
-                onClick={() => handleSync(conn.id)}
-              >
-                {syncingId === conn.id ? '동기화 중...' : '지금 동기화'}
-              </button>
-              <button className={MUTED_BTN} onClick={() => handleDelete(conn.id)}>
-                삭제
-              </button>
-            </div>
-          </header>
-
-          {conn.status === 'ERROR' && (
-            <div className="mb-3 text-xs text-accent-coral">
-              마지막 동기화 실패{conn.failureReason ? ` (${conn.failureReason})` : ''}. 자격증명을 확인하세요.
-            </div>
-          )}
-
-          {conn.accounts.length === 0 && (
-            <div className="text-text-muted text-sm py-2">
-              아직 동기화 전입니다. &quot;지금 동기화&quot;를 눌러 잔고를 불러오세요.
-            </div>
-          )}
-
-          {conn.accounts.map((acct) => (
+      {connection.accounts.length === 0 ? (
+        <div className="mt-4 rounded-[12px] border border-dashed border-[var(--border)] px-4 py-5 text-sm text-text-muted">
+          동기화 전
+        </div>
+      ) : (
+        <div className="mt-4 flex flex-col gap-4">
+          {connection.accounts.map((acct) => (
             <AccountBlock key={acct.id} account={acct} />
           ))}
-        </section>
-      ))}
-    </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ConnectionStatus({ status }: { status: string }) {
+  if (status === 'ERROR') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-accent-coral/15 px-2.5 py-1 text-[11px] font-medium text-accent-coral">
+        연결 오류
+      </span>
+    );
+  }
+  if (status === 'DISABLED') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-muted">
+        비활성
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-accent-mint/15 px-2.5 py-1 text-[11px] font-medium text-accent-mint">
+      <FaCheckCircle />
+      활성
+    </span>
   );
 }
 
 function AccountBlock({ account }: { account: Account }) {
   return (
-    <div className="border-t border-[var(--border)] pt-3 mt-3 first:border-t-0 first:pt-0 first:mt-0">
-      <div className="flex items-end justify-between mb-2">
-        <div>
-          <div className="text-text-secondary text-sm">{account.displayName}</div>
-          {account.asOf && (
-            <div className="text-text-muted text-[11px]">
-              기준 {new Date(account.asOf).toLocaleString('ko-KR')}
-            </div>
-          )}
+    <div className="rounded-[12px] border border-[var(--border)] bg-bg-secondary/40 p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-text-secondary">{account.displayName}</div>
+          <div className="mt-1 text-[11px] text-text-muted">{formatDateTime(account.asOf)}</div>
         </div>
-        <div className="text-right">
-          <div className="text-text-muted text-[11px]">평가액</div>
-          <div className="font-mono tabular-nums text-text-primary text-lg">
-            {formatCurrency(Number(account.totalEquityKrw ?? 0))}
+        <div className="grid grid-cols-2 gap-4 text-right sm:min-w-[300px]">
+          <div>
+            <div className="text-[11px] text-text-muted">평가액</div>
+            <div className="text-base font-semibold tabular-nums text-text-primary">
+              {formatCurrency(money(account.totalEquityKrw))}
+            </div>
           </div>
-          <div className="text-text-muted text-[11px] font-mono tabular-nums">
-            현금 {formatCurrency(Number(account.cashKrw ?? 0))}
+          <div>
+            <div className="text-[11px] text-text-muted">현금</div>
+            <div className="text-base tabular-nums text-text-secondary">
+              {formatCurrency(money(account.cashKrw))}
+            </div>
           </div>
         </div>
       </div>
 
       {account.positions.length === 0 ? (
-        <div className="text-text-muted text-xs py-2">보유 종목 없음</div>
+        <div className="mt-3 border-t border-[var(--border)] pt-3 text-xs text-text-muted">보유 종목 없음</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="mt-3 overflow-x-auto border-t border-[var(--border)] pt-3">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
-              <tr className="text-text-muted text-xs text-left">
-                <th className="font-normal py-1">종목</th>
-                <th className="font-normal py-1 text-right">수량</th>
-                <th className="font-normal py-1 text-right">평가액</th>
-                <th className="font-normal py-1 text-right">평가손익</th>
+              <tr className="text-left text-xs text-text-muted">
+                <th className="font-normal py-2">종목</th>
+                <th className="font-normal py-2 text-right">수량</th>
+                <th className="font-normal py-2 text-right">평가액</th>
+                <th className="font-normal py-2 text-right">평가손익</th>
               </tr>
             </thead>
             <tbody>
               {account.positions.map((p) => {
                 const pnl = Number(p.unrealizedPnl ?? 0);
                 return (
-                  <tr key={p.symbol} className="border-t border-[var(--border)]">
-                    <td className="py-1.5">
-                      <div className="text-text-primary">{p.name}</div>
-                      <div className="text-text-muted text-[11px]">
-                        {p.symbol}
-                        {p.market ? ` · ${p.market}` : ''}
+                  <tr key={`${p.symbol}:${p.market ?? ''}`} className="border-t border-[var(--border)]">
+                    <td className="py-2.5">
+                      <div className="font-medium text-text-primary">{p.name}</div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-text-muted">
+                        <span>{p.symbol}</span>
+                        {p.market && <span>{p.market}</span>}
+                        <span className="rounded-full bg-bg-card px-2 py-0.5">{p.currency}</span>
                       </div>
                     </td>
-                    <td className="py-1.5 text-right font-mono tabular-nums text-text-secondary">
-                      {p.quantity}
+                    <td className="py-2.5 text-right tabular-nums text-text-secondary">{p.quantity}</td>
+                    <td className="py-2.5 text-right">
+                      <div className="tabular-nums text-text-primary">
+                        {formatCurrency(Number(p.marketValueKrw))}
+                      </div>
+                      {p.currency !== 'KRW' && (
+                        <div className="mt-0.5 text-[11px] tabular-nums text-text-muted">
+                          {p.marketValue} {p.currency}
+                        </div>
+                      )}
                     </td>
-                    <td className="py-1.5 text-right font-mono tabular-nums text-text-primary">
-                      {formatCurrency(Number(p.marketValueKrw))}
-                    </td>
-                    <td className={`py-1.5 text-right font-mono tabular-nums ${pnlClass(pnl)}`}>
+                    <td className={`py-2.5 text-right tabular-nums ${pnlClass(pnl)}`}>
                       {p.unrealizedPnl == null ? '-' : `${pnlMark(pnl)} ${signedCurrency(pnl)}`}
                     </td>
                   </tr>
@@ -281,26 +587,153 @@ function AccountBlock({ account }: { account: Account }) {
   );
 }
 
+function MonthlyReport({ data }: { data: Overview }) {
+  const rows = data.monthlyReport.slice(-6);
+  const max = Math.max(...rows.map((r) => Number(r.totalEquityKrw)), 1);
+
+  return (
+    <section className={CARD}>
+      <div className="mb-4 flex items-center gap-2">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent-purple/15 text-accent-purple">
+          <FaChartLine />
+        </span>
+        <div>
+          <h2 className="text-base font-semibold text-text-primary">월별 리포트</h2>
+          <div className="text-[11px] text-text-muted">최근 {rows.length || 0}개월</div>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="text-sm text-text-muted">스냅샷 없음</div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {rows.map((r) => {
+            const change = r.changeKrw == null ? null : Number(r.changeKrw);
+            const width = Math.max(6, Math.round((Number(r.totalEquityKrw) / max) * 100));
+            return (
+              <div key={r.month}>
+                <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                  <span className="text-text-secondary">{r.month}</span>
+                  <span className="tabular-nums text-text-primary">
+                    {formatCurrency(Number(r.totalEquityKrw))}
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-accent-purple to-accent-blue"
+                    style={{ width: `${width}%` }}
+                  />
+                </div>
+                <div className={`mt-1 text-right text-[11px] ${change == null ? 'text-text-muted' : pnlClass(change)}`}>
+                  {change == null ? '전월 데이터 없음' : `${signedCurrency(change)} · ${percent(r.changeRate)}`}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BreakdownPanel({ data }: { data: Overview }) {
+  return (
+    <section className={CARD}>
+      <div className="mb-4 flex items-center gap-2">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent-mint/15 text-accent-mint">
+          <FaWallet />
+        </span>
+        <h2 className="text-base font-semibold text-text-primary">구성</h2>
+      </div>
+      <Breakdown title="증권사" rows={data.analysis.brokerBreakdown.map((r) => ({
+        label: brokerName(r.broker),
+        value: r.totalEquityKrw,
+      }))} />
+      <div className="my-4 border-t border-[var(--border)]" />
+      <Breakdown title="통화" rows={data.analysis.currencyBreakdown.map((r) => ({
+        label: r.currency,
+        value: r.marketValueKrw,
+      }))} />
+    </section>
+  );
+}
+
+function Breakdown({ title, rows }: { title: string; rows: Array<{ label: string; value: string }> }) {
+  const max = Math.max(...rows.map((r) => Number(r.value)), 1);
+
+  return (
+    <div>
+      <h3 className="mb-2 text-xs font-medium text-text-muted">{title}</h3>
+      {rows.length === 0 ? (
+        <div className="text-xs text-text-muted">데이터 없음</div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {rows.map((row) => {
+            const value = Number(row.value);
+            const width = Math.max(6, Math.round((value / max) * 100));
+            return (
+              <div key={row.label}>
+                <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                  <span className="text-text-secondary">{row.label}</span>
+                  <span className="tabular-nums text-text-primary">{formatCurrency(value)}</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-bg-secondary">
+                  <div className="h-full rounded-full bg-accent-blue" style={{ width: `${width}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AddConnectionForm({
   userId,
+  connectedBrokers,
   onDone,
 }: {
   userId: string;
+  connectedBrokers: Set<Broker>;
   onDone: () => void | Promise<void>;
 }) {
+  const availableBrokers = useMemo(
+    () => (['KIS', 'TOSS'] as const).filter((item) => !connectedBrokers.has(item)),
+    [connectedBrokers]
+  );
+  const [broker, setBroker] = useState<Broker>(availableBrokers[0] ?? 'KIS');
   const [appKey, setAppKey] = useState('');
   const [appSecret, setAppSecret] = useState('');
   const [accountNo, setAccountNo] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
+  const [accountSeq, setAccountSeq] = useState('');
   const [label, setLabel] = useState('');
   const [paper, setPaper] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
-  const credentials = { appKey, appSecret, accountNo, paper };
-  const filled = appKey && appSecret && accountNo;
+  useEffect(() => {
+    if (connectedBrokers.has(broker)) {
+      setBroker(availableBrokers[0] ?? 'KIS');
+    }
+  }, [availableBrokers, broker, connectedBrokers]);
 
-  const inputCls =
-    'w-full bg-bg-secondary border border-[var(--border)] rounded-lg px-3 py-2 text-base text-text-primary placeholder:text-text-muted';
+  if (availableBrokers.length === 0) {
+    return (
+      <section className={CARD}>
+        <h2 className="text-base font-semibold text-text-primary">연결 가능한 증권사가 없습니다</h2>
+        <div className="mt-2 text-sm text-text-muted">한국투자증권과 토스증권이 이미 연결되어 있습니다.</div>
+      </section>
+    );
+  }
+
+  const credentials =
+    broker === 'KIS'
+      ? { appKey, appSecret, accountNo, paper }
+      : { clientId, clientSecret, accountSeq: accountSeq || undefined };
+  const filled = broker === 'KIS' ? appKey && appSecret && accountNo : clientId && clientSecret;
 
   const test = async () => {
     setBusy(true);
@@ -309,7 +742,7 @@ function AddConnectionForm({
       const res = await fetch('/api/brokerage/connections/test', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ userId, broker: 'KIS', credentials }),
+        body: JSON.stringify({ userId, broker, credentials }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || '연결 테스트 실패');
@@ -328,7 +761,7 @@ function AddConnectionForm({
       const res = await fetch('/api/brokerage/connections', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ userId, broker: 'KIS', label: label || null, credentials }),
+        body: JSON.stringify({ userId, broker, label: label || null, credentials }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || '저장 실패');
@@ -342,62 +775,129 @@ function AddConnectionForm({
 
   return (
     <section className={CARD}>
-      <h2 className="text-base font-semibold mb-1">한국투자증권 연결</h2>
-      <p className="text-text-muted text-xs mb-3">
-        KIS Developers에서 발급한 appkey/appsecret과 계좌번호를 입력하세요. 자격증명은 암호화되어
-        저장되고 서버에서만 사용되며, 평문은 저장/전송되지 않습니다.
-      </p>
-      <div className="flex flex-col gap-2">
-        <input
-          className={inputCls}
-          placeholder="appkey"
-          value={appKey}
-          onChange={(e) => setAppKey(e.target.value)}
-          autoComplete="off"
-        />
-        <input
-          className={inputCls}
-          placeholder="appsecret"
-          type="password"
-          value={appSecret}
-          onChange={(e) => setAppSecret(e.target.value)}
-          autoComplete="off"
-        />
-        <input
-          className={inputCls}
-          placeholder="계좌번호 (예: 12345678-01)"
-          value={accountNo}
-          onChange={(e) => setAccountNo(e.target.value)}
-          autoComplete="off"
-        />
-        <input
-          className={inputCls}
-          placeholder="별칭 (선택)"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-        />
-        <label className="flex items-center gap-2 text-text-secondary text-sm">
-          <input type="checkbox" checked={paper} onChange={(e) => setPaper(e.target.checked)} />
-          모의투자 계좌
-        </label>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-text-primary">{brokerName(broker)} 연결</h2>
+          <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] text-text-muted">
+            <FaLock />
+            서버 암호화 저장
+          </div>
+        </div>
+        <div className="inline-flex rounded-lg bg-bg-secondary p-1">
+          {(['KIS', 'TOSS'] as const).map((item) => {
+            const disabled = connectedBrokers.has(item);
+            return (
+              <BrokerSelectButton
+                key={item}
+                broker={item}
+                selected={broker === item}
+                disabled={disabled}
+                onSelect={() => {
+                  setBroker(item);
+                  setMsg(null);
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {broker === 'KIS' ? (
+          <>
+            <Field label="appkey" value={appKey} onChange={setAppKey} autoComplete="off" />
+            <Field label="appsecret" value={appSecret} onChange={setAppSecret} type="password" autoComplete="off" />
+            <Field label="계좌번호" value={accountNo} onChange={setAccountNo} placeholder="12345678-01" autoComplete="off" />
+            <label className="flex min-h-[46px] items-center gap-2 rounded-lg border border-[var(--border)] bg-bg-secondary px-3 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={paper}
+                onChange={(e) => setPaper(e.target.checked)}
+                className="accent-accent-blue"
+              />
+              모의투자 계좌
+            </label>
+          </>
+        ) : (
+          <>
+            <Field label="client_id" value={clientId} onChange={setClientId} autoComplete="off" />
+            <Field label="client_secret" value={clientSecret} onChange={setClientSecret} type="password" autoComplete="off" />
+            <Field label="accountSeq" value={accountSeq} onChange={setAccountSeq} placeholder="선택" autoComplete="off" />
+          </>
+        )}
+        <Field label="별칭" value={label} onChange={setLabel} placeholder="선택" />
+      </div>
+
       {msg && (
-        <div className={`mt-2 text-xs ${msg.kind === 'ok' ? 'text-accent-mint' : 'text-accent-coral'}`}>
+        <div className={`mt-3 text-xs ${msg.kind === 'ok' ? 'text-accent-mint' : 'text-accent-coral'}`}>
           {msg.text}
         </div>
       )}
-      <div className="flex items-center gap-2 mt-3">
-        <button className={MUTED_BTN} disabled={busy || !filled} onClick={test}>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button type="button" className={ACTION_BTN} disabled={busy || !filled} onClick={test}>
+          <FaCheckCircle />
           연결 테스트
         </button>
-        <button
-          className="bg-accent-blue/20 text-accent-blue font-medium rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
-          disabled={busy || !filled}
-          onClick={save}
-        >
-          {busy ? '처리 중...' : '저장'}
+        <button type="button" className={PRIMARY_BTN} disabled={busy || !filled} onClick={save}>
+          {busy ? '처리 중' : '저장'}
         </button>
       </div>
     </section>
+  );
+}
+
+function BrokerSelectButton({
+  broker,
+  selected,
+  disabled,
+  onSelect,
+}: {
+  broker: Broker;
+  selected: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+        selected ? 'bg-accent-blue/20 text-accent-blue' : 'text-text-muted hover:text-text-secondary'
+      }`}
+      onClick={onSelect}
+    >
+      {brokerName(broker)}
+    </button>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  autoComplete,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  placeholder?: string;
+  autoComplete?: string;
+}) {
+  return (
+    <label>
+      <span className={LABEL}>{label}</span>
+      <input
+        className={FIELD}
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
   );
 }

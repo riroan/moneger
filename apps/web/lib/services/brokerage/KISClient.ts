@@ -1,4 +1,5 @@
 import { BaseBrokerageClient } from './BaseBrokerageClient';
+import { logger } from '@/lib/logger';
 import {
   type Broker,
   type BrokerageAccountRef,
@@ -8,52 +9,67 @@ import {
 } from './types';
 
 /**
- * 한국투자증권(KIS) OpenAPI 클라이언트 — 국내 주식 잔고(읽기 전용).
- * 문서: https://apiportal.koreainvestment.com (주식잔고조회 TTTC8434R)
+ * 한국투자증권(KIS) OpenAPI 클라이언트 — 국내 + 미국 주식 잔고(읽기 전용).
+ * 문서: https://apiportal.koreainvestment.com
+ *  - 국내: 주식잔고조회 TTTC8434R (/uapi/domestic-stock/v1/trading/inquire-balance)
+ *  - 해외: 해외주식 잔고 TTTS3012R (/uapi/overseas-stock/v1/trading/inquire-balance)
+ *  - 환율: 해외주식 체결기준현재잔고 CTRP6504R (output2 frst_bltn_exrt)
  *
- * PR1a 범위는 국내(domestic)만. 해외/FX는 PR2(T9).
+ * 해외 응답 필드명은 공식/커뮤니티 문서 기준. 실계좌 첫 동기화로 검증·보정 가능하도록
+ * 매핑을 한곳에 모았고, 해외는 best-effort(실패해도 국내 스냅샷은 반환).
  */
 
 export interface KISCredentials {
   appKey: string;
   appSecret: string;
-  /** "CANO-PRDT" 형식 (예: "12345678-01"). */
-  accountNo: string;
-  /** 모의투자 계좌면 true. 기본 실전. */
+  accountNo: string; // "CANO-PRDT" (예: "12345678-01")
   paper?: boolean;
 }
 
 const REAL_BASE = 'https://openapi.koreainvestment.com:9443';
 const PAPER_BASE = 'https://openapivts.koreainvestment.com:29443';
+const US_EXCHANGES = ['NASD', 'NYSE', 'AMEX'];
 
 interface KISTokenResponse {
   access_token: string;
-  expires_in: number; // seconds (~86400)
-  token_type: string;
+  expires_in: number;
 }
 
-interface KISBalanceResponse {
-  rt_cd: string; // '0' = success
-  msg1?: string;
-  output1?: KISHolding[];
-  output2?: KISSummary[];
+interface DomesticBalanceResponse {
+  rt_cd: string;
+  output1?: Array<{
+    pdno: string;
+    prdt_name: string;
+    hldg_qty: string;
+    pchs_avg_pric: string;
+    prpr: string;
+    evlu_amt: string;
+    evlu_pfls_amt: string;
+  }>;
+  output2?: Array<{
+    dnca_tot_amt: string;
+    scts_evlu_amt: string;
+    tot_evlu_amt: string;
+  }>;
 }
 
-interface KISHolding {
-  pdno: string; // 종목코드
-  prdt_name: string; // 종목명
-  hldg_qty: string; // 보유수량
-  pchs_avg_pric: string; // 매입평균가격
-  prpr: string; // 현재가
-  evlu_amt: string; // 평가금액
-  evlu_pfls_amt: string; // 평가손익금액
+interface OverseasBalanceResponse {
+  rt_cd: string;
+  output1?: Array<{
+    ovrs_pdno: string;
+    ovrs_item_name: string;
+    ovrs_cblc_qty: string;
+    pchs_avg_pric: string;
+    now_pric2: string;
+    ovrs_stck_evlu_amt: string;
+    frcr_evlu_pfls_amt: string;
+    ovrs_excg_cd?: string;
+  }>;
 }
 
-interface KISSummary {
-  dnca_tot_amt: string; // 예수금총금액
-  scts_evlu_amt: string; // 유가증권평가금액
-  tot_evlu_amt: string; // 총평가금액
-  nass_amt: string; // 순자산금액
+interface PresentBalanceResponse {
+  rt_cd: string;
+  output2?: Array<{ crcy_cd: string; frst_bltn_exrt: string }>;
 }
 
 export class KISClient extends BaseBrokerageClient {
@@ -62,8 +78,7 @@ export class KISClient extends BaseBrokerageClient {
 
   constructor(private readonly creds: KISCredentials) {
     super();
-    this.baseUrl =
-      process.env.KIS_API_BASE_URL ?? (creds.paper ? PAPER_BASE : REAL_BASE);
+    this.baseUrl = process.env.KIS_API_BASE_URL ?? (creds.paper ? PAPER_BASE : REAL_BASE);
   }
 
   protected tokenCacheKey(): string {
@@ -87,20 +102,31 @@ export class KISClient extends BaseBrokerageClient {
     if (!data.access_token) {
       throw new BrokerageError('token issuance failed', 'auth', this.broker);
     }
+    return { token: data.access_token, expiresAt: Date.now() + (data.expires_in ?? 86400) * 1000 };
+  }
+
+  private trId(real: string, paper: string): string {
+    return this.creds.paper ? paper : real;
+  }
+
+  private headers(token: string, trId: string): Record<string, string> {
     return {
-      token: data.access_token,
-      expiresAt: Date.now() + (data.expires_in ?? 86400) * 1000,
+      'content-type': 'application/json; charset=utf-8',
+      authorization: `Bearer ${token}`,
+      appkey: this.creds.appKey,
+      appsecret: this.creds.appSecret,
+      tr_id: trId,
+      custtype: 'P',
     };
   }
 
   async listAccounts(): Promise<BrokerageAccountRef[]> {
-    // KIS는 계좌 목록 API가 없다 — 자격증명의 계좌번호가 곧 단일 계좌.
     return [
       {
         broker: this.broker,
         externalAccountId: this.creds.accountNo,
         displayName: this.creds.accountNo,
-        accountType: 'domestic',
+        accountType: 'unknown', // 국내+해외 통합
         baseCurrency: 'KRW',
       },
     ];
@@ -110,6 +136,38 @@ export class KISClient extends BaseBrokerageClient {
     const [cano, prdt] = splitAccountNo(account.externalAccountId);
     const token = await this.getToken();
 
+    // 1) 국내 (필수)
+    const dom = await this.fetchDomestic(token, cano, prdt);
+
+    // 2) 해외 (best-effort — 실패해도 국내는 반환)
+    let overseas: NormalizedPosition[] = [];
+    try {
+      const fx = await this.fetchUsdKrwRate(token, cano, prdt);
+      overseas = await this.fetchOverseasUS(token, cano, prdt, fx);
+    } catch (err) {
+      logger.warn('[brokerage:KIS] overseas fetch failed (domestic snapshot returned only)', {
+        reason: err instanceof Error ? err.message : 'unknown',
+      });
+    }
+
+    const positions = [...dom.positions, ...overseas];
+    const overseasKrw = overseas.reduce((s, p) => s + Number(p.marketValueKrw), 0);
+
+    return {
+      broker: this.broker,
+      externalAccountId: account.externalAccountId,
+      asOf: new Date(),
+      cashKrw: dom.cashKrw,
+      // 해외 종목 평가액을 더함 (해외 USD 예수금은 v1 미포함)
+      totalEquityKrw: overseasKrw ? String(Math.round(Number(dom.totalEquityKrw) + overseasKrw)) : dom.totalEquityKrw,
+      positionsValueKrw: overseasKrw
+        ? String(Math.round(Number(dom.positionsValueKrw) + overseasKrw))
+        : dom.positionsValueKrw,
+      positions,
+    };
+  }
+
+  private async fetchDomestic(token: string, cano: string, prdt: string) {
     const query = new URLSearchParams({
       CANO: cano,
       ACNT_PRDT_CD: prdt,
@@ -123,26 +181,13 @@ export class KISClient extends BaseBrokerageClient {
       CTX_AREA_FK100: '',
       CTX_AREA_NK100: '',
     });
-
-    const data = await this.httpJson<KISBalanceResponse>(
+    const data = await this.httpJson<DomesticBalanceResponse>(
       `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-balance?${query}`,
-      {
-        method: 'GET',
-        headers: {
-          'content-type': 'application/json; charset=utf-8',
-          authorization: `Bearer ${token}`,
-          appkey: this.creds.appKey,
-          appsecret: this.creds.appSecret,
-          tr_id: this.creds.paper ? 'VTTC8434R' : 'TTTC8434R',
-          custtype: 'P',
-        },
-      }
+      { method: 'GET', headers: this.headers(token, this.trId('TTTC8434R', 'VTTC8434R')) }
     );
-
     if (data.rt_cd !== '0') {
-      throw new BrokerageError('balance inquiry rejected', 'upstream', this.broker);
+      throw new BrokerageError('domestic balance inquiry rejected', 'upstream', this.broker);
     }
-
     const positions: NormalizedPosition[] = (data.output1 ?? [])
       .filter((h) => Number(h.hldg_qty) > 0)
       .map((h) => ({
@@ -154,31 +199,96 @@ export class KISClient extends BaseBrokerageClient {
         avgCost: h.pchs_avg_pric,
         lastPrice: h.prpr,
         marketValue: h.evlu_amt,
-        marketValueKrw: h.evlu_amt, // 국내는 원통화 = KRW
+        marketValueKrw: h.evlu_amt,
         unrealizedPnl: h.evlu_pfls_amt,
       }));
-
-    const summary = data.output2?.[0];
+    const s = data.output2?.[0];
     return {
-      broker: this.broker,
-      externalAccountId: account.externalAccountId,
-      asOf: new Date(), // KIS 잔고조회는 기준시각을 주지 않아 조회 시점 사용
-      cashKrw: summary?.dnca_tot_amt ?? '0',
-      totalEquityKrw: summary?.tot_evlu_amt ?? '0',
-      positionsValueKrw: summary?.scts_evlu_amt ?? '0',
       positions,
+      cashKrw: s?.dnca_tot_amt ?? '0',
+      totalEquityKrw: s?.tot_evlu_amt ?? '0',
+      positionsValueKrw: s?.scts_evlu_amt ?? '0',
     };
+  }
+
+  /** USD→KRW 환율 (체결기준현재잔고 output2 frst_bltn_exrt). */
+  private async fetchUsdKrwRate(token: string, cano: string, prdt: string): Promise<number> {
+    const query = new URLSearchParams({
+      CANO: cano,
+      ACNT_PRDT_CD: prdt,
+      WCRC_FRCR_DVSN_CD: '02', // 외화
+      NATN_CD: '840', // 미국
+      TR_MKET_CD: '00',
+      INQR_DVSN_CD: '00',
+    });
+    const data = await this.httpJson<PresentBalanceResponse>(
+      `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-present-balance?${query}`,
+      { method: 'GET', headers: this.headers(token, this.trId('CTRP6504R', 'VTRP6504R')) }
+    );
+    if (data.rt_cd !== '0') {
+      throw new BrokerageError('present balance inquiry rejected', 'upstream', this.broker);
+    }
+    const usd = data.output2?.find((o) => o.crcy_cd === 'USD');
+    const rate = Number(usd?.frst_bltn_exrt);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      throw new BrokerageError('USD exchange rate unavailable', 'parse', this.broker);
+    }
+    return rate;
+  }
+
+  /** 미국 거래소(NASD/NYSE/AMEX) 잔고를 합쳐 KRW 환산 포지션으로. */
+  private async fetchOverseasUS(
+    token: string,
+    cano: string,
+    prdt: string,
+    fx: number
+  ): Promise<NormalizedPosition[]> {
+    const bySymbol = new Map<string, NormalizedPosition>();
+    for (const excg of US_EXCHANGES) {
+      const query = new URLSearchParams({
+        CANO: cano,
+        ACNT_PRDT_CD: prdt,
+        OVRS_EXCG_CD: excg,
+        TR_CRCY_CD: 'USD',
+        CTX_AREA_FK200: '',
+        CTX_AREA_NK200: '',
+      });
+      const data = await this.httpJson<OverseasBalanceResponse>(
+        `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-balance?${query}`,
+        { method: 'GET', headers: this.headers(token, this.trId('TTTS3012R', 'VTTS3012R')) }
+      );
+      if (data.rt_cd !== '0') continue;
+      for (const h of data.output1 ?? []) {
+        if (Number(h.ovrs_cblc_qty) <= 0) continue;
+        const evalUsd = Number(h.ovrs_stck_evlu_amt);
+        const pnlUsd = Number(h.frcr_evlu_pfls_amt);
+        if (!Number.isFinite(evalUsd) || !Number.isFinite(pnlUsd)) {
+          throw new BrokerageError('overseas holdings response invalid', 'parse', this.broker);
+        }
+        bySymbol.set(h.ovrs_pdno, {
+          symbol: h.ovrs_pdno,
+          name: h.ovrs_item_name,
+          market: h.ovrs_excg_cd ?? excg,
+          currency: 'USD',
+          quantity: h.ovrs_cblc_qty,
+          avgCost: h.pchs_avg_pric,
+          lastPrice: h.now_pric2,
+          marketValue: h.ovrs_stck_evlu_amt,
+          marketValueKrw: String(Math.round(evalUsd * fx)),
+          unrealizedPnl: String(Math.round(pnlUsd * fx)),
+          fxRateToKrw: String(fx),
+        });
+      }
+    }
+    return [...bySymbol.values()];
   }
 }
 
-/** "12345678-01" → ["12345678", "01"]. 구분자 없으면 앞 8 / 뒤 2로 분리. */
 function splitAccountNo(accountNo: string): [string, string] {
   if (accountNo.includes('-')) {
     const [cano, prdt] = accountNo.split('-');
     return [cano, prdt || '01'];
   }
-  if (accountNo.length >= 10) {
-    return [accountNo.slice(0, 8), accountNo.slice(8, 10)];
-  }
+  if (accountNo.length >= 10) return [accountNo.slice(0, 8), accountNo.slice(8, 10)];
   return [accountNo, '01'];
 }
