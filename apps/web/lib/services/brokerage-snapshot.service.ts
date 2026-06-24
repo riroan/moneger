@@ -1,9 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { toKSTDateForDB } from '@/lib/date-utils';
+import { Prisma } from '@prisma/client';
 import { decryptCredentialObject } from './crypto.service';
 import { createBrokerageClient } from './brokerage/factory';
-import { BrokerageError, type NormalizedPosition } from './brokerage/types';
+import { BrokerageError, type Money, type NormalizedPosition } from './brokerage/types';
 
 /**
  * 증권 스냅샷 동기화 + 조회.
@@ -43,6 +44,27 @@ function mapPositionCreate(p: NormalizedPosition) {
     unrealizedPnl: p.unrealizedPnl ?? null,
     fxRateToKrw: p.fxRateToKrw ?? null,
   };
+}
+
+function normalizeCashBalances(value: unknown): Money[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => item != null && typeof item === 'object')
+    .map((item) => ({
+      amount: String(item.amount ?? '0'),
+      currency: String(item.currency ?? 'KRW'),
+      ...(item.amountKrw != null ? { amountKrw: String(item.amountKrw) } : {}),
+      ...(item.fxRateToKrw != null ? { fxRateToKrw: String(item.fxRateToKrw) } : {}),
+    }));
+}
+
+function cashBalancesJson(balances: Money[] | undefined): Prisma.InputJsonValue {
+  return (balances ?? []).map((cash) => ({
+    amount: cash.amount,
+    currency: cash.currency,
+    ...(cash.amountKrw != null ? { amountKrw: cash.amountKrw } : {}),
+    ...(cash.fxRateToKrw != null ? { fxRateToKrw: cash.fxRateToKrw } : {}),
+  })) as unknown as Prisma.InputJsonValue;
 }
 
 function failureMessage(err: unknown): string {
@@ -106,6 +128,7 @@ export async function syncConnection(userId: string, connectionId: string) {
           where: { id: existing.id },
           data: {
             cashKrw: snap.cashKrw,
+            cashBalances: cashBalancesJson(snap.cashBalances),
             totalEquityKrw: snap.totalEquityKrw,
             positionsValueKrw: snap.positionsValueKrw,
             asOf: snap.asOf,
@@ -118,6 +141,7 @@ export async function syncConnection(userId: string, connectionId: string) {
             accountId: account.id,
             date,
             cashKrw: snap.cashKrw,
+            cashBalances: cashBalancesJson(snap.cashBalances),
             totalEquityKrw: snap.totalEquityKrw,
             positionsValueKrw: snap.positionsValueKrw,
             asOf: snap.asOf,
@@ -196,6 +220,7 @@ export interface InvestmentsOverview {
       accountType: string;
       asOf: string | null;
       cashKrw: string | null;
+      cashBalances: Money[];
       totalEquityKrw: string | null;
       positionsValueKrw: string | null;
       positions: Array<{
@@ -235,6 +260,7 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
               select: {
                 asOf: true,
                 cashKrw: true,
+                cashBalances: true,
                 totalEquityKrw: true,
                 positionsValueKrw: true,
                 positions: {
@@ -282,10 +308,17 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
     failureReason: c.failureReason,
     accounts: c.accounts.map((a) => {
       const snap = a.snapshots[0];
+      const cashBalances = normalizeCashBalances(snap?.cashBalances);
       const accountTotal = decNum(snap?.totalEquityKrw);
       if (snap?.totalEquityKrw != null) {
         total += accountTotal;
         brokerTotals.set(c.broker, (brokerTotals.get(c.broker) ?? 0) + accountTotal);
+      }
+      for (const cash of cashBalances) {
+        const amountKrw = Number(cash.amountKrw ?? (cash.currency === 'KRW' ? cash.amount : 0));
+        if (Number.isFinite(amountKrw) && amountKrw > 0) {
+          currencyTotals.set(cash.currency, (currencyTotals.get(cash.currency) ?? 0) + amountKrw);
+        }
       }
       positionCount += snap?.positions.length ?? 0;
       return {
@@ -294,6 +327,7 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
         accountType: a.accountType,
         asOf: snap?.asOf ? snap.asOf.toISOString() : null,
         cashKrw: decStr(snap?.cashKrw),
+        cashBalances,
         totalEquityKrw: decStr(snap?.totalEquityKrw),
         positionsValueKrw: decStr(snap?.positionsValueKrw),
         positions: (snap?.positions ?? []).map((p) => ({
@@ -319,14 +353,18 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
     analysis: {
       snapshotsCount: history.length,
       positionCount,
-      brokerBreakdown: [...brokerTotals.entries()].map(([broker, value]) => ({
-        broker,
-        totalEquityKrw: roundedString(value),
-      })),
-      currencyBreakdown: [...currencyTotals.entries()].map(([currency, value]) => ({
-        currency,
-        marketValueKrw: roundedString(value),
-      })),
+      brokerBreakdown: [...brokerTotals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([broker, value]) => ({
+          broker,
+          totalEquityKrw: roundedString(value),
+        })),
+      currencyBreakdown: [...currencyTotals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([currency, value]) => ({
+          currency,
+          marketValueKrw: roundedString(value),
+        })),
     },
     connections: shaped,
   };

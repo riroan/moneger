@@ -69,7 +69,7 @@ interface OverseasBalanceResponse {
 
 interface PresentBalanceResponse {
   rt_cd: string;
-  output2?: Array<{ crcy_cd: string; frst_bltn_exrt: string }>;
+  output2?: Array<Record<string, string | undefined> & { crcy_cd: string; frst_bltn_exrt: string }>;
 }
 
 export class KISClient extends BaseBrokerageClient {
@@ -142,28 +142,53 @@ export class KISClient extends BaseBrokerageClient {
     // 2) 해외 (best-effort — 실패해도 국내는 반환)
     let overseas: NormalizedPosition[] = [];
     try {
-      const fx = await this.fetchUsdKrwRate(token, cano, prdt);
-      overseas = await this.fetchOverseasUS(token, cano, prdt, fx);
+      const usd = await this.fetchUsdBalance(token, cano, prdt);
+      overseas = await this.fetchOverseasUS(token, cano, prdt, usd.fxRateToKrw);
+      const overseasKrw = overseas.reduce((s, p) => s + Number(p.marketValueKrw), 0);
+      const usdCashKrw = Math.round(usd.cashUsd * usd.fxRateToKrw);
+      const domesticCashKrw = Number(dom.cashKrw);
+      const domesticTotalKrw = Number(dom.totalEquityKrw);
+      const domesticPositionsKrw = Number(dom.positionsValueKrw);
+      const cashBalances = [
+        {
+          amount: dom.cashKrw,
+          currency: 'KRW',
+          amountKrw: dom.cashKrw,
+        },
+        ...(usd.cashUsd > 0
+          ? [{
+              amount: trimDecimal(usd.cashUsd),
+              currency: 'USD',
+              amountKrw: String(usdCashKrw),
+              fxRateToKrw: String(usd.fxRateToKrw),
+            }]
+          : []),
+      ];
+      return {
+        broker: this.broker,
+        externalAccountId: account.externalAccountId,
+        asOf: new Date(),
+        cashKrw: String(Math.round(domesticCashKrw + usdCashKrw)),
+        cashBalances,
+        totalEquityKrw: String(Math.round(domesticTotalKrw + overseasKrw + usdCashKrw)),
+        positionsValueKrw: String(Math.round(domesticPositionsKrw + overseasKrw)),
+        positions: [...dom.positions, ...overseas],
+      };
     } catch (err) {
       logger.warn('[brokerage:KIS] overseas fetch failed (domestic snapshot returned only)', {
         reason: err instanceof Error ? err.message : 'unknown',
       });
     }
 
-    const positions = [...dom.positions, ...overseas];
-    const overseasKrw = overseas.reduce((s, p) => s + Number(p.marketValueKrw), 0);
-
     return {
       broker: this.broker,
       externalAccountId: account.externalAccountId,
       asOf: new Date(),
       cashKrw: dom.cashKrw,
-      // 해외 종목 평가액을 더함 (해외 USD 예수금은 v1 미포함)
-      totalEquityKrw: overseasKrw ? String(Math.round(Number(dom.totalEquityKrw) + overseasKrw)) : dom.totalEquityKrw,
-      positionsValueKrw: overseasKrw
-        ? String(Math.round(Number(dom.positionsValueKrw) + overseasKrw))
-        : dom.positionsValueKrw,
-      positions,
+      cashBalances: [{ amount: dom.cashKrw, currency: 'KRW', amountKrw: dom.cashKrw }],
+      totalEquityKrw: dom.totalEquityKrw,
+      positionsValueKrw: dom.positionsValueKrw,
+      positions: dom.positions,
     };
   }
 
@@ -211,8 +236,12 @@ export class KISClient extends BaseBrokerageClient {
     };
   }
 
-  /** USD→KRW 환율 (체결기준현재잔고 output2 frst_bltn_exrt). */
-  private async fetchUsdKrwRate(token: string, cano: string, prdt: string): Promise<number> {
+  /** USD 예수금 + USD→KRW 환율 (체결기준현재잔고 output2). */
+  private async fetchUsdBalance(
+    token: string,
+    cano: string,
+    prdt: string
+  ): Promise<{ cashUsd: number; fxRateToKrw: number }> {
     const query = new URLSearchParams({
       CANO: cano,
       ACNT_PRDT_CD: prdt,
@@ -233,7 +262,7 @@ export class KISClient extends BaseBrokerageClient {
     if (!Number.isFinite(rate) || rate <= 0) {
       throw new BrokerageError('USD exchange rate unavailable', 'parse', this.broker);
     }
-    return rate;
+    return { cashUsd: pickUsdCash(usd), fxRateToKrw: rate };
   }
 
   /** 미국 거래소(NASD/NYSE/AMEX) 잔고를 합쳐 KRW 환산 포지션으로. */
@@ -291,4 +320,25 @@ function splitAccountNo(accountNo: string): [string, string] {
   }
   if (accountNo.length >= 10) return [accountNo.slice(0, 8), accountNo.slice(8, 10)];
   return [accountNo, '01'];
+}
+
+function pickUsdCash(row: (Record<string, string | undefined> & { crcy_cd: string }) | undefined): number {
+  if (!row) return 0;
+  const candidates = [
+    'frcr_dncl_amt',
+    'frcr_dncl_amt_2',
+    'frcr_dnca',
+    'frcr_cash',
+    'frcr_buy_psbl_amt',
+    'frcr_drwg_psbl_amt',
+  ];
+  for (const key of candidates) {
+    const value = Number(row[key] ?? 0);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return 0;
+}
+
+function trimDecimal(value: number): string {
+  return value.toFixed(8).replace(/\.?0+$/, '');
 }

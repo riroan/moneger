@@ -11,6 +11,8 @@ export type Broker = 'KIS' | 'TOSS';
 export interface Money {
   amount: string; // decimal string
   currency: string; // 'KRW' | 'USD' ...
+  amountKrw?: string; // KRW 환산액. currency === KRW면 amount와 동일
+  fxRateToKrw?: string; // currency !== KRW일 때
 }
 
 export interface BrokerageAccountRef {
@@ -40,6 +42,7 @@ export interface NormalizedSnapshot {
   externalAccountId: string;
   asOf: Date; // 증권사 평가 기준시각
   cashKrw: string;
+  cashBalances?: Money[];
   totalEquityKrw: string;
   positionsValueKrw: string;
   positions: NormalizedPosition[];

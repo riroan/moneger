@@ -292,6 +292,7 @@ model BrokerageSnapshot {
   accountId         String
   date              DateTime @db.Date
   cashKrw           Decimal  @db.Decimal(20, 2)
+  cashBalances      Json?
   totalEquityKrw    Decimal  @db.Decimal(20, 2)
   positionsValueKrw Decimal  @db.Decimal(20, 2)
   asOf              DateTime // 증권사 평가 기준시각

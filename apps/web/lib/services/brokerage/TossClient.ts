@@ -13,6 +13,7 @@ import {
  *  - 토큰: POST /oauth2/token (client_credentials)
  *  - 계좌: GET /api/v1/accounts
  *  - 보유: GET /api/v1/holdings (X-Tossinvest-Account 필요)
+ *  - 현금: GET /api/v1/buying-power?currency=KRW|USD
  *  - 환율: GET /api/v1/exchange-rate?baseCurrency=USD&quoteCurrency=KRW
  */
 
@@ -68,6 +69,11 @@ interface TossHoldingsOverview {
 
 interface TossExchangeRateResponse {
   rate: string;
+}
+
+interface TossBuyingPowerResponse {
+  currency: 'KRW' | 'USD';
+  cashBuyingPower: string;
 }
 
 export class TossClient extends BaseBrokerageClient {
@@ -153,7 +159,14 @@ export class TossClient extends BaseBrokerageClient {
     const hasUsd =
       moneyPart(holdings.marketValue.amount.usd) > 0 ||
       holdings.items.some((item) => item.currency === 'USD');
-    const usdKrw = hasUsd ? await this.fetchUsdKrwRate(token) : 1;
+    const [cashKrwRaw, cashUsdRaw] = await Promise.all([
+      this.fetchBuyingPower(token, account.externalAccountId, 'KRW'),
+      this.fetchBuyingPower(token, account.externalAccountId, 'USD'),
+    ]);
+    const cashKrw = Math.round(moneyPart(cashKrwRaw));
+    const cashUsd = moneyPart(cashUsdRaw);
+    const usdKrw = hasUsd || cashUsd > 0 ? await this.fetchUsdKrwRate(token) : 1;
+    const cashUsdKrw = Math.round(cashUsd * usdKrw);
     const positions = holdings.items
       .filter((item) => Number(item.quantity) > 0)
       .map((item): NormalizedPosition => {
@@ -180,15 +193,39 @@ export class TossClient extends BaseBrokerageClient {
       });
 
     const positionsValueKrw = sumKrw(holdings.marketValue.amount, usdKrw);
+    const totalCashKrw = cashKrw + cashUsdKrw;
     return {
       broker: this.broker,
       externalAccountId: account.externalAccountId,
       asOf: new Date(),
-      cashKrw: '0',
-      totalEquityKrw: positionsValueKrw,
+      cashKrw: String(totalCashKrw),
+      cashBalances: [
+        { amount: String(cashKrw), currency: 'KRW', amountKrw: String(cashKrw) },
+        ...(cashUsd > 0
+          ? [{
+              amount: cashUsdRaw,
+              currency: 'USD',
+              amountKrw: String(cashUsdKrw),
+              fxRateToKrw: String(usdKrw),
+            }]
+          : []),
+      ],
+      totalEquityKrw: String(Number(positionsValueKrw) + totalCashKrw),
       positionsValueKrw,
       positions,
     };
+  }
+
+  private async fetchBuyingPower(token: string, accountSeq: string, currency: 'KRW' | 'USD'): Promise<string> {
+    const query = new URLSearchParams({ currency });
+    const data = await this.httpJson<TossApiResponse<TossBuyingPowerResponse>>(
+      `${this.baseUrl}/api/v1/buying-power?${query}`,
+      { method: 'GET', headers: this.headers(token, accountSeq) }
+    );
+    if (!data.result || data.result.currency !== currency) {
+      throw new BrokerageError(`${currency} buying power response invalid`, 'parse', this.broker);
+    }
+    return data.result.cashBuyingPower;
   }
 
   private async fetchUsdKrwRate(token: string): Promise<number> {

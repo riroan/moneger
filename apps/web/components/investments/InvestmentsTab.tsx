@@ -34,6 +34,12 @@ interface Account {
   accountType: string;
   asOf: string | null;
   cashKrw: string | null;
+  cashBalances: Array<{
+    amount: string;
+    currency: string;
+    amountKrw?: string;
+    fxRateToKrw?: string;
+  }>;
   totalEquityKrw: string | null;
   positionsValueKrw: string | null;
   positions: Position[];
@@ -97,6 +103,15 @@ function percent(v: string | null): string {
   if (!Number.isFinite(n)) return '-';
   return `${(n * 100).toFixed(1)}%`;
 }
+function pnlPercent(pnl: number, marketValueKrw: string): string | null {
+  const current = Number(marketValueKrw);
+  if (!Number.isFinite(current) || !Number.isFinite(pnl)) return null;
+  const costBasis = current - pnl;
+  if (costBasis <= 0) return null;
+  const rate = (pnl / costBasis) * 100;
+  if (!Number.isFinite(rate)) return null;
+  return `${rate > 0 ? '+' : ''}${rate.toFixed(1)}%`;
+}
 function money(value: string | null | undefined): number {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n : 0;
@@ -109,6 +124,15 @@ function formatDateTime(value: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+function formatCashBalance(cash: Account['cashBalances'][number]): string {
+  if (cash.currency === 'KRW') {
+    return `KRW ${formatCurrency(money(cash.amount))}`;
+  }
+  const n = Number(cash.amount);
+  const amount = Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: 2 }) : cash.amount;
+  const krw = cash.amountKrw ? ` · ${formatCurrency(money(cash.amountKrw))}` : '';
+  return `${cash.currency} ${amount}${krw}`;
 }
 function latestAsOf(connections: Connection[]): string | null {
   let latest = 0;
@@ -128,6 +152,7 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
   const fetchOverview = useCallback(async () => {
     setError(null);
@@ -221,6 +246,24 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
     [data]
   );
   const canAddBroker = connectedBrokers.size < 2;
+  const selectedConnection = useMemo(
+    () => {
+      const connections = data?.connections ?? [];
+      return connections.find((conn) => conn.id === selectedConnectionId) ?? connections[0] ?? null;
+    },
+    [data?.connections, selectedConnectionId]
+  );
+
+  useEffect(() => {
+    const connections = data?.connections ?? [];
+    if (connections.length === 0) {
+      if (selectedConnectionId !== null) setSelectedConnectionId(null);
+      return;
+    }
+    if (!selectedConnectionId || !connections.some((conn) => conn.id === selectedConnectionId)) {
+      setSelectedConnectionId(connections[0].id);
+    }
+  }, [data?.connections, selectedConnectionId]);
 
   if (isLoading) {
     return <div className="text-text-muted text-sm py-8 text-center">불러오는 중...</div>;
@@ -260,22 +303,32 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
       {!summary.hasConnections && !isAddOpen && <EmptyState onAdd={() => setIsAddOpen(true)} />}
 
       {summary.hasConnections && data && (
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4">
-          <div className="flex flex-col gap-4">
-            {data.connections.map((conn) => (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
+            <div className="order-3 xl:order-1">
+              <BrokerSelector
+                connections={data.connections}
+                selectedConnectionId={selectedConnection?.id ?? null}
+                onSelect={setSelectedConnectionId}
+              />
+            </div>
+            <div className="order-1 xl:order-2">
+              <MonthlyReport data={data} />
+            </div>
+            <div className="order-2 xl:order-3">
+              <BreakdownPanel data={data} />
+            </div>
+          </aside>
+          <div className="flex min-w-0 flex-col gap-4">
+            {selectedConnection && (
               <ConnectionCard
-                key={conn.id}
-                connection={conn}
+                connection={selectedConnection}
                 syncingId={syncingId}
                 onSync={handleSync}
                 onDelete={handleDelete}
               />
-            ))}
+            )}
           </div>
-          <aside className="flex flex-col gap-4">
-            <MonthlyReport data={data} />
-            <BreakdownPanel data={data} />
-          </aside>
         </div>
       )}
     </div>
@@ -410,6 +463,95 @@ function BrokerChip({ broker }: { broker: string }) {
   );
 }
 
+function connectionTotal(connection: Connection): number {
+  return connection.accounts.reduce((sum, account) => sum + money(account.totalEquityKrw), 0);
+}
+
+function connectionPositions(connection: Connection): number {
+  return connection.accounts.reduce((sum, account) => sum + account.positions.length, 0);
+}
+
+function connectionLatestAsOf(connection: Connection): string {
+  let latest = 0;
+  for (const account of connection.accounts) {
+    if (!account.asOf) continue;
+    latest = Math.max(latest, new Date(account.asOf).getTime());
+  }
+  return latest ? formatDateTime(new Date(latest).toISOString()) : '동기화 전';
+}
+
+function BrokerSelector({
+  connections,
+  selectedConnectionId,
+  onSelect,
+}: {
+  connections: Connection[];
+  selectedConnectionId: string | null;
+  onSelect: (connectionId: string) => void;
+}) {
+  return (
+    <section className={CARD}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-text-primary">증권사</h2>
+          <div className="mt-1 text-[11px] text-text-muted">목록에서 선택해 계좌 상세를 확인하세요</div>
+        </div>
+        <span className="rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
+          {connections.length}개 연결
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {connections.map((connection) => {
+          const selected = connection.id === selectedConnectionId;
+          const total = connectionTotal(connection);
+          const positions = connectionPositions(connection);
+          return (
+            <button
+              key={connection.id}
+              type="button"
+              aria-pressed={selected}
+              className={`min-h-[96px] rounded-[12px] border px-3 py-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 cursor-pointer ${
+                selected
+                  ? 'border-accent-blue/60 bg-accent-blue/10'
+                  : 'border-[var(--border)] bg-bg-secondary/40 hover:bg-bg-secondary'
+              }`}
+              onClick={() => onSelect(connection.id)}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                      selected ? 'bg-accent-blue/20 text-accent-blue' : 'bg-bg-card text-text-muted'
+                    }`}>
+                      <FaBuilding />
+                    </span>
+                    <span className="truncate text-sm font-semibold text-text-primary">
+                      {brokerName(connection.broker)}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[11px] text-text-muted">
+                    {connection.accounts.length}개 계좌 · {positions}개 종목
+                  </div>
+                </div>
+                <ConnectionStatus status={connection.status} />
+              </div>
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <span className="min-w-0 tabular-nums text-base font-semibold text-text-primary">
+                  {formatCurrency(total)}
+                </span>
+                <span className="min-w-0 text-right text-[11px] leading-4 text-text-muted">
+                  {connectionLatestAsOf(connection)}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function ConnectionCard({
   connection,
   syncingId,
@@ -421,8 +563,8 @@ function ConnectionCard({
   onSync: (connectionId: string) => void;
   onDelete: (connectionId: string) => void;
 }) {
-  const total = connection.accounts.reduce((sum, a) => sum + money(a.totalEquityKrw), 0);
-  const positions = connection.accounts.reduce((sum, a) => sum + a.positions.length, 0);
+  const total = connectionTotal(connection);
+  const positions = connectionPositions(connection);
   const isSyncing = syncingId === connection.id;
 
   return (
@@ -532,6 +674,15 @@ function AccountBlock({ account }: { account: Account }) {
             <div className="text-base tabular-nums text-text-secondary">
               {formatCurrency(money(account.cashKrw))}
             </div>
+            {account.cashBalances.length > 0 && (
+              <div className="mt-1 flex flex-col items-end gap-0.5">
+                {account.cashBalances.map((cash) => (
+                  <div key={cash.currency} className="text-[11px] tabular-nums text-text-muted">
+                    {formatCashBalance(cash)}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -539,50 +690,117 @@ function AccountBlock({ account }: { account: Account }) {
       {account.positions.length === 0 ? (
         <div className="mt-3 border-t border-[var(--border)] pt-3 text-xs text-text-muted">보유 종목 없음</div>
       ) : (
-        <div className="mt-3 overflow-x-auto border-t border-[var(--border)] pt-3">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead>
-              <tr className="text-left text-xs text-text-muted">
-                <th className="font-normal py-2">종목</th>
-                <th className="font-normal py-2 text-right">수량</th>
-                <th className="font-normal py-2 text-right">평가액</th>
-                <th className="font-normal py-2 text-right">평가손익</th>
-              </tr>
-            </thead>
-            <tbody>
-              {account.positions.map((p) => {
-                const pnl = Number(p.unrealizedPnl ?? 0);
-                return (
-                  <tr key={`${p.symbol}:${p.market ?? ''}`} className="border-t border-[var(--border)]">
-                    <td className="py-2.5">
-                      <div className="font-medium text-text-primary">{p.name}</div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-text-muted">
-                        <span>{p.symbol}</span>
-                        {p.market && <span>{p.market}</span>}
-                        <span className="rounded-full bg-bg-card px-2 py-0.5">{p.currency}</span>
-                      </div>
-                    </td>
-                    <td className="py-2.5 text-right tabular-nums text-text-secondary">{p.quantity}</td>
-                    <td className="py-2.5 text-right">
-                      <div className="tabular-nums text-text-primary">
-                        {formatCurrency(Number(p.marketValueKrw))}
-                      </div>
-                      {p.currency !== 'KRW' && (
-                        <div className="mt-0.5 text-[11px] tabular-nums text-text-muted">
-                          {p.marketValue} {p.currency}
+        <div className="mt-3 border-t border-[var(--border)] pt-3">
+          <div className="flex flex-col gap-2 md:hidden">
+            {account.positions.map((p) => (
+              <PositionCard key={`${p.symbol}:${p.market ?? ''}`} position={p} />
+            ))}
+          </div>
+
+          <div className="hidden md:block">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[38%]" />
+                <col className="w-[16%]" />
+                <col className="w-[24%]" />
+                <col className="w-[22%]" />
+              </colgroup>
+              <thead>
+                <tr className="text-left text-xs text-text-muted">
+                  <th className="font-normal py-2">종목</th>
+                  <th className="font-normal py-2 text-right">수량</th>
+                  <th className="font-normal py-2 text-right">평가액</th>
+                  <th className="font-normal py-2 text-right">평가손익</th>
+                </tr>
+              </thead>
+              <tbody>
+                {account.positions.map((p) => {
+                  const pnl = Number(p.unrealizedPnl ?? 0);
+                  const pnlRate = p.unrealizedPnl == null ? null : pnlPercent(pnl, p.marketValueKrw);
+                  return (
+                    <tr key={`${p.symbol}:${p.market ?? ''}`} className="border-t border-[var(--border)]">
+                      <td className="py-2.5 pr-3">
+                        <div className="truncate font-medium text-text-primary">{p.name}</div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-text-muted">
+                          <span>{p.symbol}</span>
+                          {p.market && <span>{p.market}</span>}
+                          <span className="rounded-full bg-bg-card px-2 py-0.5">{p.currency}</span>
                         </div>
-                      )}
-                    </td>
-                    <td className={`py-2.5 text-right tabular-nums ${pnlClass(pnl)}`}>
-                      {p.unrealizedPnl == null ? '-' : `${pnlMark(pnl)} ${signedCurrency(pnl)}`}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="py-2.5 text-right tabular-nums text-text-secondary">{p.quantity}</td>
+                      <td className="py-2.5 text-right">
+                        <div className="tabular-nums text-text-primary">
+                          {formatCurrency(Number(p.marketValueKrw))}
+                        </div>
+                        {p.currency !== 'KRW' && (
+                          <div className="mt-0.5 text-[11px] tabular-nums text-text-muted">
+                            {p.marketValue} {p.currency}
+                          </div>
+                        )}
+                      </td>
+                      <td className={`py-2.5 text-right tabular-nums ${pnlClass(pnl)}`}>
+                        <PositionPnl pnl={pnl} pnlRate={pnlRate} hasValue={p.unrealizedPnl != null} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PositionPnl({ pnl, pnlRate, hasValue }: { pnl: number; pnlRate: string | null; hasValue: boolean }) {
+  if (!hasValue) return '-';
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <span>{pnlMark(pnl)} {signedCurrency(pnl)}</span>
+      {pnlRate && <span className="text-[11px]">{pnlRate}</span>}
+    </div>
+  );
+}
+
+function PositionCard({ position }: { position: Position }) {
+  const pnl = Number(position.unrealizedPnl ?? 0);
+  const pnlRate = position.unrealizedPnl == null ? null : pnlPercent(pnl, position.marketValueKrw);
+
+  return (
+    <div className="rounded-[12px] border border-[var(--border)] bg-bg-card px-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="break-words text-sm font-medium leading-5 text-text-primary">{position.name}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-text-muted">
+            <span>{position.symbol}</span>
+            {position.market && <span>{position.market}</span>}
+            <span className="rounded-full bg-bg-secondary px-2 py-0.5">{position.currency}</span>
+          </div>
+        </div>
+        <div className={`shrink-0 text-right text-sm tabular-nums ${pnlClass(pnl)}`}>
+          <PositionPnl pnl={pnl} pnlRate={pnlRate} hasValue={position.unrealizedPnl != null} />
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-3">
+        <PositionMetric label="수량" value={position.quantity} />
+        <PositionMetric
+          label="평가액"
+          value={formatCurrency(Number(position.marketValueKrw))}
+          subValue={position.currency !== 'KRW' ? `${position.marketValue} ${position.currency}` : undefined}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PositionMetric({ label, value, subValue }: { label: string; value: string; subValue?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] text-text-muted">{label}</div>
+      <div className="mt-0.5 break-words text-sm tabular-nums text-text-primary">{value}</div>
+      {subValue && <div className="mt-0.5 break-words text-[11px] tabular-nums text-text-muted">{subValue}</div>}
     </div>
   );
 }
@@ -643,7 +861,7 @@ function BreakdownPanel({ data }: { data: Overview }) {
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent-mint/15 text-accent-mint">
           <FaWallet />
         </span>
-        <h2 className="text-base font-semibold text-text-primary">구성</h2>
+        <h2 className="text-base font-semibold text-text-primary">자산 구성</h2>
       </div>
       <Breakdown title="증권사" rows={data.analysis.brokerBreakdown.map((r) => ({
         label: brokerName(r.broker),
@@ -659,30 +877,51 @@ function BreakdownPanel({ data }: { data: Overview }) {
 }
 
 function Breakdown({ title, rows }: { title: string; rows: Array<{ label: string; value: string }> }) {
-  const max = Math.max(...rows.map((r) => Number(r.value)), 1);
+  const values = rows.map((r) => ({ ...r, numericValue: money(r.value) }));
+  const total = values.reduce((sum, row) => sum + row.numericValue, 0);
+  const colorClasses = ['bg-accent-blue', 'bg-accent-mint', 'bg-accent-purple', 'bg-accent-coral', 'bg-accent-yellow'];
 
   return (
     <div>
       <h3 className="mb-2 text-xs font-medium text-text-muted">{title}</h3>
-      {rows.length === 0 ? (
+      {values.length === 0 || total <= 0 ? (
         <div className="text-xs text-text-muted">데이터 없음</div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {rows.map((row) => {
-            const value = Number(row.value);
-            const width = Math.max(6, Math.round((value / max) * 100));
-            return (
-              <div key={row.label}>
-                <div className="mb-1 flex items-center justify-between gap-3 text-xs">
-                  <span className="text-text-secondary">{row.label}</span>
-                  <span className="tabular-nums text-text-primary">{formatCurrency(value)}</span>
+        <div>
+          <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-bg-secondary" aria-hidden="true">
+            {values.map((row, idx) => {
+              const ratio = (row.numericValue / total) * 100;
+              return (
+                <div
+                  key={row.label}
+                  className={`h-full ${colorClasses[idx % colorClasses.length]}`}
+                  style={{ width: `${ratio}%` }}
+                  title={`${row.label} ${ratio.toFixed(1)}%`}
+                />
+              );
+            })}
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {values.map((row, idx) => {
+              const ratio = (row.numericValue / total) * 100;
+              const displayRatio = ratio < 0.1 && ratio > 0 ? '<0.1%' : `${ratio.toFixed(1)}%`;
+
+              return (
+                <div key={row.label} className="flex items-center justify-between gap-3 text-xs">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${colorClasses[idx % colorClasses.length]}`} />
+                    <span className="truncate text-text-secondary">{row.label}</span>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="tabular-nums text-text-primary">{displayRatio}</div>
+                    <div className="mt-0.5 tabular-nums text-[11px] text-text-muted">
+                      {formatCurrency(row.numericValue)}
+                    </div>
+                  </div>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-bg-secondary">
-                  <div className="h-full rounded-full bg-accent-blue" style={{ width: `${width}%` }} />
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

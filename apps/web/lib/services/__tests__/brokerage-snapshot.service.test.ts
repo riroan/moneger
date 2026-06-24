@@ -46,6 +46,10 @@ const snapshot = {
   externalAccountId: 'acc1',
   asOf: new Date('2026-06-24T06:00:00Z'),
   cashKrw: '500000',
+  cashBalances: [
+    { amount: '500000', currency: 'KRW', amountKrw: '500000' },
+    { amount: '25', currency: 'USD', amountKrw: '32500', fxRateToKrw: '1300' },
+  ],
   totalEquityKrw: '1300000',
   positionsValueKrw: '800000',
   positions: [
@@ -93,6 +97,7 @@ describe('brokerage-snapshot.service syncConnection', () => {
     const createArg = p.brokerageSnapshot.create.mock.calls[0][0];
     expect(createArg.data.accountId).toBe('acct-db-1');
     expect(createArg.data.cashKrw).toBe('500000');
+    expect(createArg.data.cashBalances).toEqual(snapshot.cashBalances);
     expect(createArg.data.positions.create).toHaveLength(1);
     // AAD 컨텍스트 정확히 전달
     expect(decryptMock).toHaveBeenCalledWith(expect.anything(), { userId: 'user-1', broker: 'KIS' });

@@ -99,6 +99,8 @@ describe('TossClient', () => {
           },
         })
       )
+      .mockResolvedValueOnce(jsonRes({ result: { currency: 'KRW', cashBuyingPower: '100000' } }))
+      .mockResolvedValueOnce(jsonRes({ result: { currency: 'USD', cashBuyingPower: '50.25' } }))
       .mockResolvedValueOnce(jsonRes({ result: { rate: '1300' } }));
 
     const client = new TossClient(creds);
@@ -110,9 +112,13 @@ describe('TossClient', () => {
       baseCurrency: 'KRW',
     });
 
-    expect(snap.cashKrw).toBe('0');
+    expect(snap.cashKrw).toBe('165325');
     expect(snap.positionsValueKrw).toBe('9520500');
-    expect(snap.totalEquityKrw).toBe('9520500');
+    expect(snap.totalEquityKrw).toBe('9685825');
+    expect(snap.cashBalances).toEqual([
+      { amount: '100000', currency: 'KRW', amountKrw: '100000' },
+      { amount: '50.25', currency: 'USD', amountKrw: '65325', fxRateToKrw: '1300' },
+    ]);
     expect(snap.positions).toHaveLength(2);
     expect(snap.positions.find((p) => p.symbol === 'AAPL')).toMatchObject({
       currency: 'USD',
@@ -124,5 +130,49 @@ describe('TossClient', () => {
 
     const holdingsCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('/api/v1/holdings'))!;
     expect(holdingsCall[1].headers['X-Tossinvest-Account']).toBe('7');
+    const usdBuyingPowerCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('/api/v1/buying-power?currency=USD'))!;
+    expect(usdBuyingPowerCall[1].headers['X-Tossinvest-Account']).toBe('7');
+  });
+
+  it('USD 보유종목이 없어도 USD 현금이 있으면 환율로 합산한다', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonRes(tokenBody))
+      .mockResolvedValueOnce(
+        jsonRes({
+          result: {
+            marketValue: {
+              amount: { krw: '0', usd: '0' },
+              amountAfterCost: { krw: '0', usd: '0' },
+            },
+            profitLoss: {
+              amount: { krw: '0', usd: '0' },
+              amountAfterCost: { krw: '0', usd: '0' },
+              rate: '0',
+              rateAfterCost: '0',
+            },
+            items: [],
+          },
+        })
+      )
+      .mockResolvedValueOnce(jsonRes({ result: { currency: 'KRW', cashBuyingPower: '0' } }))
+      .mockResolvedValueOnce(jsonRes({ result: { currency: 'USD', cashBuyingPower: '10' } }))
+      .mockResolvedValueOnce(jsonRes({ result: { rate: '1325' } }));
+
+    const client = new TossClient(creds);
+    const snap = await client.getAccountSnapshot({
+      broker: 'TOSS',
+      externalAccountId: '7',
+      displayName: '12345678901',
+      accountType: 'unknown',
+      baseCurrency: 'KRW',
+    });
+
+    expect(snap.cashKrw).toBe('13250');
+    expect(snap.totalEquityKrw).toBe('13250');
+    expect(snap.positionsValueKrw).toBe('0');
+    expect(snap.cashBalances).toEqual([
+      { amount: '0', currency: 'KRW', amountKrw: '0' },
+      { amount: '10', currency: 'USD', amountKrw: '13250', fxRateToKrw: '1325' },
+    ]);
   });
 });

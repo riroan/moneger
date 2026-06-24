@@ -50,7 +50,7 @@ const balanceBody = {
 
 const fxBody = {
   rt_cd: '0',
-  output2: [{ crcy_cd: 'USD', frst_bltn_exrt: '1300' }],
+  output2: [{ crcy_cd: 'USD', frst_bltn_exrt: '1300', frcr_dncl_amt: '0' }],
 };
 
 const emptyOverseasBody = { rt_cd: '0', output1: [] };
@@ -101,6 +101,7 @@ describe('KISClient', () => {
     const snap = await client.getAccountSnapshot(acct);
 
     expect(snap.cashKrw).toBe('500000');
+    expect(snap.cashBalances).toEqual([{ amount: '500000', currency: 'KRW', amountKrw: '500000' }]);
     expect(snap.totalEquityKrw).toBe('1300000');
     expect(snap.positionsValueKrw).toBe('800000');
     expect(snap.positions).toHaveLength(1); // 0수량 제외
@@ -166,6 +167,31 @@ describe('KISClient', () => {
       unrealizedPnl: '130000',
       fxRateToKrw: '1300',
     });
+  });
+
+  it('USD 예수금을 KRW 현금과 총평가액에 합산한다', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonRes(tokenBody))
+      .mockResolvedValueOnce(jsonRes(balanceBody))
+      .mockResolvedValueOnce(jsonRes({
+        rt_cd: '0',
+        output2: [{ crcy_cd: 'USD', frst_bltn_exrt: '1300', frcr_dncl_amt: '25.5' }],
+      }))
+      .mockResolvedValueOnce(jsonRes(emptyOverseasBody))
+      .mockResolvedValueOnce(jsonRes(emptyOverseasBody))
+      .mockResolvedValueOnce(jsonRes(emptyOverseasBody));
+
+    const client = new KISClient(creds);
+    const [acct] = await client.listAccounts();
+    const snap = await client.getAccountSnapshot(acct);
+
+    expect(snap.cashKrw).toBe('533150');
+    expect(snap.totalEquityKrw).toBe('1333150');
+    expect(snap.positionsValueKrw).toBe('800000');
+    expect(snap.cashBalances).toEqual([
+      { amount: '500000', currency: 'KRW', amountKrw: '500000' },
+      { amount: '25.5', currency: 'USD', amountKrw: '33150', fxRateToKrw: '1300' },
+    ]);
   });
 
   it('rt_cd가 0이 아니면 throw', async () => {
