@@ -27,6 +27,8 @@ interface Position {
   marketValue: string;
   marketValueKrw: string;
   unrealizedPnl: string | null;
+  lastPrice: string | null;
+  prevClose: string | null;
 }
 interface Account {
   id: string;
@@ -42,6 +44,8 @@ interface Account {
   }>;
   totalEquityKrw: string | null;
   positionsValueKrw: string | null;
+  dayChangeKrw: string | null;
+  dayChangeRate: string | null;
   positions: Position[];
 }
 interface Connection {
@@ -54,6 +58,8 @@ interface Connection {
 }
 interface Overview {
   totalEquityKrw: string;
+  dayChangeKrw: string | null;
+  dayChangeRate: string | null;
   monthlyReport: Array<{
     month: string;
     totalEquityKrw: string;
@@ -102,6 +108,30 @@ function percent(v: string | null): string {
   const n = Number(v);
   if (!Number.isFinite(n)) return '-';
   return `${(n * 100).toFixed(1)}%`;
+}
+/** 전일 종가 대비 현재가 증감(변화율 + 1주 증감액). 데이터 없으면 null. */
+function priceDayChange(
+  lastPrice: string | null,
+  prevClose: string | null,
+  currency: string
+): { rate: number; delta: string } | null {
+  if (lastPrice == null || prevClose == null) return null;
+  const cur = Number(lastPrice);
+  const prev = Number(prevClose);
+  if (!Number.isFinite(cur) || !Number.isFinite(prev) || cur <= 0 || prev <= 0) return null;
+  const diff = cur - prev;
+  const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
+  const abs = Math.abs(diff);
+  const amount = currency === 'KRW' ? formatCurrency(Math.round(abs)) : abs.toFixed(2);
+  return { rate: diff / prev, delta: `${sign}${amount}` };
+}
+function signedPercent(rate: number): string {
+  const pct = rate * 100;
+  return `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+}
+/** 1주 가격 표기. KRW는 ₩ 포맷, 그 외는 원통화 값 + 통화 코드. */
+function formatSharePrice(lastPrice: string, currency: string): string {
+  return currency === 'KRW' ? formatCurrency(Number(lastPrice)) : `${lastPrice} ${currency}`;
 }
 function pnlPercent(pnl: number, marketValueKrw: string): string | null {
   const current = Number(marketValueKrw);
@@ -361,6 +391,7 @@ function PortfolioHeader({
 }) {
   const latest = data?.monthlyReport.at(-1);
   const change = latest?.changeKrw == null ? null : Number(latest.changeKrw);
+  const dayChange = data?.dayChangeKrw == null ? null : Number(data.dayChangeKrw);
 
   return (
     <section className={`${CARD} overflow-hidden`}>
@@ -383,17 +414,25 @@ function PortfolioHeader({
           <div className="mt-1 break-words tabular-nums text-3xl font-bold text-text-primary sm:text-4xl">
             {formatCurrency(Number(data?.totalEquityKrw ?? 0))}
           </div>
-          {change != null ? (
+          {dayChange != null ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className={`text-xl font-semibold tabular-nums ${pnlClass(change)}`}>
-                {pnlMark(change)} {signedCurrency(change)}
+              <span className={`text-xl font-semibold tabular-nums ${pnlClass(dayChange)}`}>
+                {pnlMark(dayChange)} {signedCurrency(dayChange)}
               </span>
-              <span className={`text-sm opacity-70 ${pnlClass(change)}`}>
-                ({percent(latest?.changeRate ?? null)}) 전월 대비
+              <span className={`text-sm opacity-70 ${pnlClass(dayChange)}`}>
+                ({percent(data?.dayChangeRate ?? null)})
               </span>
             </div>
           ) : (
-            <div className="mt-2 text-xs text-text-muted">전월 데이터 누적 중</div>
+            <div className="mt-2 text-xs text-text-muted">전일 데이터 누적 중</div>
+          )}
+          {change != null && (
+            <div className="mt-1 text-xs tabular-nums text-text-muted">
+              <span className={pnlClass(change)}>
+                {pnlMark(change)} {signedCurrency(change)}
+              </span>{' '}
+              ({percent(latest?.changeRate ?? null)}) 전월 대비
+            </div>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
             <span className="inline-flex items-center gap-1.5">
@@ -675,6 +714,11 @@ function AccountBlock({ account }: { account: Account }) {
             <div className="text-base font-semibold tabular-nums text-text-primary">
               {formatCurrency(money(account.totalEquityKrw))}
             </div>
+            {account.dayChangeKrw != null && (
+              <div className={`mt-0.5 text-[11px] tabular-nums ${pnlClass(Number(account.dayChangeKrw))}`}>
+                {pnlMark(Number(account.dayChangeKrw))} {signedCurrency(Number(account.dayChangeKrw))} ({percent(account.dayChangeRate)})
+              </div>
+            )}
           </div>
           <div>
             <div className="text-[11px] text-text-muted">현금</div>
@@ -707,15 +751,17 @@ function AccountBlock({ account }: { account: Account }) {
           <div className="hidden md:block">
             <table className="w-full table-fixed text-sm">
               <colgroup>
-                <col className="w-[38%]" />
+                <col className="w-[32%]" />
+                <col className="w-[12%]" />
+                <col className="w-[20%]" />
+                <col className="w-[20%]" />
                 <col className="w-[16%]" />
-                <col className="w-[24%]" />
-                <col className="w-[22%]" />
               </colgroup>
               <thead>
                 <tr className="text-left text-xs text-text-muted">
                   <th className="font-normal py-2">종목</th>
                   <th className="font-normal py-2 text-right">수량</th>
+                  <th className="font-normal py-2 text-right">현재가</th>
                   <th className="font-normal py-2 text-right">평가액</th>
                   <th className="font-normal py-2 text-right">평가손익</th>
                 </tr>
@@ -735,6 +781,9 @@ function AccountBlock({ account }: { account: Account }) {
                         </div>
                       </td>
                       <td className="py-2.5 text-right tabular-nums text-text-secondary">{p.quantity}</td>
+                      <td className="py-2.5 text-right">
+                        <PositionPrice lastPrice={p.lastPrice} prevClose={p.prevClose} currency={p.currency} />
+                      </td>
                       <td className="py-2.5 text-right">
                         <div className="tabular-nums text-text-primary">
                           {formatCurrency(Number(p.marketValueKrw))}
@@ -770,9 +819,26 @@ function PositionPnl({ pnl, pnlRate, hasValue }: { pnl: number; pnlRate: string 
   );
 }
 
+/** 현재가 + 전일 종가 대비 변화율. lastPrice는 종목 통화 기준. */
+function PositionPrice({ lastPrice, prevClose, currency }: { lastPrice: string | null; prevClose: string | null; currency: string }) {
+  if (lastPrice == null) return <span className="text-text-muted">-</span>;
+  const dc = priceDayChange(lastPrice, prevClose, currency);
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <span className="tabular-nums text-text-primary">{formatSharePrice(lastPrice, currency)}</span>
+      {dc && (
+        <span className={`text-[11px] tabular-nums ${pnlClass(dc.rate)}`}>
+          {pnlMark(dc.rate)} {dc.delta} ({signedPercent(dc.rate)})
+        </span>
+      )}
+    </div>
+  );
+}
+
 function PositionCard({ position }: { position: Position }) {
   const pnl = Number(position.unrealizedPnl ?? 0);
   const pnlRate = position.unrealizedPnl == null ? null : pnlPercent(pnl, position.marketValueKrw);
+  const dc = priceDayChange(position.lastPrice, position.prevClose, position.currency);
 
   return (
     <div className="rounded-[12px] border border-[var(--border)] bg-bg-card px-3 py-3">
@@ -792,6 +858,17 @@ function PositionCard({ position }: { position: Position }) {
 
       <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-3">
         <PositionMetric label="수량" value={position.quantity} />
+        <div className="min-w-0">
+          <div className="text-[11px] text-text-muted">현재가</div>
+          <div className="mt-0.5 break-words text-sm tabular-nums text-text-primary">
+            {position.lastPrice == null ? '-' : formatSharePrice(position.lastPrice, position.currency)}
+          </div>
+          {dc && (
+            <div className={`mt-0.5 text-[11px] tabular-nums ${pnlClass(dc.rate)}`}>
+              {pnlMark(dc.rate)} {dc.delta} ({signedPercent(dc.rate)})
+            </div>
+          )}
+        </div>
         <PositionMetric
           label="평가액"
           value={formatCurrency(Number(position.marketValueKrw))}
@@ -972,7 +1049,7 @@ function AddConnectionForm({
   onDone: () => void | Promise<void>;
 }) {
   const availableBrokers = useMemo(
-    () => (['KIS', 'TOSS'] as const).filter((item) => !connectedBrokers.has(item)),
+    () => (['TOSS', 'KIS'] as const).filter((item) => !connectedBrokers.has(item)),
     [connectedBrokers]
   );
   const [broker, setBroker] = useState<Broker>(availableBrokers[0] ?? 'KIS');
@@ -1057,7 +1134,7 @@ function AddConnectionForm({
           </div>
         </div>
         <div className="inline-flex rounded-lg bg-bg-secondary p-1">
-          {(['KIS', 'TOSS'] as const).map((item) => {
+          {(['TOSS', 'KIS'] as const).map((item) => {
             const disabled = connectedBrokers.has(item);
             return (
               <BrokerSelectButton

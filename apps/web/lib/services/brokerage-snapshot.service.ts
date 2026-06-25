@@ -30,6 +30,11 @@ function roundedString(n: number): string {
   return String(Math.round(n));
 }
 
+/** 증권사 노출 우선순위. 토스증권을 먼저 보여준다(같은 증권사면 createdAt 순 유지). */
+function brokerSortKey(broker: string): number {
+  return broker === 'TOSS' ? 0 : 1;
+}
+
 function mapPositionCreate(p: NormalizedPosition) {
   return {
     symbol: p.symbol,
@@ -194,6 +199,8 @@ export async function syncAllConnections(userId: string) {
 
 export interface InvestmentsOverview {
   totalEquityKrw: string;
+  dayChangeKrw: string | null;
+  dayChangeRate: string | null;
   monthlyReport: Array<{
     month: string;
     totalEquityKrw: string;
@@ -223,6 +230,8 @@ export interface InvestmentsOverview {
       cashBalances: Money[];
       totalEquityKrw: string | null;
       positionsValueKrw: string | null;
+      dayChangeKrw: string | null;
+      dayChangeRate: string | null;
       positions: Array<{
         symbol: string;
         name: string;
@@ -232,6 +241,8 @@ export interface InvestmentsOverview {
         marketValueKrw: string;
         marketValue: string;
         unrealizedPnl: string | null;
+        lastPrice: string | null;
+        prevClose: string | null; // 전일 스냅샷의 같은 종목 lastPrice
       }>;
     }>;
   }>;
@@ -256,7 +267,7 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
             accountType: true,
             snapshots: {
               orderBy: { date: 'desc' },
-              take: 1,
+              take: 2, // [0] 최신, [1] 전일 — 전일 대비 계산용
               select: {
                 asOf: true,
                 cashKrw: true,
@@ -274,6 +285,7 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
                     marketValue: true,
                     marketValueKrw: true,
                     unrealizedPnl: true,
+                    lastPrice: true,
                   },
                 },
               },
@@ -296,6 +308,8 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
   ]);
 
   let total = 0;
+  let prevTotal = 0; // 전일 스냅샷 기준 합(전일 없으면 당일값 → 변화 0 기여)
+  let anyPrev = false;
   let positionCount = 0;
   const brokerTotals = new Map<string, number>();
   const currencyTotals = new Map<string, number>();
@@ -308,10 +322,19 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
     failureReason: c.failureReason,
     accounts: c.accounts.map((a) => {
       const snap = a.snapshots[0];
+      const prev = a.snapshots[1];
+      const prevPriceBySymbol = new Map<string, string | null>(
+        (prev?.positions ?? []).map((p) => [p.symbol, decStr(p.lastPrice)])
+      );
       const cashBalances = normalizeCashBalances(snap?.cashBalances);
       const accountTotal = decNum(snap?.totalEquityKrw);
+      const accPrev = prev?.totalEquityKrw != null ? decNum(prev.totalEquityKrw) : null;
+      const accDayChange =
+        accPrev == null || snap?.totalEquityKrw == null ? null : accountTotal - accPrev;
       if (snap?.totalEquityKrw != null) {
         total += accountTotal;
+        prevTotal += decNum(prev?.totalEquityKrw ?? snap.totalEquityKrw);
+        if (prev?.totalEquityKrw != null) anyPrev = true;
         brokerTotals.set(c.broker, (brokerTotals.get(c.broker) ?? 0) + accountTotal);
       }
       for (const cash of cashBalances) {
@@ -330,6 +353,11 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
         cashBalances,
         totalEquityKrw: decStr(snap?.totalEquityKrw),
         positionsValueKrw: decStr(snap?.positionsValueKrw),
+        dayChangeKrw: accDayChange == null ? null : roundedString(accDayChange),
+        dayChangeRate:
+          accDayChange == null || accPrev == null || accPrev <= 0
+            ? null
+            : (accDayChange / accPrev).toFixed(4),
         positions: (snap?.positions ?? []).map((p) => ({
           symbol: p.symbol,
           name: p.name,
@@ -339,6 +367,8 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
           marketValue: p.marketValue.toString(),
           marketValueKrw: p.marketValueKrw.toString(),
           unrealizedPnl: decStr(p.unrealizedPnl),
+          lastPrice: decStr(p.lastPrice),
+          prevClose: prevPriceBySymbol.get(p.symbol) ?? null,
         })).map((p) => {
           currencyTotals.set(p.currency, (currencyTotals.get(p.currency) ?? 0) + Number(p.marketValueKrw));
           return p;
@@ -347,8 +377,12 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
     }),
   }));
 
+  const dayChange = anyPrev ? total - prevTotal : null;
+
   return {
     totalEquityKrw: String(total),
+    dayChangeKrw: dayChange == null ? null : roundedString(dayChange),
+    dayChangeRate: dayChange == null || prevTotal <= 0 ? null : (dayChange / prevTotal).toFixed(4),
     monthlyReport: buildMonthlyReport(history),
     analysis: {
       snapshotsCount: history.length,
@@ -366,7 +400,7 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
           marketValueKrw: roundedString(value),
         })),
     },
-    connections: shaped,
+    connections: shaped.sort((a, b) => brokerSortKey(a.broker) - brokerSortKey(b.broker)),
   };
 }
 

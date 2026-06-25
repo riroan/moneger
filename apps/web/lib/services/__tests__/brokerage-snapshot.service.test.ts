@@ -1,14 +1,14 @@
 import { prisma } from '@/lib/prisma';
-import { syncConnection } from '../brokerage-snapshot.service';
+import { syncConnection, getInvestmentsOverview } from '../brokerage-snapshot.service';
 import { createBrokerageClient } from '../brokerage/factory';
 import { decryptCredentialObject } from '../crypto.service';
 import { BrokerageError } from '../brokerage/types';
 
 jest.mock('@/lib/prisma', () => ({
   prisma: {
-    brokerageConnection: { findFirst: jest.fn(), update: jest.fn() },
+    brokerageConnection: { findFirst: jest.fn(), update: jest.fn(), findMany: jest.fn() },
     brokerageAccount: { upsert: jest.fn() },
-    brokerageSnapshot: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+    brokerageSnapshot: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), findMany: jest.fn() },
     brokeragePosition: { deleteMany: jest.fn() },
   },
 }));
@@ -16,9 +16,9 @@ jest.mock('../brokerage/factory', () => ({ createBrokerageClient: jest.fn() }));
 jest.mock('../crypto.service', () => ({ decryptCredentialObject: jest.fn() }));
 
 const p = prisma as unknown as {
-  brokerageConnection: { findFirst: jest.Mock; update: jest.Mock };
+  brokerageConnection: { findFirst: jest.Mock; update: jest.Mock; findMany: jest.Mock };
   brokerageAccount: { upsert: jest.Mock };
-  brokerageSnapshot: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
+  brokerageSnapshot: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock; findMany: jest.Mock };
   brokeragePosition: { deleteMany: jest.Mock };
 };
 const factoryMock = createBrokerageClient as jest.Mock;
@@ -128,5 +128,89 @@ describe('brokerage-snapshot.service syncConnection', () => {
     expect(p.brokerageConnection.update).toHaveBeenLastCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'ERROR' }) })
     );
+  });
+});
+
+function overviewPosition(symbol: string, lastPrice: string) {
+  return {
+    symbol,
+    name: symbol,
+    market: 'KRX',
+    currency: 'KRW',
+    quantity: '10',
+    marketValue: '800000',
+    marketValueKrw: '800000',
+    unrealizedPnl: '100000',
+    lastPrice,
+  };
+}
+
+function overviewSnapshot(totalEquityKrw: string, lastPrice: string) {
+  return {
+    asOf: new Date('2026-06-25T06:00:00Z'),
+    cashKrw: '500000',
+    cashBalances: [],
+    totalEquityKrw,
+    positionsValueKrw: '800000',
+    positions: [overviewPosition('005930', lastPrice)],
+  };
+}
+
+function mockOverview(snapshots: ReturnType<typeof overviewSnapshot>[]) {
+  p.brokerageConnection.findMany.mockResolvedValue([
+    {
+      id: 'conn-1',
+      broker: 'KIS',
+      label: null,
+      status: 'ACTIVE',
+      failureReason: null,
+      accounts: [{ id: 'acct-1', displayName: 'acc1', accountType: 'domestic', snapshots }],
+    },
+  ]);
+  p.brokerageSnapshot.findMany.mockResolvedValue([]); // monthlyReport은 본 테스트 대상 아님
+}
+
+describe('brokerage-snapshot.service getInvestmentsOverview 전일 대비', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('전일 스냅샷이 있으면 자산/종목가 전일 대비를 계산한다', async () => {
+    // 최신[0] totalEquity 1,300,000 / 가격 80,000, 전일[1] 1,200,000 / 가격 76,000
+    mockOverview([overviewSnapshot('1300000', '80000'), overviewSnapshot('1200000', '76000')]);
+
+    const res = await getInvestmentsOverview('user-1');
+
+    expect(res.totalEquityKrw).toBe('1300000');
+    expect(res.dayChangeKrw).toBe('100000'); // 1,300,000 - 1,200,000
+    expect(res.dayChangeRate).toBe('0.0833'); // 100,000 / 1,200,000
+    const acct = res.connections[0].accounts[0];
+    expect(acct.dayChangeKrw).toBe('100000'); // 계좌 카드용 전일 대비
+    expect(acct.dayChangeRate).toBe('0.0833');
+    const pos = acct.positions[0];
+    expect(pos.lastPrice).toBe('80000');
+    expect(pos.prevClose).toBe('76000'); // 전일 스냅샷의 같은 종목 lastPrice
+  });
+
+  it('연결 목록은 토스증권을 먼저 노출한다(createdAt 무관)', async () => {
+    // createdAt 순서상 KIS가 먼저여도 응답에서는 TOSS가 앞
+    p.brokerageConnection.findMany.mockResolvedValue([
+      { id: 'kis-1', broker: 'KIS', label: null, status: 'ACTIVE', failureReason: null, accounts: [] },
+      { id: 'toss-1', broker: 'TOSS', label: null, status: 'ACTIVE', failureReason: null, accounts: [] },
+    ]);
+    p.brokerageSnapshot.findMany.mockResolvedValue([]);
+
+    const res = await getInvestmentsOverview('user-1');
+
+    expect(res.connections.map((c) => c.broker)).toEqual(['TOSS', 'KIS']);
+  });
+
+  it('전일 스냅샷이 없으면 전일 대비는 null', async () => {
+    mockOverview([overviewSnapshot('1300000', '80000')]); // 최신 1개뿐
+
+    const res = await getInvestmentsOverview('user-1');
+
+    expect(res.dayChangeKrw).toBeNull();
+    expect(res.dayChangeRate).toBeNull();
+    expect(res.connections[0].accounts[0].dayChangeKrw).toBeNull();
+    expect(res.connections[0].accounts[0].positions[0].prevClose).toBeNull();
   });
 });
