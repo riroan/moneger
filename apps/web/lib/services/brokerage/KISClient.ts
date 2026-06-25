@@ -134,16 +134,15 @@ export class KISClient extends BaseBrokerageClient {
 
   async getAccountSnapshot(account: BrokerageAccountRef): Promise<NormalizedSnapshot> {
     const [cano, prdt] = splitAccountNo(account.externalAccountId);
-    const token = await this.getToken();
 
     // 1) 국내 (필수)
-    const dom = await this.fetchDomestic(token, cano, prdt);
+    const dom = await this.fetchDomestic(cano, prdt);
 
     // 2) 해외 (best-effort — 실패해도 국내는 반환)
     let overseas: NormalizedPosition[] = [];
     try {
-      const usd = await this.fetchUsdBalance(token, cano, prdt);
-      overseas = await this.fetchOverseasUS(token, cano, prdt, usd.fxRateToKrw);
+      const usd = await this.fetchUsdBalance(cano, prdt);
+      overseas = await this.fetchOverseasUS(cano, prdt, usd.fxRateToKrw);
       const overseasKrw = overseas.reduce((s, p) => s + Number(p.marketValueKrw), 0);
       const usdCashKrw = Math.round(usd.cashUsd * usd.fxRateToKrw);
       const domesticCashKrw = Number(dom.cashKrw);
@@ -192,7 +191,7 @@ export class KISClient extends BaseBrokerageClient {
     };
   }
 
-  private async fetchDomestic(token: string, cano: string, prdt: string) {
+  private async fetchDomestic(cano: string, prdt: string) {
     const query = new URLSearchParams({
       CANO: cano,
       ACNT_PRDT_CD: prdt,
@@ -206,10 +205,10 @@ export class KISClient extends BaseBrokerageClient {
       CTX_AREA_FK100: '',
       CTX_AREA_NK100: '',
     });
-    const data = await this.httpJson<DomesticBalanceResponse>(
-      `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-balance?${query}`,
-      { method: 'GET', headers: this.headers(token, this.trId('TTTC8434R', 'VTTC8434R')) }
-    );
+    const data = await this.authedJson<DomesticBalanceResponse>((token) => ({
+      url: `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-balance?${query}`,
+      init: { method: 'GET', headers: this.headers(token, this.trId('TTTC8434R', 'VTTC8434R')) },
+    }));
     if (data.rt_cd !== '0') {
       throw new BrokerageError('domestic balance inquiry rejected', 'upstream', this.broker);
     }
@@ -238,7 +237,6 @@ export class KISClient extends BaseBrokerageClient {
 
   /** USD 예수금 + USD→KRW 환율 (체결기준현재잔고 output2). */
   private async fetchUsdBalance(
-    token: string,
     cano: string,
     prdt: string
   ): Promise<{ cashUsd: number; fxRateToKrw: number }> {
@@ -250,10 +248,10 @@ export class KISClient extends BaseBrokerageClient {
       TR_MKET_CD: '00',
       INQR_DVSN_CD: '00',
     });
-    const data = await this.httpJson<PresentBalanceResponse>(
-      `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-present-balance?${query}`,
-      { method: 'GET', headers: this.headers(token, this.trId('CTRP6504R', 'VTRP6504R')) }
-    );
+    const data = await this.authedJson<PresentBalanceResponse>((token) => ({
+      url: `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-present-balance?${query}`,
+      init: { method: 'GET', headers: this.headers(token, this.trId('CTRP6504R', 'VTRP6504R')) },
+    }));
     if (data.rt_cd !== '0') {
       throw new BrokerageError('present balance inquiry rejected', 'upstream', this.broker);
     }
@@ -267,7 +265,6 @@ export class KISClient extends BaseBrokerageClient {
 
   /** 미국 거래소(NASD/NYSE/AMEX) 잔고를 합쳐 KRW 환산 포지션으로. */
   private async fetchOverseasUS(
-    token: string,
     cano: string,
     prdt: string,
     fx: number
@@ -282,10 +279,10 @@ export class KISClient extends BaseBrokerageClient {
         CTX_AREA_FK200: '',
         CTX_AREA_NK200: '',
       });
-      const data = await this.httpJson<OverseasBalanceResponse>(
-        `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-balance?${query}`,
-        { method: 'GET', headers: this.headers(token, this.trId('TTTS3012R', 'VTTS3012R')) }
-      );
+      const data = await this.authedJson<OverseasBalanceResponse>((token) => ({
+        url: `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-balance?${query}`,
+        init: { method: 'GET', headers: this.headers(token, this.trId('TTTS3012R', 'VTTS3012R')) },
+      }));
       if (data.rt_cd !== '0') continue;
       for (const h of data.output1 ?? []) {
         if (Number(h.ovrs_cblc_qty) <= 0) continue;

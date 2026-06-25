@@ -59,6 +59,25 @@ export abstract class BaseBrokerageClient implements BrokerageClient {
   }
 
   /**
+   * 인증이 필요한 JSON 호출. 캐시된 토큰으로 요청을 만들어 보내고, auth(401/403) 실패면
+   * 토큰을 강제 재발급해 한 번 더 시도한다 — 만료 시각 전에 서버가 토큰을 무효화한 경우 자가 복구.
+   * `build`는 매번 호출돼 최신 토큰으로 요청을 다시 만든다.
+   */
+  protected async authedJson<T>(
+    build: (token: string) => { url: string; init: RequestInit },
+    opts: { timeoutMs?: number; retries?: number } = {}
+  ): Promise<T> {
+    const first = build(await this.getToken());
+    try {
+      return await this.httpJson<T>(first.url, first.init, opts);
+    } catch (err) {
+      if (!(err instanceof BrokerageError) || err.kind !== 'auth') throw err;
+      const retry = build(await this.getToken(true));
+      return await this.httpJson<T>(retry.url, retry.init, opts);
+    }
+  }
+
+  /**
    * JSON HTTP 호출 + 타임아웃 + 백오프 재시도(네트워크/5xx). 4xx는 즉시 실패.
    * 시크릿 누출 방지를 위해 응답 본문은 에러 메시지에 넣지 않는다.
    */

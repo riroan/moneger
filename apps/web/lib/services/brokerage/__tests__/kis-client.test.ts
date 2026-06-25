@@ -208,4 +208,40 @@ describe('KISClient', () => {
     const client = new KISClient(creds);
     await expect(client.validateCredentials()).rejects.toMatchObject({ kind: 'auth' });
   });
+
+  it('balance 401 시 토큰을 강제 재발급하고 한 번 재시도한다', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonRes(tokenBody)) // 최초 토큰 (tok-123)
+      .mockResolvedValueOnce(jsonRes({ error: 'unauthorized' }, 401)) // domestic → 토큰 무효화
+      .mockResolvedValueOnce(jsonRes({ ...tokenBody, access_token: 'tok-456' })) // 강제 재발급
+      .mockResolvedValueOnce(jsonRes(balanceBody)) // domestic 재시도 성공
+      .mockResolvedValueOnce(jsonRes(fxBody))
+      .mockResolvedValueOnce(jsonRes(emptyOverseasBody))
+      .mockResolvedValueOnce(jsonRes(emptyOverseasBody))
+      .mockResolvedValueOnce(jsonRes(emptyOverseasBody));
+
+    const client = new KISClient(creds);
+    const [acct] = await client.listAccounts();
+    const snap = await client.getAccountSnapshot(acct);
+
+    expect(snap.positions).toHaveLength(1); // 재시도가 정상 스냅샷을 반환
+    const tokenCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/oauth2/tokenP'));
+    expect(tokenCalls).toHaveLength(2); // 최초 + 강제 재발급
+    const balCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('inquire-balance'));
+    expect(balCalls.at(-1)![1].headers.authorization).toBe('Bearer tok-456'); // 재시도는 새 토큰 사용
+  });
+
+  it('재발급 후에도 401이면 auth 에러를 던진다(재시도 1회로 제한)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonRes(tokenBody))
+      .mockResolvedValueOnce(jsonRes({ error: 'unauthorized' }, 401)) // domestic 1차
+      .mockResolvedValueOnce(jsonRes({ ...tokenBody, access_token: 'tok-456' })) // 강제 재발급
+      .mockResolvedValueOnce(jsonRes({ error: 'unauthorized' }, 401)); // domestic 재시도도 401
+
+    const client = new KISClient(creds);
+    const [acct] = await client.listAccounts();
+    await expect(client.getAccountSnapshot(acct)).rejects.toMatchObject({ kind: 'auth' });
+    const tokenCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/oauth2/tokenP'));
+    expect(tokenCalls).toHaveLength(2); // 무한 재발급 방지
+  });
 });

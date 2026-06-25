@@ -134,6 +134,38 @@ describe('TossClient', () => {
     expect(usdBuyingPowerCall[1].headers['X-Tossinvest-Account']).toBe('7');
   });
 
+  it('holdings 401 시 토큰을 강제 재발급하고 한 번 재시도한다', async () => {
+    const holdingsBody = {
+      result: {
+        marketValue: { amount: { krw: '0', usd: '0' }, amountAfterCost: { krw: '0', usd: '0' } },
+        profitLoss: { amount: { krw: '0', usd: '0' }, amountAfterCost: { krw: '0', usd: '0' }, rate: '0', rateAfterCost: '0' },
+        items: [],
+      },
+    };
+    fetchMock
+      .mockResolvedValueOnce(jsonRes(tokenBody)) // 최초 토큰 (tok-toss)
+      .mockResolvedValueOnce(jsonRes({ error: 'unauthorized' }, 401)) // holdings → 토큰 무효화
+      .mockResolvedValueOnce(jsonRes({ ...tokenBody, access_token: 'tok-toss-2' })) // 강제 재발급
+      .mockResolvedValueOnce(jsonRes(holdingsBody)) // holdings 재시도 성공
+      .mockResolvedValueOnce(jsonRes({ result: { currency: 'KRW', cashBuyingPower: '0' } }))
+      .mockResolvedValueOnce(jsonRes({ result: { currency: 'USD', cashBuyingPower: '0' } }));
+
+    const client = new TossClient(creds);
+    const snap = await client.getAccountSnapshot({
+      broker: 'TOSS',
+      externalAccountId: '7',
+      displayName: '12345678901',
+      accountType: 'unknown',
+      baseCurrency: 'KRW',
+    });
+
+    expect(snap.positions).toHaveLength(0); // 재시도가 정상 스냅샷을 반환
+    const tokenCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/oauth2/token'));
+    expect(tokenCalls).toHaveLength(2); // 최초 + 강제 재발급
+    const holdingsCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/api/v1/holdings'));
+    expect(holdingsCalls.at(-1)![1].headers.authorization).toBe('Bearer tok-toss-2'); // 재시도는 새 토큰 사용
+  });
+
   it('USD 보유종목이 없어도 USD 현금이 있으면 환율로 합산한다', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonRes(tokenBody))

@@ -119,11 +119,10 @@ export class TossClient extends BaseBrokerageClient {
   }
 
   async listAccounts(): Promise<BrokerageAccountRef[]> {
-    const token = await this.getToken();
-    const data = await this.httpJson<TossApiResponse<TossAccount[]>>(
-      `${this.baseUrl}/api/v1/accounts`,
-      { method: 'GET', headers: this.headers(token) }
-    );
+    const data = await this.authedJson<TossApiResponse<TossAccount[]>>((token) => ({
+      url: `${this.baseUrl}/api/v1/accounts`,
+      init: { method: 'GET', headers: this.headers(token) },
+    }));
     if (!Array.isArray(data.result)) {
       throw new BrokerageError('accounts response invalid', 'parse', this.broker);
     }
@@ -146,11 +145,10 @@ export class TossClient extends BaseBrokerageClient {
   }
 
   async getAccountSnapshot(account: BrokerageAccountRef): Promise<NormalizedSnapshot> {
-    const token = await this.getToken();
-    const data = await this.httpJson<TossApiResponse<TossHoldingsOverview>>(
-      `${this.baseUrl}/api/v1/holdings`,
-      { method: 'GET', headers: this.headers(token, account.externalAccountId) }
-    );
+    const data = await this.authedJson<TossApiResponse<TossHoldingsOverview>>((token) => ({
+      url: `${this.baseUrl}/api/v1/holdings`,
+      init: { method: 'GET', headers: this.headers(token, account.externalAccountId) },
+    }));
     if (!data.result) {
       throw new BrokerageError('holdings response invalid', 'parse', this.broker);
     }
@@ -160,12 +158,12 @@ export class TossClient extends BaseBrokerageClient {
       moneyPart(holdings.marketValue.amount.usd) > 0 ||
       holdings.items.some((item) => item.currency === 'USD');
     const [cashKrwRaw, cashUsdRaw] = await Promise.all([
-      this.fetchBuyingPower(token, account.externalAccountId, 'KRW'),
-      this.fetchBuyingPower(token, account.externalAccountId, 'USD'),
+      this.fetchBuyingPower(account.externalAccountId, 'KRW'),
+      this.fetchBuyingPower(account.externalAccountId, 'USD'),
     ]);
     const cashKrw = Math.round(moneyPart(cashKrwRaw));
     const cashUsd = moneyPart(cashUsdRaw);
-    const usdKrw = hasUsd || cashUsd > 0 ? await this.fetchUsdKrwRate(token) : 1;
+    const usdKrw = hasUsd || cashUsd > 0 ? await this.fetchUsdKrwRate() : 1;
     const cashUsdKrw = Math.round(cashUsd * usdKrw);
     const positions = holdings.items
       .filter((item) => Number(item.quantity) > 0)
@@ -216,24 +214,24 @@ export class TossClient extends BaseBrokerageClient {
     };
   }
 
-  private async fetchBuyingPower(token: string, accountSeq: string, currency: 'KRW' | 'USD'): Promise<string> {
+  private async fetchBuyingPower(accountSeq: string, currency: 'KRW' | 'USD'): Promise<string> {
     const query = new URLSearchParams({ currency });
-    const data = await this.httpJson<TossApiResponse<TossBuyingPowerResponse>>(
-      `${this.baseUrl}/api/v1/buying-power?${query}`,
-      { method: 'GET', headers: this.headers(token, accountSeq) }
-    );
+    const data = await this.authedJson<TossApiResponse<TossBuyingPowerResponse>>((token) => ({
+      url: `${this.baseUrl}/api/v1/buying-power?${query}`,
+      init: { method: 'GET', headers: this.headers(token, accountSeq) },
+    }));
     if (!data.result || data.result.currency !== currency) {
       throw new BrokerageError(`${currency} buying power response invalid`, 'parse', this.broker);
     }
     return data.result.cashBuyingPower;
   }
 
-  private async fetchUsdKrwRate(token: string): Promise<number> {
+  private async fetchUsdKrwRate(): Promise<number> {
     const query = new URLSearchParams({ baseCurrency: 'USD', quoteCurrency: 'KRW' });
-    const data = await this.httpJson<TossApiResponse<TossExchangeRateResponse>>(
-      `${this.baseUrl}/api/v1/exchange-rate?${query}`,
-      { method: 'GET', headers: this.headers(token) }
-    );
+    const data = await this.authedJson<TossApiResponse<TossExchangeRateResponse>>((token) => ({
+      url: `${this.baseUrl}/api/v1/exchange-rate?${query}`,
+      init: { method: 'GET', headers: this.headers(token) },
+    }));
     const rate = Number(data.result?.rate);
     if (!Number.isFinite(rate) || rate <= 0) {
       throw new BrokerageError('USD exchange rate unavailable', 'parse', this.broker);
