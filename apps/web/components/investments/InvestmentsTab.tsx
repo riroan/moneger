@@ -335,10 +335,10 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
       {summary.hasConnections && data && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
-            <div className="order-1 xl:order-2">
+            <div className="order-2">
               <PortfolioDonut data={data} />
             </div>
-            <div className="order-2 xl:order-1">
+            <div className="order-1">
               <BrokerSelector
                 connections={data.connections}
                 selectedConnectionId={selectedConnection?.id ?? null}
