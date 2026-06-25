@@ -613,6 +613,17 @@ function ConnectionCard({
   const positions = connectionPositions(connection);
   const isSyncing = syncingId === connection.id;
 
+  const connDayChange = (() => {
+    let delta = 0;
+    let hasAny = false;
+    for (const a of connection.accounts) {
+      if (a.dayChangeKrw != null) { delta += Number(a.dayChangeKrw); hasAny = true; }
+    }
+    if (!hasAny) return null;
+    const prevTotal = total - delta;
+    return { delta, rate: prevTotal > 0 ? delta / prevTotal : null };
+  })();
+
   return (
     <section className={CARD}>
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -629,6 +640,12 @@ function ConnectionCard({
             <div className="text-xl font-semibold tabular-nums text-text-primary">
               {formatCurrency(total)}
             </div>
+            {connDayChange != null && (
+              <div className={`text-xs tabular-nums ${pnlClass(connDayChange.delta)}`}>
+                {pnlMark(connDayChange.delta)} {signedCurrency(connDayChange.delta)}
+                {connDayChange.rate != null && ` (${signedPercent(connDayChange.rate)})`}
+              </div>
+            )}
             <div className="text-xs text-text-muted">
               {connection.accounts.length}개 계좌 · {positions}개 종목
             </div>
@@ -889,13 +906,13 @@ function PositionMetric({ label, value, subValue }: { label: string; value: stri
   );
 }
 
-const POSITION_COLORS = ['#60a5fa', '#4ade80', '#a78bfa', '#ff6b6b', '#fbbf24', '#38bdf8'];
+const POSITION_COLORS = ['#60a5fa', '#4ade80', '#a78bfa', '#ff6b6b', '#fbbf24', '#38bdf8', '#f472b6', '#34d399', '#fb923c', '#818cf8'];
 
 function PortfolioDonut({ data }: { data: Overview }) {
   const allPositions = data.connections.flatMap((c) => c.accounts.flatMap((a) => a.positions));
   const sorted = [...allPositions].sort((a, b) => money(b.marketValueKrw) - money(a.marketValueKrw));
-  const top = sorted.slice(0, 5);
-  const rest = sorted.slice(5);
+  const top = sorted.slice(0, 10);
+  const rest = sorted.slice(10);
 
   const entries = [
     ...top.map((p, i) => ({
