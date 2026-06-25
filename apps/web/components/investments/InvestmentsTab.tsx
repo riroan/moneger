@@ -115,17 +115,31 @@ function percent(v: string | null): string {
 function priceDayChange(
   lastPrice: string | null,
   prevClose: string | null,
-  currency: string
+  currency: string,
+  displayCurrency: 'KRW' | 'USD' = 'KRW',
+  fxRateToKrw: string | null = null,
 ): { rate: number; delta: string } | null {
   if (lastPrice == null || prevClose == null) return null;
   const cur = Number(lastPrice);
   const prev = Number(prevClose);
   if (!Number.isFinite(cur) || !Number.isFinite(prev) || cur <= 0 || prev <= 0) return null;
   const diff = cur - prev;
+  const rate = diff / prev;
   const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
+  const fx = Number(fxRateToKrw ?? 'NaN');
+  // USD 종목을 원화로 보여줄 때: diff * fxRate
+  if (currency === 'USD' && displayCurrency === 'KRW' && Number.isFinite(fx) && fx > 0) {
+    const krwDiff = Math.abs(diff) * fx;
+    return { rate, delta: `${sign}${formatCurrency(Math.round(krwDiff))}` };
+  }
+  // KRW 종목을 달러로 보여줄 때: diff / fxRate
+  if (currency === 'KRW' && displayCurrency === 'USD' && Number.isFinite(fx) && fx > 0) {
+    return { rate, delta: `${sign}${(Math.abs(diff) / fx).toFixed(2)}` };
+  }
+  // 원통화 그대로
   const abs = Math.abs(diff);
   const amount = currency === 'KRW' ? formatCurrency(Math.round(abs)) : abs.toFixed(2);
-  return { rate: diff / prev, delta: `${sign}${amount}` };
+  return { rate, delta: `${sign}${amount}` };
 }
 function signedPercent(rate: number): string {
   const pct = rate * 100;
@@ -917,7 +931,7 @@ function PositionPnl({ pnl, pnlRate, hasValue, displayCurrency }: { pnl: number;
 function PositionPrice({ position, displayCurrency }: { position: Position; displayCurrency: 'KRW' | 'USD' }) {
   const price = displayLastPrice(position, displayCurrency);
   if (price == null) return <span className="text-text-muted">-</span>;
-  const dc = priceDayChange(position.lastPrice, position.prevClose, position.currency);
+  const dc = priceDayChange(position.lastPrice, position.prevClose, position.currency, displayCurrency, position.fxRateToKrw);
   return (
     <div className="flex flex-col items-end gap-0.5">
       <span className="tabular-nums text-text-primary">{price}</span>
@@ -933,7 +947,7 @@ function PositionPrice({ position, displayCurrency }: { position: Position; disp
 function PositionCard({ position, displayCurrency }: { position: Position; displayCurrency: 'KRW' | 'USD' }) {
   const pnl = displayPnl(position, displayCurrency);
   const pnlRate = position.unrealizedPnl == null ? null : pnlPercent(Number(position.unrealizedPnl), position.marketValueKrw);
-  const dc = priceDayChange(position.lastPrice, position.prevClose, position.currency);
+  const dc = priceDayChange(position.lastPrice, position.prevClose, position.currency, displayCurrency, position.fxRateToKrw);
 
   return (
     <div className="rounded-[12px] border border-[var(--border)] bg-bg-card px-3 py-3">
