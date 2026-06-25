@@ -335,21 +335,24 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
       {summary.hasConnections && data && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
-            <div className="order-2">
-              <PortfolioDonut data={data} />
-            </div>
-            <div className="order-1">
+            <PortfolioDonut data={data} />
+            <div className="hidden xl:block">
               <BrokerSelector
                 connections={data.connections}
                 selectedConnectionId={selectedConnection?.id ?? null}
                 onSelect={setSelectedConnectionId}
               />
             </div>
-            <div className="order-4">
-              <BreakdownPanel data={data} />
-            </div>
+            <BreakdownPanel data={data} />
           </aside>
           <div className="flex min-w-0 flex-col gap-4">
+            <div className="xl:hidden">
+              <BrokerSelector
+                connections={data.connections}
+                selectedConnectionId={selectedConnection?.id ?? null}
+                onSelect={setSelectedConnectionId}
+              />
+            </div>
             {selectedConnection && (
               <ConnectionCard
                 connection={selectedConnection}
