@@ -19,6 +19,8 @@ interface Props {
 
 interface Overview {
   totalEquityKrw: string;
+  dayChangeKrw: string | null;
+  dayChangeRate: string | null;
   monthlyReport?: Array<{
     month: string;
     changeKrw: string | null;
@@ -114,16 +116,13 @@ export default function InvestmentsSummaryCard({ userId }: Props) {
     );
   }
 
+  const dayChange = data?.dayChangeKrw == null ? null : Number(data.dayChangeKrw);
+  const dayChangeRate = changeRateText(data?.dayChangeRate);
   const latestReport = data?.monthlyReport?.at(-1);
-  const change = latestReport?.changeKrw == null ? null : Number(latestReport.changeKrw);
-  const changeRate = changeRateText(latestReport?.changeRate);
-  const changeClass = change == null
-    ? 'text-text-muted'
-    : change > 0
-      ? 'text-accent-coral'
-      : change < 0
-        ? 'text-accent-blue'
-        : 'text-text-muted';
+  const monthChange = latestReport?.changeKrw == null ? null : Number(latestReport.changeKrw);
+  const monthChangeRate = changeRateText(latestReport?.changeRate);
+  const changeClass = (v: number | null) =>
+    v == null ? 'text-text-muted' : v > 0 ? 'text-accent-coral' : v < 0 ? 'text-accent-blue' : 'text-text-muted';
   const latestSync = latestAsOf(data?.connections ?? []);
 
   return (
@@ -158,20 +157,26 @@ export default function InvestmentsSummaryCard({ userId }: Props) {
         <div className="tabular-nums text-2xl font-bold leading-tight text-text-primary">
           {formatCurrency(Number(data?.totalEquityKrw ?? 0))}
         </div>
-        <div className={`mt-1 flex items-center gap-1 text-xs ${changeClass}`}>
-          {change == null ? (
+        <div className={`mt-1 flex items-center gap-1 text-xs ${changeClass(dayChange)}`}>
+          {dayChange == null ? (
             <>
               <MdShowChart className="text-sm" />
-              월별 스냅샷 대기 중
+              전일 스냅샷 대기 중
             </>
           ) : (
             <>
-              {change >= 0 ? <MdTrendingUp className="text-sm" /> : <MdTrendingDown className="text-sm" />}
-              전월 대비 {signedCurrency(change)}
-              {changeRate ? ` · ${changeRate}` : ''}
+              {dayChange >= 0 ? <MdTrendingUp className="text-sm" /> : <MdTrendingDown className="text-sm" />}
+              전일 대비 {signedCurrency(dayChange)}
+              {dayChangeRate ? ` · ${dayChangeRate}` : ''}
             </>
           )}
         </div>
+        {monthChange != null && (
+          <div className={`mt-0.5 flex items-center gap-1 text-[11px] ${changeClass(monthChange)}`}>
+            전월 대비 {signedCurrency(monthChange)}
+            {monthChangeRate ? ` · ${monthChangeRate}` : ''}
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex items-center gap-3 border-t border-[var(--border)] pt-3 text-xs text-text-muted">
