@@ -399,7 +399,22 @@ function PortfolioHeader({
 }) {
   const latest = data?.monthlyReport.at(-1);
   const change = latest?.changeKrw == null ? null : Number(latest.changeKrw);
-  const dayChange = data?.dayChangeKrw == null ? null : Number(data.dayChangeKrw);
+
+  const { totalPnl, pnlRate } = (() => {
+    if (!data) return { totalPnl: null, pnlRate: null };
+    let pnl = 0; let cost = 0; let hasPnl = false;
+    for (const conn of data.connections)
+      for (const acct of conn.accounts)
+        for (const pos of acct.positions) {
+          const p = Number(pos.unrealizedPnl ?? 'NaN');
+          const mv = Number(pos.marketValueKrw);
+          if (Number.isFinite(p) && Number.isFinite(mv)) {
+            pnl += p; cost += mv - p; hasPnl = true;
+          }
+        }
+    if (!hasPnl) return { totalPnl: null, pnlRate: null };
+    return { totalPnl: pnl, pnlRate: cost > 0 ? pnl / cost : null };
+  })();
 
   return (
     <section className={`${CARD} overflow-hidden`}>
@@ -422,18 +437,18 @@ function PortfolioHeader({
           <div className="mt-1 break-words tabular-nums text-3xl font-bold text-text-primary sm:text-4xl">
             {formatCurrency(Number(data?.totalEquityKrw ?? 0))}
           </div>
-          {dayChange != null ? (
+          {totalPnl != null ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className={`text-xl font-semibold tabular-nums ${pnlClass(dayChange)}`}>
-                {pnlMark(dayChange)} {signedCurrency(dayChange)}
+              <span className={`text-xl font-semibold tabular-nums ${pnlClass(totalPnl)}`}>
+                {pnlMark(totalPnl)} {signedCurrency(totalPnl)}
               </span>
-              <span className={`text-sm opacity-70 ${pnlClass(dayChange)}`}>
-                ({percent(data?.dayChangeRate ?? null)})
-              </span>
+              {pnlRate != null && (
+                <span className={`text-sm opacity-70 ${pnlClass(totalPnl)}`}>
+                  ({signedPercent(pnlRate)})
+                </span>
+              )}
             </div>
-          ) : (
-            <div className="mt-2 text-xs text-text-muted">전일 데이터 누적 중</div>
-          )}
+          ) : null}
           {change != null && (
             <div className="mt-1 text-xs tabular-nums text-text-muted">
               <span className={pnlClass(change)}>
