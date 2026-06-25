@@ -146,16 +146,11 @@ function displayMarketValue(p: Position, mode: 'KRW' | 'USD'): string {
   const fx = Number(p.fxRateToKrw ?? 'NaN');
   return Number.isFinite(fx) && fx > 0 ? formatUsd(Number(p.marketValueKrw) / fx) : formatCurrency(Number(p.marketValueKrw));
 }
-/** displayCurrency 기준 PnL 금액 (원통화 기준 저장이므로 환산) */
+/** displayCurrency 기준 PnL 금액 (unrealizedPnl은 항상 KRW로 저장됨) */
 function displayPnl(p: Position, mode: 'KRW' | 'USD'): number {
-  const raw = Number(p.unrealizedPnl ?? 'NaN');
+  const raw = Number(p.unrealizedPnl ?? 'NaN'); // always KRW
   if (!Number.isFinite(raw)) return 0;
-  if (mode === 'KRW') {
-    if (p.currency === 'KRW') return raw;
-    const fx = Number(p.fxRateToKrw ?? 'NaN');
-    return Number.isFinite(fx) && fx > 0 ? raw * fx : raw;
-  }
-  if (p.currency === 'USD') return raw;
+  if (mode === 'KRW') return raw;
   const fx = Number(p.fxRateToKrw ?? 'NaN');
   return Number.isFinite(fx) && fx > 0 ? raw / fx : raw;
 }
