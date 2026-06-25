@@ -147,9 +147,8 @@ export default function InvestmentsSummaryCard({ userId }: Props) {
             </div>
           </div>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-text-muted transition-colors group-hover:text-text-secondary">
-          전체보기
-          <MdArrowForward className="text-base transition-transform group-hover:translate-x-0.5" />
+        <span className="shrink-0 text-xs text-text-muted transition-colors group-hover:text-text-secondary">
+          전체보기 →
         </span>
       </div>
 
