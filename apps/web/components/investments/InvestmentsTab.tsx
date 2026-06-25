@@ -13,6 +13,7 @@ import {
   FaTrash,
   FaWallet,
 } from 'react-icons/fa';
+import { MdAccountBalance } from 'react-icons/md';
 
 interface InvestmentsTabProps {
   userId: string;
@@ -400,10 +401,11 @@ function PortfolioHeader({
     <section className={`${CARD} overflow-hidden`}>
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent-blue/15 text-accent-blue">
-              <FaWallet />
+          <div className="flex flex-wrap items-center gap-2.5 mb-3">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-blue/15 text-accent-blue">
+              <MdAccountBalance className="text-xl" />
             </span>
+            <h1 className="text-xl font-bold text-text-primary">증권 자산</h1>
             <span className="rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
               {summary.connectionCount}개 연결
             </span>
@@ -413,7 +415,6 @@ function PortfolioHeader({
               </span>
             )}
           </div>
-          <h1 className="text-sm font-medium text-text-muted">증권 자산</h1>
           <div className="mt-1 break-words tabular-nums text-3xl font-bold text-text-primary sm:text-4xl">
             {formatCurrency(Number(data?.totalEquityKrw ?? 0))}
           </div>
@@ -434,7 +435,7 @@ function PortfolioHeader({
               <span className={pnlClass(change)}>
                 {pnlMark(change)} {signedCurrency(change)}
               </span>{' '}
-              ({percent(latest?.changeRate ?? null)}) 전월 대비
+              ({percent(latest?.changeRate ?? null)})
             </div>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
