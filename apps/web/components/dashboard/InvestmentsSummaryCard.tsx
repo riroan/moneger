@@ -147,7 +147,7 @@ export default function InvestmentsSummaryCard({ userId }: Props) {
             </div>
           </div>
         </div>
-        <span className="shrink-0 text-xs text-text-muted transition-colors group-hover:text-text-secondary">
+        <span className="shrink-0 text-xs sm:text-sm text-text-muted transition-colors group-hover:text-text-secondary">
           전체보기 →
         </span>
       </div>
