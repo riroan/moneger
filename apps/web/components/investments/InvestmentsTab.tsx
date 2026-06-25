@@ -552,6 +552,19 @@ function BrokerSelector({
           const selected = connection.id === selectedConnectionId;
           const total = connectionTotal(connection);
           const positions = connectionPositions(connection);
+          let connDayChangeDelta: number | null = null;
+          let connDayChangeRate: number | null = null;
+          {
+            let delta = 0; let hasAny = false;
+            for (const a of connection.accounts) {
+              if (a.dayChangeKrw != null) { delta += Number(a.dayChangeKrw); hasAny = true; }
+            }
+            if (hasAny) {
+              connDayChangeDelta = delta;
+              const prev = total - delta;
+              connDayChangeRate = prev > 0 ? delta / prev : null;
+            }
+          }
           return (
             <button
               key={connection.id}
@@ -583,9 +596,17 @@ function BrokerSelector({
                 <ConnectionStatus status={connection.status} />
               </div>
               <div className="mt-3 flex items-end justify-between gap-3">
-                <span className="min-w-0 tabular-nums text-base font-semibold text-text-primary">
-                  {formatCurrency(total)}
-                </span>
+                <div className="min-w-0">
+                  <span className="tabular-nums text-base font-semibold text-text-primary">
+                    {formatCurrency(total)}
+                  </span>
+                  {connDayChangeDelta != null && (
+                    <div className={`mt-0.5 text-[11px] tabular-nums ${pnlClass(connDayChangeDelta)}`}>
+                      {pnlMark(connDayChangeDelta)} {signedCurrency(connDayChangeDelta)}
+                      {connDayChangeRate != null && ` (${signedPercent(connDayChangeRate)})`}
+                    </div>
+                  )}
+                </div>
                 <span className="min-w-0 text-right text-[11px] leading-4 text-text-muted">
                   {connectionLatestAsOf(connection)}
                 </span>
