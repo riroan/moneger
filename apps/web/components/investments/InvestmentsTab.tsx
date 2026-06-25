@@ -910,13 +910,13 @@ function PositionMetric({ label, value, subValue }: { label: string; value: stri
   );
 }
 
-const POSITION_COLORS = ['#60a5fa', '#4ade80', '#a78bfa', '#ff6b6b', '#fbbf24', '#38bdf8'];
+const POSITION_COLORS = ['#60a5fa', '#4ade80', '#a78bfa', '#ff6b6b', '#fbbf24', '#38bdf8', '#f472b6', '#34d399', '#fb923c', '#818cf8'];
 
 function PortfolioDonut({ data }: { data: Overview }) {
   const allPositions = data.connections.flatMap((c) => c.accounts.flatMap((a) => a.positions));
   const sorted = [...allPositions].sort((a, b) => money(b.marketValueKrw) - money(a.marketValueKrw));
-  const top = sorted.slice(0, 5);
-  const rest = sorted.slice(5);
+  const top = sorted.slice(0, 10);
+  const rest = sorted.slice(10);
 
   const entries = [
     ...top.map((p, i) => ({
