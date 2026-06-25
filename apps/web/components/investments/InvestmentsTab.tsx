@@ -30,6 +30,7 @@ interface Position {
   unrealizedPnl: string | null;
   lastPrice: string | null;
   prevClose: string | null;
+  fxRateToKrw: string | null;
 }
 interface Account {
   id: string;
@@ -134,6 +135,45 @@ function signedPercent(rate: number): string {
 function formatSharePrice(lastPrice: string, currency: string): string {
   return currency === 'KRW' ? formatCurrency(Number(lastPrice)) : `${lastPrice} ${currency}`;
 }
+/** USD 포맷 */
+function formatUsd(v: number): string {
+  return `$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+/** displayCurrency 기준 평가액 표시 */
+function displayMarketValue(p: Position, mode: 'KRW' | 'USD'): string {
+  if (mode === 'KRW') return formatCurrency(Number(p.marketValueKrw));
+  if (p.currency === 'USD') return formatUsd(Number(p.marketValue));
+  const fx = Number(p.fxRateToKrw ?? 'NaN');
+  return Number.isFinite(fx) && fx > 0 ? formatUsd(Number(p.marketValueKrw) / fx) : formatCurrency(Number(p.marketValueKrw));
+}
+/** displayCurrency 기준 PnL 금액 (원통화 기준 저장이므로 환산) */
+function displayPnl(p: Position, mode: 'KRW' | 'USD'): number {
+  const raw = Number(p.unrealizedPnl ?? 'NaN');
+  if (!Number.isFinite(raw)) return 0;
+  if (mode === 'KRW') {
+    if (p.currency === 'KRW') return raw;
+    const fx = Number(p.fxRateToKrw ?? 'NaN');
+    return Number.isFinite(fx) && fx > 0 ? raw * fx : raw;
+  }
+  if (p.currency === 'USD') return raw;
+  const fx = Number(p.fxRateToKrw ?? 'NaN');
+  return Number.isFinite(fx) && fx > 0 ? raw / fx : raw;
+}
+/** displayCurrency 기준 현재가 표시 */
+function displayLastPrice(p: Position, mode: 'KRW' | 'USD'): string | null {
+  if (p.lastPrice == null) return null;
+  if (mode === 'KRW') return p.currency === 'KRW' ? formatCurrency(Number(p.lastPrice)) : formatCurrency(Number(p.lastPrice) * Number(p.fxRateToKrw ?? 0));
+  if (p.currency === 'USD') return formatUsd(Number(p.lastPrice));
+  const fx = Number(p.fxRateToKrw ?? 'NaN');
+  return Number.isFinite(fx) && fx > 0 ? formatUsd(Number(p.lastPrice) / fx) : null;
+}
+/** displayCurrency 기준 PnL 포맷 */
+function formatPnlValue(v: number, mode: 'KRW' | 'USD'): string {
+  const abs = Math.abs(v);
+  const s = mode === 'KRW' ? formatCurrency(Math.round(abs)) : formatUsd(abs);
+  return v > 0 ? `+${s}` : v < 0 ? `-${s}` : s;
+}
+
 function pnlPercent(pnl: number, marketValueKrw: string): string | null {
   const current = Number(marketValueKrw);
   if (!Number.isFinite(current) || !Number.isFinite(pnl)) return null;
@@ -184,6 +224,7 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
   const [syncingAll, setSyncingAll] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const [displayCurrency, setDisplayCurrency] = useState<'KRW' | 'USD'>('KRW');
 
   const fetchOverview = useCallback(async () => {
     setError(null);
@@ -364,6 +405,8 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
                 syncingId={syncingId}
                 onSync={handleSync}
                 onDelete={handleDelete}
+                displayCurrency={displayCurrency}
+                onToggleCurrency={() => setDisplayCurrency((c) => (c === 'KRW' ? 'USD' : 'KRW'))}
               />
             )}
           </div>
@@ -646,11 +689,15 @@ function ConnectionCard({
   syncingId,
   onSync,
   onDelete,
+  displayCurrency,
+  onToggleCurrency,
 }: {
   connection: Connection;
   syncingId: string | null;
   onSync: (connectionId: string) => void;
   onDelete: (connectionId: string) => void;
+  displayCurrency: 'KRW' | 'USD';
+  onToggleCurrency: () => void;
 }) {
   const total = connectionTotal(connection);
   const positions = connectionPositions(connection);
@@ -678,6 +725,15 @@ function ConnectionCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleCurrency}
+            className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-[var(--border)] bg-bg-secondary px-3 py-2 text-xs font-medium tabular-nums text-text-secondary transition-colors hover:bg-bg-card-hover hover:text-text-primary focus:outline-none cursor-pointer"
+          >
+            <span className={displayCurrency === 'KRW' ? 'text-text-primary' : 'text-text-muted'}>₩</span>
+            <span className="text-text-muted">/</span>
+            <span className={displayCurrency === 'USD' ? 'text-text-primary' : 'text-text-muted'}>$</span>
+          </button>
           <button
             type="button"
             className={ACTION_BTN}
@@ -712,7 +768,7 @@ function ConnectionCard({
       ) : (
         <div className="mt-4 flex flex-col gap-4">
           {connection.accounts.map((acct) => (
-            <AccountBlock key={acct.id} account={acct} />
+            <AccountBlock key={acct.id} account={acct} displayCurrency={displayCurrency} />
           ))}
         </div>
       )}
@@ -743,7 +799,7 @@ function ConnectionStatus({ status }: { status: string }) {
   );
 }
 
-function AccountBlock({ account }: { account: Account }) {
+function AccountBlock({ account, displayCurrency }: { account: Account; displayCurrency: 'KRW' | 'USD' }) {
   return (
     <div className="rounded-[12px] border border-[var(--border)] bg-bg-secondary/40 p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -787,7 +843,7 @@ function AccountBlock({ account }: { account: Account }) {
         <div className="mt-3 border-t border-[var(--border)] pt-3">
           <div className="flex flex-col gap-2 md:hidden">
             {account.positions.map((p) => (
-              <PositionCard key={`${p.symbol}:${p.market ?? ''}`} position={p} />
+              <PositionCard key={`${p.symbol}:${p.market ?? ''}`} position={p} displayCurrency={displayCurrency} />
             ))}
           </div>
 
@@ -811,8 +867,8 @@ function AccountBlock({ account }: { account: Account }) {
               </thead>
               <tbody>
                 {account.positions.map((p) => {
-                  const pnl = Number(p.unrealizedPnl ?? 0);
-                  const pnlRate = p.unrealizedPnl == null ? null : pnlPercent(pnl, p.marketValueKrw);
+                  const pnl = displayPnl(p, displayCurrency);
+                  const pnlRate = p.unrealizedPnl == null ? null : pnlPercent(Number(p.unrealizedPnl), p.marketValueKrw);
                   return (
                     <tr key={`${p.symbol}:${p.market ?? ''}`} className="border-t border-[var(--border)]">
                       <td className="py-2.5 pr-3">
@@ -825,20 +881,20 @@ function AccountBlock({ account }: { account: Account }) {
                       </td>
                       <td className="py-2.5 text-right tabular-nums text-text-secondary">{p.quantity}</td>
                       <td className="py-2.5 text-right">
-                        <PositionPrice lastPrice={p.lastPrice} prevClose={p.prevClose} currency={p.currency} />
+                        <PositionPrice position={p} displayCurrency={displayCurrency} />
                       </td>
                       <td className="py-2.5 text-right">
                         <div className="tabular-nums text-text-primary">
-                          {formatCurrency(Number(p.marketValueKrw))}
+                          {displayMarketValue(p, displayCurrency)}
                         </div>
-                        {p.currency !== 'KRW' && (
+                        {displayCurrency === 'KRW' && p.currency !== 'KRW' && (
                           <div className="mt-0.5 text-[11px] tabular-nums text-text-muted">
                             {p.marketValue} {p.currency}
                           </div>
                         )}
                       </td>
                       <td className={`py-2.5 text-right tabular-nums ${pnlClass(pnl)}`}>
-                        <PositionPnl pnl={pnl} pnlRate={pnlRate} hasValue={p.unrealizedPnl != null} />
+                        <PositionPnl pnl={pnl} pnlRate={pnlRate} hasValue={p.unrealizedPnl != null} displayCurrency={displayCurrency} />
                       </td>
                     </tr>
                   );
@@ -852,23 +908,24 @@ function AccountBlock({ account }: { account: Account }) {
   );
 }
 
-function PositionPnl({ pnl, pnlRate, hasValue }: { pnl: number; pnlRate: string | null; hasValue: boolean }) {
+function PositionPnl({ pnl, pnlRate, hasValue, displayCurrency }: { pnl: number; pnlRate: string | null; hasValue: boolean; displayCurrency: 'KRW' | 'USD' }) {
   if (!hasValue) return '-';
   return (
     <div className="flex flex-col items-end gap-0.5">
-      <span>{pnlMark(pnl)} {signedCurrency(pnl)}</span>
+      <span>{pnlMark(pnl)} {formatPnlValue(pnl, displayCurrency)}</span>
       {pnlRate && <span className="text-[11px]">{pnlRate}</span>}
     </div>
   );
 }
 
-/** 현재가 + 전일 종가 대비 변화율. lastPrice는 종목 통화 기준. */
-function PositionPrice({ lastPrice, prevClose, currency }: { lastPrice: string | null; prevClose: string | null; currency: string }) {
-  if (lastPrice == null) return <span className="text-text-muted">-</span>;
-  const dc = priceDayChange(lastPrice, prevClose, currency);
+/** 현재가 + 전일 종가 대비 변화율. displayCurrency 기준으로 가격 표시. */
+function PositionPrice({ position, displayCurrency }: { position: Position; displayCurrency: 'KRW' | 'USD' }) {
+  const price = displayLastPrice(position, displayCurrency);
+  if (price == null) return <span className="text-text-muted">-</span>;
+  const dc = priceDayChange(position.lastPrice, position.prevClose, position.currency);
   return (
     <div className="flex flex-col items-end gap-0.5">
-      <span className="tabular-nums text-text-primary">{formatSharePrice(lastPrice, currency)}</span>
+      <span className="tabular-nums text-text-primary">{price}</span>
       {dc && (
         <span className={`text-[11px] tabular-nums ${pnlClass(dc.rate)}`}>
           {pnlMark(dc.rate)} {dc.delta} ({signedPercent(dc.rate)})
@@ -878,9 +935,9 @@ function PositionPrice({ lastPrice, prevClose, currency }: { lastPrice: string |
   );
 }
 
-function PositionCard({ position }: { position: Position }) {
-  const pnl = Number(position.unrealizedPnl ?? 0);
-  const pnlRate = position.unrealizedPnl == null ? null : pnlPercent(pnl, position.marketValueKrw);
+function PositionCard({ position, displayCurrency }: { position: Position; displayCurrency: 'KRW' | 'USD' }) {
+  const pnl = displayPnl(position, displayCurrency);
+  const pnlRate = position.unrealizedPnl == null ? null : pnlPercent(Number(position.unrealizedPnl), position.marketValueKrw);
   const dc = priceDayChange(position.lastPrice, position.prevClose, position.currency);
 
   return (
@@ -895,7 +952,7 @@ function PositionCard({ position }: { position: Position }) {
           </div>
         </div>
         <div className={`shrink-0 text-right text-sm tabular-nums ${pnlClass(pnl)}`}>
-          <PositionPnl pnl={pnl} pnlRate={pnlRate} hasValue={position.unrealizedPnl != null} />
+          <PositionPnl pnl={pnl} pnlRate={pnlRate} hasValue={position.unrealizedPnl != null} displayCurrency={displayCurrency} />
         </div>
       </div>
 
@@ -904,7 +961,7 @@ function PositionCard({ position }: { position: Position }) {
         <div className="min-w-0">
           <div className="text-[11px] text-text-muted">현재가</div>
           <div className="mt-0.5 break-words text-sm tabular-nums text-text-primary">
-            {position.lastPrice == null ? '-' : formatSharePrice(position.lastPrice, position.currency)}
+            {displayLastPrice(position, displayCurrency) ?? '-'}
           </div>
           {dc && (
             <div className={`mt-0.5 text-[11px] tabular-nums ${pnlClass(dc.rate)}`}>
@@ -914,8 +971,8 @@ function PositionCard({ position }: { position: Position }) {
         </div>
         <PositionMetric
           label="평가액"
-          value={formatCurrency(Number(position.marketValueKrw))}
-          subValue={position.currency !== 'KRW' ? `${position.marketValue} ${position.currency}` : undefined}
+          value={displayMarketValue(position, displayCurrency)}
+          subValue={displayCurrency === 'KRW' && position.currency !== 'KRW' ? `${position.marketValue} ${position.currency}` : undefined}
         />
       </div>
     </div>

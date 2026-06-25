@@ -243,6 +243,7 @@ export interface InvestmentsOverview {
         unrealizedPnl: string | null;
         lastPrice: string | null;
         prevClose: string | null; // 전일 스냅샷의 같은 종목 lastPrice
+        fxRateToKrw: string | null;
       }>;
     }>;
   }>;
@@ -286,6 +287,7 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
                     marketValueKrw: true,
                     unrealizedPnl: true,
                     lastPrice: true,
+                    fxRateToKrw: true,
                   },
                 },
               },
@@ -369,6 +371,7 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
           unrealizedPnl: decStr(p.unrealizedPnl),
           lastPrice: decStr(p.lastPrice),
           prevClose: prevPriceBySymbol.get(p.symbol) ?? null,
+          fxRateToKrw: decStr(p.fxRateToKrw),
         })).map((p) => {
           currencyTotals.set(p.currency, (currencyTotals.get(p.currency) ?? 0) + Number(p.marketValueKrw));
           return p;
