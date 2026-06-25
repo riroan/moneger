@@ -148,7 +148,7 @@ export default function InvestmentsSummaryCard({ userId }: Props) {
           </div>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-text-muted transition-colors group-hover:text-text-secondary">
-          보기
+          전체보기
           <MdArrowForward className="text-base transition-transform group-hover:translate-x-0.5" />
         </span>
       </div>
@@ -166,14 +166,14 @@ export default function InvestmentsSummaryCard({ userId }: Props) {
           ) : (
             <>
               {dayChange >= 0 ? <MdTrendingUp className="text-sm" /> : <MdTrendingDown className="text-sm" />}
-              전일 대비 {signedCurrency(dayChange)}
+              {signedCurrency(dayChange)}
               {dayChangeRate ? ` · ${dayChangeRate}` : ''}
             </>
           )}
         </div>
         {monthChange != null && (
           <div className={`mt-0.5 flex items-center gap-1 text-[11px] ${changeClass(monthChange)}`}>
-            전월 대비 {signedCurrency(monthChange)}
+            {signedCurrency(monthChange)}
             {monthChangeRate ? ` · ${monthChangeRate}` : ''}
           </div>
         )}
