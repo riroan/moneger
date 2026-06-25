@@ -575,18 +575,17 @@ function BrokerSelector({
           const selected = connection.id === selectedConnectionId;
           const total = connectionTotal(connection);
           const positions = connectionPositions(connection);
-          let connDayChangeDelta: number | null = null;
-          let connDayChangeRate: number | null = null;
+          let connPnl: number | null = null;
+          let connPnlRate: number | null = null;
           {
-            let delta = 0; let hasAny = false;
-            for (const a of connection.accounts) {
-              if (a.dayChangeKrw != null) { delta += Number(a.dayChangeKrw); hasAny = true; }
-            }
-            if (hasAny) {
-              connDayChangeDelta = delta;
-              const prev = total - delta;
-              connDayChangeRate = prev > 0 ? delta / prev : null;
-            }
+            let pnl = 0; let cost = 0; let has = false;
+            for (const a of connection.accounts)
+              for (const p of a.positions) {
+                const v = Number(p.unrealizedPnl ?? 'NaN');
+                const mv = Number(p.marketValueKrw);
+                if (Number.isFinite(v) && Number.isFinite(mv)) { pnl += v; cost += mv - v; has = true; }
+              }
+            if (has) { connPnl = pnl; connPnlRate = cost > 0 ? pnl / cost : null; }
           }
           return (
             <button
@@ -623,10 +622,10 @@ function BrokerSelector({
                   <span className="tabular-nums text-base font-semibold text-text-primary">
                     {formatCurrency(total)}
                   </span>
-                  {connDayChangeDelta != null && (
-                    <div className={`mt-0.5 text-[11px] tabular-nums ${pnlClass(connDayChangeDelta)}`}>
-                      {pnlMark(connDayChangeDelta)} {signedCurrency(connDayChangeDelta)}
-                      {connDayChangeRate != null && ` (${signedPercent(connDayChangeRate)})`}
+                  {connPnl != null && (
+                    <div className={`mt-0.5 text-[11px] tabular-nums ${pnlClass(connPnl)}`}>
+                      {pnlMark(connPnl)} {signedCurrency(connPnl)}
+                      {connPnlRate != null && ` (${signedPercent(connPnlRate)})`}
                     </div>
                   )}
                 </div>
