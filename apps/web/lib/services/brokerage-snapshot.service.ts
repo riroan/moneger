@@ -199,6 +199,8 @@ export async function syncAllConnections(userId: string) {
 
 export interface InvestmentsOverview {
   totalEquityKrw: string;
+  unrealizedPnlKrw: string | null;
+  unrealizedPnlRate: string | null;
   dayChangeKrw: string | null;
   dayChangeRate: string | null;
   monthlyReport: Array<{
@@ -312,6 +314,9 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
   let total = 0;
   let prevTotal = 0; // 전일 스냅샷 기준 합(전일 없으면 당일값 → 변화 0 기여)
   let anyPrev = false;
+  let totalUnrealizedPnl = 0;
+  let totalPnlCostBasis = 0;
+  let anyUnrealizedPnl = false;
   let positionCount = 0;
   const brokerTotals = new Map<string, number>();
   const currencyTotals = new Map<string, number>();
@@ -374,6 +379,13 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
           fxRateToKrw: decStr(p.fxRateToKrw),
         })).map((p) => {
           currencyTotals.set(p.currency, (currencyTotals.get(p.currency) ?? 0) + Number(p.marketValueKrw));
+          const pnl = Number(p.unrealizedPnl ?? 'NaN');
+          const marketValue = Number(p.marketValueKrw);
+          if (Number.isFinite(pnl) && Number.isFinite(marketValue)) {
+            totalUnrealizedPnl += pnl;
+            totalPnlCostBasis += marketValue - pnl;
+            anyUnrealizedPnl = true;
+          }
           return p;
         }),
       };
@@ -381,9 +393,13 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
   }));
 
   const dayChange = anyPrev ? total - prevTotal : null;
+  const unrealizedPnl = anyUnrealizedPnl ? totalUnrealizedPnl : null;
 
   return {
     totalEquityKrw: String(total),
+    unrealizedPnlKrw: unrealizedPnl == null ? null : roundedString(unrealizedPnl),
+    unrealizedPnlRate:
+      unrealizedPnl == null || totalPnlCostBasis <= 0 ? null : (unrealizedPnl / totalPnlCostBasis).toFixed(4),
     dayChangeKrw: dayChange == null ? null : roundedString(dayChange),
     dayChangeRate: dayChange == null || prevTotal <= 0 ? null : (dayChange / prevTotal).toFixed(4),
     monthlyReport: buildMonthlyReport(history),

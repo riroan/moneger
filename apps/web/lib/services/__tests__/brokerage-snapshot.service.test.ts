@@ -180,6 +180,8 @@ describe('brokerage-snapshot.service getInvestmentsOverview 전일 대비', () =
     const res = await getInvestmentsOverview('user-1');
 
     expect(res.totalEquityKrw).toBe('1300000');
+    expect(res.unrealizedPnlKrw).toBe('100000');
+    expect(res.unrealizedPnlRate).toBe('0.1429'); // 100,000 / (800,000 - 100,000)
     expect(res.dayChangeKrw).toBe('100000'); // 1,300,000 - 1,200,000
     expect(res.dayChangeRate).toBe('0.0833'); // 100,000 / 1,200,000
     const acct = res.connections[0].accounts[0];
