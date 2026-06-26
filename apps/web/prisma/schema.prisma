@@ -22,16 +22,17 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  transactions         Transaction[]
-  categories           Category[]
-  budgets              Budget[]
-  dailyBalances        DailyBalance[]
-  savingsGoals         SavingsGoal[]
-  transactionGroups    TransactionGroup[]
-  recurringExpenses    RecurringExpense[]
-  assetItems           AssetItem[]
-  assetSnapshots       AssetSnapshot[]
-  brokerageConnections BrokerageConnection[]
+  transactions          Transaction[]
+  categories            Category[]
+  budgets               Budget[]
+  dailyBalances         DailyBalance[]
+  savingsGoals          SavingsGoal[]
+  transactionGroups     TransactionGroup[]
+  recurringExpenses     RecurringExpense[]
+  assetItems            AssetItem[]
+  assetSnapshots        AssetSnapshot[]
+  monthlyAssetSnapshots MonthlyAssetSnapshot[]
+  brokerageConnections  BrokerageConnection[]
 }
 
 model Category {
@@ -223,6 +224,34 @@ model AssetSnapshot {
   assetItem AssetItem @relation(fields: [assetItemId], references: [id], onDelete: Cascade)
 
   @@unique([assetItemId, month])
+  @@index([userId, month])
+}
+
+model MonthlyAssetSnapshot {
+  id                  String   @id @default(cuid())
+  userId              String
+  month               DateTime @db.Date
+  totalAssetKrw       Float
+  cashKrw             Float
+  investmentKrw       Float
+  savingsKrw          Float
+  otherKrw            Float    @default(0)
+  cashRatio           Float
+  investmentRatio     Float
+  savingsRatio        Float
+  otherRatio          Float    @default(0)
+  monthlyIncomeKrw    Float
+  monthlyExpenseKrw   Float
+  monthlySavingsKrw   Float
+  investmentPnlKrw    Float
+  investmentChangeKrw Float?
+  sourceStatus        String   @default("computed")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
   @@index([userId, month])
 }
 

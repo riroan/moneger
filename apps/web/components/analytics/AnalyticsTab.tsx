@@ -66,7 +66,7 @@ export default function AnalyticsTab() {
       ) : error ? (
         <div className="text-center text-red-400 py-16">{error}</div>
       ) : data ? (
-        <AnalyticsChart data={data} months={months} />
+        <AnalyticsChart data={data} months={months} userId={userId ?? ''} />
       ) : null}
     </div>
   );
