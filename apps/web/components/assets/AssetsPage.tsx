@@ -2,20 +2,22 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { formatCurrency } from '@moneger/shared';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   MdAccountBalanceWallet,
   MdCalendarToday,
+  MdCheckCircle,
   MdChevronLeft,
   MdChevronRight,
   MdEdit,
+  MdFlag,
+  MdInfoOutline,
   MdOutlineSavings,
+  MdReceiptLong,
   MdRefresh,
-  MdSave,
   MdShowChart,
   MdSouthEast,
   MdTrendingUp,
-  MdWallet,
 } from 'react-icons/md';
 import { FaPiggyBank } from 'react-icons/fa';
 
@@ -89,6 +91,23 @@ interface InvestmentBalancePoint {
   totalEquityKrw: number;
 }
 
+interface DailyExpense {
+  date: string;
+  day: number;
+  amount: number;
+  cumulativeAmount: number;
+  budgetPaceKrw: number | null;
+}
+
+interface RecentExpense {
+  id: string;
+  date: string;
+  description: string | null;
+  amount: number;
+  categoryName: string;
+  categoryColor: string | null;
+}
+
 interface SavingsGoalReport {
   id: string;
   name: string;
@@ -115,6 +134,8 @@ interface AssetReport {
     expenseMomPercent: number | null;
     savingsRate: number | null;
     emergencyMonths: number | null;
+    dailyExpenses: DailyExpense[];
+    recentExpenses: RecentExpense[];
     topExpenseCategories: Array<{
       categoryId: string;
       name: string;
@@ -159,12 +180,21 @@ const PANEL = 'rounded-[16px] border border-[var(--border)] bg-bg-secondary/60 p
 const ICON_BTN =
   'inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-[var(--border)] bg-bg-card px-3 text-text-secondary transition-colors hover:bg-bg-card-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer';
 
+const REPORT_RANGE_MONTHS = 6;
+
 const COLORS = {
   cash: '#60a5fa',
   investment: '#8b7cf6',
   savings: '#24b383',
   other: '#9a9a92',
   expense: '#e45f38',
+};
+
+const CHECK_THRESHOLDS = {
+  emergencyMonths: 6,
+  savingsRate: 25,
+  expenseBudgetUsed: 90,
+  investmentCashRatio: 5,
 };
 
 const tooltipStyle = {
@@ -202,6 +232,21 @@ function percent(value: number | null | undefined, digits = 1): string {
   return `${value > 0 ? '+' : ''}${value.toFixed(digits)}%`;
 }
 
+function ratioText(value: number | null | undefined, digits = 0): string {
+  if (value == null || !Number.isFinite(value)) return '-';
+  return `${value.toFixed(digits)}%`;
+}
+
+function percentagePoint(value: number | null | undefined, digits = 1): string {
+  if (value == null || !Number.isFinite(value)) return '-';
+  return `${value > 0 ? '+' : ''}${value.toFixed(digits)}%p`;
+}
+
+function percentChange(currentValue: number, previousValue: number | null | undefined): number | null {
+  if (previousValue == null || previousValue <= 0) return null;
+  return ((currentValue - previousValue) / previousValue) * 100;
+}
+
 function monthLabel(month: string): string {
   const [, m] = month.split('-');
   return `${Number(m)}월`;
@@ -210,6 +255,11 @@ function monthLabel(month: string): string {
 function dayLabel(date: string): string {
   const [, , day] = date.split('-');
   return `${Number(day)}일`;
+}
+
+function shortDateLabel(date: string): string {
+  const [, month, day] = date.split('-');
+  return `${Number(month)}/${Number(day)}`;
 }
 
 function fullMonthLabel(month: string): string {
@@ -271,28 +321,45 @@ function positiveGoodClass(value: number | null | undefined) {
   return value > 0 ? 'text-accent-mint' : 'text-accent-coral';
 }
 
+function signedAmountClass(value: number | null | undefined) {
+  if (value == null || value === 0) return 'text-text-muted';
+  return value > 0 ? 'text-accent-mint' : 'text-accent-coral';
+}
+
+type CheckTone = 'good' | 'warn' | 'bad' | 'neutral';
+
+function checkToneClass(tone: CheckTone) {
+  if (tone === 'good') return 'bg-accent-mint/12 text-accent-mint';
+  if (tone === 'warn') return 'bg-yellow-500/12 text-yellow-400';
+  if (tone === 'bad') return 'bg-accent-coral/12 text-accent-coral';
+  return 'bg-bg-secondary text-text-muted';
+}
+
+function checkToneIcon(tone: CheckTone) {
+  if (tone === 'good') return <MdCheckCircle />;
+  if (tone === 'neutral') return <MdInfoOutline />;
+  return <MdFlag />;
+}
+
 function sourceStatusLabel(snapshot: Snapshot): string {
   if (!snapshot.stored) return '실시간 계산';
   if (snapshot.sourceStatus === 'cron') return '월말 자동 저장';
-  if (snapshot.sourceStatus === 'manual') return '수동 저장';
   return '저장됨';
 }
 
 export default function AssetsPage({ userId }: AssetsPageProps) {
   const [month, setMonth] = useState(currentMonthKey);
-  const [range, setRange] = useState(6);
   const [selectedReport, setSelectedReport] = useState<'expense' | 'savings' | 'investment'>('expense');
   const [selectedInvestmentBroker, setSelectedInvestmentBroker] = useState('ALL');
   const [data, setData] = useState<AssetReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/assets/monthly-report?userId=${userId}&month=${month}&range=${range}`);
+      const res = await fetch(`/api/assets/monthly-report?userId=${userId}&month=${month}&range=${REPORT_RANGE_MONTHS}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error || '자산 리포트를 불러오지 못했습니다');
       setData(json.data as AssetReport);
@@ -301,30 +368,11 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
     } finally {
       setLoading(false);
     }
-  }, [month, range, userId]);
+  }, [month, userId]);
 
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
-
-  const handleSaveSnapshot = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/assets/monthly-snapshot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, month }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || '스냅샷 저장에 실패했습니다');
-      await fetchReport();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '스냅샷 저장에 실패했습니다');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (loading && !data) {
     return (
@@ -358,8 +406,22 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
     data.snapshots.find((snapshot) => snapshot.month === moveMonth(current.month, -1)) ??
     data.snapshots[data.snapshots.length - 2] ??
     null;
-  const tableMonths = data.snapshots.slice(-3);
   const investmentChange = data.report.investment.monthlyChangeKrw ?? 0;
+  const savingsAmountMomPercent = percentChange(current.monthlySavingsKrw, previousSnapshot?.monthlySavingsKrw);
+  const previousSavingsRate =
+    previousSnapshot && previousSnapshot.monthlyIncomeKrw > 0
+      ? (previousSnapshot.monthlySavingsKrw / previousSnapshot.monthlyIncomeKrw) * 100
+      : null;
+  const savingsRateDelta =
+    data.report.savingsRate != null && previousSavingsRate != null ? data.report.savingsRate - previousSavingsRate : null;
+  const investmentBalanceMomPercent =
+    previousSnapshot && previousSnapshot.investmentKrw > 0 ? (investmentChange / previousSnapshot.investmentKrw) * 100 : null;
+  const netOperatingFlow = current.monthlyIncomeKrw - current.monthlyExpenseKrw;
+  const afterSavingsCashFlow = netOperatingFlow - current.monthlySavingsKrw;
+  const otherAdjustment =
+    current.totalMomDelta == null
+      ? null
+      : current.totalMomDelta - (netOperatingFlow + current.monthlySavingsKrw + investmentChange);
   const changeDrivers =
     current.totalMomDelta == null
       ? []
@@ -381,6 +443,14 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
             icon: <MdSouthEast />,
           },
           {
+            key: 'savings',
+            label: '저축',
+            description: '저축 목표로 이동한 금액',
+            value: current.monthlySavingsKrw,
+            color: COLORS.savings,
+            icon: <MdOutlineSavings />,
+          },
+          {
             key: 'investment',
             label: '투자 변동',
             description: '증권 자산 평가금액 변화',
@@ -391,8 +461,8 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
           {
             key: 'other',
             label: '기타/보정',
-            description: '현금·저축 이동 및 기타 자산 변화',
-            value: current.totalMomDelta - (current.monthlyIncomeKrw - current.monthlyExpenseKrw + investmentChange),
+            description: '현금 스냅샷 차이 및 기타 자산 변화',
+            value: otherAdjustment ?? 0,
             color: COLORS.other,
             icon: <MdEdit />,
           },
@@ -402,7 +472,6 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
     if (!strongest || Math.abs(item.value) > Math.abs(strongest.value)) return item;
     return strongest;
   }, null);
-  const storedSnapshotCount = data.snapshots.filter((snapshot) => snapshot.stored).length;
   const investmentPositions = data.report.investment.positions;
   const investmentAccounts = data.report.investment.accounts;
   const brokerStatsByBroker = investmentAccounts.reduce((map, account) => {
@@ -443,6 +512,9 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
   const visibleInvestmentCashKrw = visibleInvestmentAccounts.reduce((sum, account) => sum + account.cashKrw, 0);
   const visibleInvestmentPnlKrw = visibleInvestmentPositions.reduce((sum, position) => sum + position.unrealizedPnlKrw, 0);
   const totalInvestmentEquityKrw = brokerStats.reduce((sum, stat) => sum + stat.totalKrw, 0);
+  const totalInvestmentCashKrw = brokerStats.reduce((sum, stat) => sum + stat.cashKrw, 0);
+  const investmentCashRatio =
+    totalInvestmentEquityKrw > 0 ? (totalInvestmentCashKrw / totalInvestmentEquityKrw) * 100 : null;
   const visibleInvestmentWeight =
     totalInvestmentEquityKrw > 0 ? (visibleInvestmentTotalKrw / totalInvestmentEquityKrw) * 100 : null;
   const investmentDailyBalances = data.report.investment.dailyBalances ?? [];
@@ -474,20 +546,28 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
       : null;
   const investmentBalanceDelta =
     firstInvestmentBalance == null || lastInvestmentBalance == null ? null : lastInvestmentBalance - firstInvestmentBalance;
+  const totalDaysInSelectedMonth = daysInMonth(current.month);
   const elapsedDays = elapsedDaysInMonth(current.month);
-  const remainingDays = Math.max(daysInMonth(current.month) - elapsedDays, 0);
+  const remainingDays = Math.max(totalDaysInSelectedMonth - elapsedDays, 0);
   const expenseBudgetRemaining =
     data.report.expenseBudgetKrw > 0 ? data.report.expenseBudgetKrw - current.monthlyExpenseKrw : null;
   const averageDailyExpense = elapsedDays > 0 ? current.monthlyExpenseKrw / elapsedDays : 0;
   const remainingDailyBudget =
     expenseBudgetRemaining != null && remainingDays > 0 ? expenseBudgetRemaining / remainingDays : null;
+  const expenseTrendRows = data.report.dailyExpenses.slice(0, Math.max(1, elapsedDays));
+  const todayExpense = expenseTrendRows[expenseTrendRows.length - 1]?.amount ?? 0;
+  const todayExpenseLabel = current.month === currentMonthKey() ? '오늘' : '마지막 날';
+  const recentSevenDayExpense = expenseTrendRows.slice(-7).reduce((sum, row) => sum + row.amount, 0);
+  const latestExpensePace = expenseTrendRows[expenseTrendRows.length - 1]?.budgetPaceKrw ?? null;
+  const expensePaceDelta = latestExpensePace == null ? null : current.monthlyExpenseKrw - latestExpensePace;
+  const projectedMonthlyExpense = elapsedDays > 0 ? (current.monthlyExpenseKrw / elapsedDays) * totalDaysInSelectedMonth : 0;
+  const projectedBudgetDelta =
+    data.report.expenseBudgetKrw > 0 ? projectedMonthlyExpense - data.report.expenseBudgetKrw : null;
   const topExpenseCategory = data.report.topExpenseCategories[0] ?? null;
   const topExpenseShare =
     topExpenseCategory && current.monthlyExpenseKrw > 0
       ? (topExpenseCategory.amount / current.monthlyExpenseKrw) * 100
       : null;
-  const afterExpenseCashFlow = current.monthlyIncomeKrw - current.monthlyExpenseKrw;
-  const afterSavingsCashFlow = current.monthlyIncomeKrw - current.monthlyExpenseKrw - current.monthlySavingsKrw;
   const savingsGoalRemaining = data.report.primarySavingsGoal
     ? Math.max(data.report.primarySavingsGoal.targetAmount - data.report.primarySavingsGoal.currentAmount, 0)
     : null;
@@ -499,13 +579,97 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
     savingsGoalRemaining != null && data.report.primarySavingsGoal && data.report.primarySavingsGoal.monthlyDepositKrw > 0
       ? Math.ceil(savingsGoalRemaining / data.report.primarySavingsGoal.monthlyDepositKrw)
       : null;
-  const assetRows = [
-    { key: 'cash', label: 'Moneger 잔액', badge: '현금', icon: <MdWallet />, color: COLORS.cash },
-    { key: 'investment', label: '증권 자산', badge: '투자', icon: <MdShowChart />, color: COLORS.investment },
-    { key: 'savings', label: '적금', badge: '저축', icon: <FaPiggyBank />, color: COLORS.savings },
-    { key: 'other', label: '기타 자산', badge: '기타', icon: <MdEdit />, color: COLORS.other },
-  ] as const;
-
+  const emergencyTone: CheckTone =
+    data.report.emergencyMonths == null
+      ? 'neutral'
+      : data.report.emergencyMonths >= CHECK_THRESHOLDS.emergencyMonths
+        ? 'good'
+        : data.report.emergencyMonths >= 3
+          ? 'warn'
+          : 'bad';
+  const savingsRateTone: CheckTone =
+    data.report.savingsRate == null
+      ? 'neutral'
+      : data.report.savingsRate >= CHECK_THRESHOLDS.savingsRate
+        ? 'good'
+        : data.report.savingsRate >= 15
+          ? 'warn'
+          : 'bad';
+  const expenseBudgetTone: CheckTone =
+    data.report.expenseBudgetUsedPercent == null
+      ? 'neutral'
+      : data.report.expenseBudgetUsedPercent <= CHECK_THRESHOLDS.expenseBudgetUsed
+        ? 'good'
+        : data.report.expenseBudgetUsedPercent <= 100
+          ? 'warn'
+          : 'bad';
+  const investmentCashTone: CheckTone =
+    investmentCashRatio == null
+      ? 'neutral'
+      : investmentCashRatio <= CHECK_THRESHOLDS.investmentCashRatio
+        ? 'good'
+        : investmentCashRatio <= 10
+          ? 'warn'
+          : 'bad';
+  const monthChecks = [
+    {
+      key: 'emergency',
+      label: '비상금',
+      value: data.report.emergencyMonths == null ? '-' : `${data.report.emergencyMonths.toFixed(1)}개월`,
+      sub: '최근 소비 기준 현금 여력',
+      tone: emergencyTone,
+    },
+    {
+      key: 'savingsRate',
+      label: '저축률',
+      value: ratioText(data.report.savingsRate, 0),
+      sub: data.report.savingsRate == null ? '수입 데이터 없음' : `전월 대비 ${percentagePoint(savingsRateDelta)}`,
+      tone: savingsRateTone,
+    },
+    {
+      key: 'expenseBudget',
+      label: '소비 예산',
+      value: data.report.expenseBudgetUsedPercent == null ? '-' : `${data.report.expenseBudgetUsedPercent}% 사용`,
+      sub:
+        expenseBudgetRemaining == null
+          ? '예산 미설정'
+          : expenseBudgetRemaining >= 0
+            ? `${money(expenseBudgetRemaining)} 남음`
+            : `${money(Math.abs(expenseBudgetRemaining))} 초과`,
+      tone: expenseBudgetTone,
+    },
+    {
+      key: 'investmentCash',
+      label: '투자 현금',
+      value: ratioText(investmentCashRatio, 1),
+      sub: `계좌 현금 ${money(totalInvestmentCashKrw)}`,
+      tone: investmentCashTone,
+    },
+  ];
+  const monthlyStatusItems = [
+    {
+      key: 'netFlow',
+      label: '순현금흐름',
+      value: signedMoney(netOperatingFlow),
+      sub: `수입 ${money(current.monthlyIncomeKrw)} · 소비 ${money(current.monthlyExpenseKrw)}`,
+      valueClass: positiveGoodClass(netOperatingFlow),
+    },
+    {
+      key: 'afterSavings',
+      label: '저축 후 잔액',
+      value: money(afterSavingsCashFlow),
+      sub: `저축 ${money(current.monthlySavingsKrw)}`,
+      valueClass: positiveGoodClass(afterSavingsCashFlow),
+    },
+    {
+      key: 'investmentEffect',
+      label: '투자 변동',
+      value: signedMoney(investmentChange),
+      sub: `평가손익 ${signedMoney(current.investmentPnlKrw)}`,
+      valueClass: signedAmountClass(investmentChange),
+    },
+  ];
+  const maxTopExpenseCategoryAmount = Math.max(1, ...data.report.topExpenseCategories.map((category) => category.amount));
   return (
     <div className="space-y-6 animate-[fadeIn_0.4s_ease-out]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -537,20 +701,6 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
               <MdChevronRight className="text-xl" />
             </button>
           </div>
-          <button
-            className={`${ICON_BTN} gap-2 font-semibold`}
-            onClick={() => setRange((value) => (value === 6 ? 12 : 6))}
-          >
-            최근 {range}개월
-          </button>
-          <button
-            className={`${ICON_BTN} gap-2 font-semibold`}
-            disabled={saving}
-            onClick={handleSaveSnapshot}
-          >
-            <MdSave className="text-lg" />
-            저장
-          </button>
         </div>
       </div>
 
@@ -588,8 +738,6 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
               <MdCalendarToday className="text-sm" />
               {fullMonthLabel(current.month)}
             </span>
-            <span>{current.stored ? '스냅샷 저장됨' : '실시간 계산'}</span>
-            {data.report.emergencyMonths != null && <span>현금 {data.report.emergencyMonths}개월치</span>}
           </div>
         </section>
 
@@ -621,6 +769,62 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
         </section>
       </div>
 
+      <section className={CARD}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-text-muted">월간 결산</h2>
+            <p className="mt-1 text-sm text-text-muted">
+              수입, 소비, 저축, 투자 변동을 한 번에 확인합니다
+            </p>
+          </div>
+          <span className="rounded-xl bg-bg-secondary px-3 py-1.5 text-xs font-bold text-text-muted">
+            {fullMonthLabel(current.month)}
+          </span>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {monthlyStatusItems.map((item) => (
+            <div key={item.key} className="rounded-xl border border-[var(--border)] bg-bg-primary px-4 py-4">
+              <div className="text-sm font-bold text-text-muted">{item.label}</div>
+              <div className={`mt-3 min-h-7 tabular-nums text-xl font-bold ${item.valueClass}`}>{item.value}</div>
+              <div className="mt-1 truncate text-xs font-semibold text-text-muted">{item.sub}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className={CARD}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-text-muted">이번 달 체크</h2>
+            <p className="mt-1 text-sm text-text-muted">
+              {elapsedDays}/{totalDaysInSelectedMonth}일 기준으로 바로 확인할 지표입니다
+            </p>
+          </div>
+          <span className="rounded-xl bg-bg-secondary px-3 py-1.5 text-xs font-bold text-text-muted">
+            상태
+          </span>
+        </div>
+        <div className="mt-5 grid gap-0 overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-2 lg:grid-cols-4">
+          {monthChecks.map((item, index) => (
+            <div
+              key={item.key}
+              className={`bg-bg-primary px-4 py-4 ${
+                index < monthChecks.length - 1 ? 'border-b border-[var(--border)] sm:border-r lg:border-b-0' : ''
+              } ${index === 1 ? 'sm:border-r-0 lg:border-r' : ''}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-bold text-text-muted">{item.label}</span>
+                <span className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-base ${checkToneClass(item.tone)}`}>
+                  {checkToneIcon(item.tone)}
+                </span>
+              </div>
+              <div className="mt-3 tabular-nums text-xl font-bold text-text-primary">{item.value}</div>
+              <div className="mt-1 text-xs font-semibold text-text-muted">{item.sub}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         <section className={CARD}>
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -632,7 +836,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                   : '전월 데이터가 쌓이면 변화 원인을 분해합니다'}
               </p>
             </div>
-            <div className={`tabular-nums text-right text-xl font-bold ${changeClass(current.totalMomDelta)}`}>
+            <div className={`tabular-nums text-right text-xl font-bold ${signedAmountClass(current.totalMomDelta)}`}>
               {current.totalMomDelta == null ? '-' : signedMoney(current.totalMomDelta)}
             </div>
           </div>
@@ -655,7 +859,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                           <div className="truncate text-xs text-text-muted">{item.description}</div>
                         </div>
                       </div>
-                      <span className={`shrink-0 tabular-nums text-sm font-bold ${changeClass(item.value)}`}>
+                      <span className={`shrink-0 tabular-nums text-sm font-bold ${signedAmountClass(item.value)}`}>
                         {signedMoney(item.value)}
                       </span>
                     </div>
@@ -687,7 +891,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
             </span>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid gap-3">
             {comp.map((item) => {
               const delta = previousSnapshot ? item.ratio - assetRatio(previousSnapshot, item.key as AssetBucket) : null;
               return (
@@ -706,81 +910,12 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
               );
             })}
           </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-4 text-sm">
-            <div>
-              <div className="font-semibold text-text-muted">저장된 월</div>
-              <div className="mt-1 tabular-nums text-lg font-bold text-text-primary">{storedSnapshotCount}개월</div>
-            </div>
-            <div>
-              <div className="font-semibold text-text-muted">조회 범위</div>
-              <div className="mt-1 tabular-nums text-lg font-bold text-text-primary">{range}개월</div>
-            </div>
-          </div>
         </section>
       </div>
-
-      <section className="overflow-hidden rounded-[16px] border border-[var(--border)] bg-bg-card sm:rounded-[20px]">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-[var(--border)] text-sm text-text-muted">
-                <th className="px-5 py-4 font-semibold">항목</th>
-                {tableMonths.map((snapshot) => (
-                  <th key={snapshot.month} className="px-5 py-4 text-right font-semibold">
-                    {monthLabel(snapshot.month)}
-                  </th>
-                ))}
-                <th className="px-5 py-4 text-right font-semibold">MoM</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assetRows.map((row) => {
-                const values = tableMonths.map((snapshot) => {
-                  if (row.key === 'cash') return snapshot.cashKrw;
-                  if (row.key === 'investment') return snapshot.investmentKrw;
-                  if (row.key === 'savings') return snapshot.savingsKrw;
-                  return snapshot.otherKrw;
-                });
-                if (row.key === 'other' && values.every((value) => value <= 0)) return null;
-                const latest = values[values.length - 1] ?? 0;
-                const previousValue = values[values.length - 2] ?? null;
-                const delta = previousValue != null ? latest - previousValue : null;
-                const deltaPct = previousValue && previousValue > 0 ? (delta! / previousValue) * 100 : null;
-                return (
-                  <tr key={row.key} className="border-b border-[var(--border)] last:border-b-0">
-                    <td className="px-5 py-4">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="text-xl text-text-muted">{row.icon}</span>
-                        <span className="min-w-0 truncate text-base font-semibold text-text-primary">{row.label}</span>
-                        <span className="rounded-md px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: `${row.color}22`, color: row.color }}>
-                          {row.badge}
-                        </span>
-                      </div>
-                    </td>
-                    {values.map((value, index) => (
-                      <td key={`${row.key}-${tableMonths[index].month}`} className="px-5 py-4 text-right tabular-nums text-base font-semibold text-text-secondary">
-                        {value > 0 ? value.toLocaleString('ko-KR') : '-'}
-                      </td>
-                    ))}
-                    <td className={`px-5 py-4 text-right tabular-nums text-base font-bold ${changeClass(delta)}`}>
-                      {deltaPct == null ? '-' : percent(deltaPct, 0)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-bold tracking-tight text-text-primary">{fullMonthLabel(current.month)} 리포트</h2>
-          <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-bg-card px-4 text-sm font-semibold text-text-secondary">
-            <MdCalendarToday className="text-lg" />
-            이번 달
-          </span>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
@@ -788,9 +923,9 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
             icon={<MdSouthEast />}
             label="소비"
             value={money(current.monthlyExpenseKrw)}
-            sub={`전월 ${percent(data.report.expenseMomPercent, 0)} · 예산 ${
-              data.report.expenseBudgetUsedPercent == null ? '-' : `${data.report.expenseBudgetUsedPercent}%`
-            }`}
+            delta={percent(data.report.expenseMomPercent, 0)}
+            deltaClass={changeClass(data.report.expenseMomPercent)}
+            sub={`예산 ${data.report.expenseBudgetUsedPercent == null ? '-' : `${data.report.expenseBudgetUsedPercent}%`} · 일평균 ${money(averageDailyExpense)}`}
             tone="expense"
             active={selectedReport === 'expense'}
             onClick={() => setSelectedReport('expense')}
@@ -799,7 +934,9 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
             icon={<MdOutlineSavings />}
             label="저축"
             value={money(current.monthlySavingsKrw)}
-            sub={`저축률 ${data.report.savingsRate == null ? '-' : `${data.report.savingsRate.toFixed(0)}%`}`}
+            delta={percent(savingsAmountMomPercent, 0)}
+            deltaClass={positiveGoodClass(savingsAmountMomPercent)}
+            sub={`저축률 ${ratioText(data.report.savingsRate, 0)} · 전월 ${percentagePoint(savingsRateDelta)}`}
             tone="savings"
             active={selectedReport === 'savings'}
             onClick={() => setSelectedReport('savings')}
@@ -808,7 +945,10 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
             icon={<MdShowChart />}
             label="투자"
             value={signedMoney(data.report.investment.monthlyChangeKrw ?? 0)}
-            sub={`평가손익 ${signedMoney(data.report.investment.unrealizedPnlKrw)}`}
+            delta={percent(investmentBalanceMomPercent, 0)}
+            valueClass={signedAmountClass(data.report.investment.monthlyChangeKrw)}
+            deltaClass={signedAmountClass(investmentBalanceMomPercent)}
+            sub={`평가손익 ${signedMoney(data.report.investment.unrealizedPnlKrw)} · 현금 ${ratioText(investmentCashRatio, 1)}`}
             tone="investment"
             active={selectedReport === 'investment'}
             onClick={() => setSelectedReport('investment')}
@@ -829,18 +969,19 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
 
             <div className="mt-5 grid gap-3 text-sm sm:grid-cols-4">
               <ReportLine
+                label="월말 예상"
+                value={projectedMonthlyExpense > 0 ? money(projectedMonthlyExpense) : '-'}
+                valueClass={positiveGoodClass(projectedBudgetDelta == null ? null : -projectedBudgetDelta)}
+                bordered={false}
+              />
+              <ReportLine
                 label={expenseBudgetRemaining != null && expenseBudgetRemaining < 0 ? '예산 초과' : '예산 잔액'}
                 value={expenseBudgetRemaining == null ? '-' : money(Math.abs(expenseBudgetRemaining))}
                 valueClass={positiveGoodClass(expenseBudgetRemaining)}
                 bordered={false}
               />
               <ReportLine
-                label="일평균 소비"
-                value={money(averageDailyExpense)}
-                bordered={false}
-              />
-              <ReportLine
-                label="남은 일 예산"
+                label="하루 사용 가능"
                 value={remainingDailyBudget == null ? '-' : money(remainingDailyBudget)}
                 valueClass={positiveGoodClass(remainingDailyBudget)}
                 bordered={false}
@@ -856,30 +997,108 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
               />
             </div>
 
-            <div className="mt-5 space-y-4">
-              {data.report.topExpenseCategories.length === 0 ? (
-                <div className="py-8 text-center text-sm text-text-muted">이번 달 소비 데이터가 없습니다</div>
-              ) : (
-                data.report.topExpenseCategories.map((category) => {
-                  const width = Math.min(category.usedPercent ?? 0, 100);
-                  return (
-                    <div key={category.categoryId}>
-                      <div className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold">
-                        <span className="text-text-secondary">{category.name}</span>
-                        <span className="tabular-nums text-text-muted">
-                          {category.amount.toLocaleString('ko-KR')} · {category.usedPercent == null ? '-' : `${category.usedPercent}%`}
-                        </span>
+            <div className="mt-5 rounded-xl border border-[var(--border)] bg-bg-primary p-4">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-bold text-text-primary">일별 누적 소비</div>
+                  <div className="mt-1 text-xs font-semibold text-text-muted">
+                    {elapsedDays}/{totalDaysInSelectedMonth}일 기준 · 예산 페이스 비교
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-bold tabular-nums text-text-primary">{money(current.monthlyExpenseKrw)}</div>
+                  <div className={`mt-1 text-xs font-bold tabular-nums ${positiveGoodClass(expensePaceDelta == null ? null : -expensePaceDelta)}`}>
+                    {expensePaceDelta == null
+                      ? '예산 미설정'
+                      : expensePaceDelta <= 0
+                        ? `${money(Math.abs(expensePaceDelta))} 여유`
+                        : `${money(expensePaceDelta)} 빠름`}
+                  </div>
+                </div>
+              </div>
+              <ExpenseCumulativeChart data={expenseTrendRows} hasBudget={data.report.expenseBudgetKrw > 0} />
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+              <div className="rounded-xl border border-[var(--border)] bg-bg-primary p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="text-sm font-bold text-text-primary">카테고리별 지출</div>
+                  <div className="text-xs font-semibold text-text-muted">예산 대비</div>
+                </div>
+                <div className="space-y-4">
+                  {data.report.topExpenseCategories.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-text-muted">이번 달 소비 데이터가 없습니다</div>
+                  ) : (
+                    data.report.topExpenseCategories.map((category) => {
+                      const width =
+                        category.usedPercent == null
+                          ? Math.round((category.amount / maxTopExpenseCategoryAmount) * 100)
+                          : Math.min(category.usedPercent, 100);
+                      const remaining =
+                        category.budgetKrw == null ? null : category.budgetKrw - category.amount;
+                      return (
+                        <div key={category.categoryId}>
+                          <div className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold">
+                            <span className="min-w-0 truncate text-text-secondary">{category.name}</span>
+                            <span className="shrink-0 tabular-nums text-text-muted">
+                              {money(category.amount)} · {category.usedPercent == null ? '예산 없음' : `${category.usedPercent}%`}
+                            </span>
+                          </div>
+                          <div className="h-3 overflow-hidden rounded-full bg-bg-card">
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${width}%`, backgroundColor: category.color ?? COLORS.expense }}
+                            />
+                          </div>
+                          {remaining != null && (
+                            <div className={`mt-1 text-right text-xs font-bold tabular-nums ${positiveGoodClass(remaining)}`}>
+                              {remaining >= 0 ? `${money(remaining)} 남음` : `${money(Math.abs(remaining))} 초과`}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[var(--border)] bg-bg-primary p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="text-sm font-bold text-text-primary">최근 소비</div>
+                  <MdReceiptLong className="text-lg text-text-muted" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-bg-card px-3 py-3">
+                    <div className="text-xs font-semibold text-text-muted">{todayExpenseLabel}</div>
+                    <div className="mt-2 tabular-nums text-lg font-bold text-text-primary">{money(todayExpense)}</div>
+                  </div>
+                  <div className="rounded-xl bg-bg-card px-3 py-3">
+                    <div className="text-xs font-semibold text-text-muted">최근 7일</div>
+                    <div className="mt-2 tabular-nums text-lg font-bold text-text-primary">{money(recentSevenDayExpense)}</div>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {data.report.recentExpenses.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-text-muted">최근 소비 내역이 없습니다</div>
+                  ) : (
+                    data.report.recentExpenses.map((expense) => (
+                      <div key={expense.id} className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3 first:border-t-0 first:pt-0">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-bold text-text-primary">
+                            {expense.description?.trim() || expense.categoryName}
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-text-muted">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: expense.categoryColor ?? COLORS.expense }} />
+                            <span>{expense.categoryName}</span>
+                            <span>{shortDateLabel(expense.date)}</span>
+                          </div>
+                        </div>
+                        <div className="shrink-0 tabular-nums text-sm font-bold text-text-primary">{money(expense.amount)}</div>
                       </div>
-                      <div className="h-3 overflow-hidden rounded-full bg-bg-primary">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${width}%`, backgroundColor: category.color ?? COLORS.expense }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </section>
         )}
@@ -891,22 +1110,16 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
               저축 분석
             </h3>
 
-            <div className="mt-5 grid gap-3 text-sm sm:grid-cols-4">
+            <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
               <ReportLine
-                label="월 수입"
-                value={money(current.monthlyIncomeKrw)}
-                valueClass={positiveGoodClass(current.monthlyIncomeKrw)}
-                bordered={false}
-              />
-              <ReportLine
-                label="소비 후 잔액"
-                value={signedMoney(afterExpenseCashFlow)}
-                valueClass={positiveGoodClass(afterExpenseCashFlow)}
+                label="이번 달 총 저축액"
+                value={money(current.monthlySavingsKrw)}
+                valueClass="text-accent-mint"
                 bordered={false}
               />
               <ReportLine
                 label="저축 후 잔액"
-                value={signedMoney(afterSavingsCashFlow)}
+                value={money(afterSavingsCashFlow)}
                 valueClass={positiveGoodClass(afterSavingsCashFlow)}
                 bordered={false}
               />
@@ -1086,13 +1299,11 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
               <ReportLine
                 label={activeInvestmentBroker === 'ALL' ? '평가금액' : `${activeInvestmentBroker} 평가금액`}
                 value={money(visibleInvestmentTotalKrw)}
-                valueClass={changeClass(visibleInvestmentTotalKrw)}
                 bordered={false}
               />
               <ReportLine
                 label="계좌 현금"
                 value={money(visibleInvestmentCashKrw)}
-                valueClass={changeClass(visibleInvestmentCashKrw)}
                 bordered={false}
               />
               <ReportLine
@@ -1108,15 +1319,15 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                 }
                 valueClass={
                   activeInvestmentBroker === 'ALL'
-                    ? changeClass(data.report.investment.monthlyChangeKrw)
-                    : changeClass(visibleInvestmentWeight)
+                    ? signedAmountClass(data.report.investment.monthlyChangeKrw)
+                    : undefined
                 }
                 bordered={false}
               />
               <ReportLine
                 label="평가손익"
                 value={signedMoney(visibleInvestmentPnlKrw)}
-                valueClass={changeClass(visibleInvestmentPnlKrw)}
+                valueClass={signedAmountClass(visibleInvestmentPnlKrw)}
                 bordered={false}
               />
             </div>
@@ -1133,7 +1344,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                   <div className="text-sm font-bold tabular-nums text-text-primary">
                     {lastInvestmentBalance == null ? '-' : money(lastInvestmentBalance)}
                   </div>
-                  <div className={`mt-1 text-xs font-bold tabular-nums ${changeClass(investmentBalanceDelta)}`}>
+                  <div className={`mt-1 text-xs font-bold tabular-nums ${signedAmountClass(investmentBalanceDelta)}`}>
                     {investmentBalanceDelta == null ? '스냅샷 없음' : signedMoney(investmentBalanceDelta)}
                   </div>
                 </div>
@@ -1205,7 +1416,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                             <td className="px-4 py-3 text-right tabular-nums font-bold text-text-primary">
                               {money(position.marketValueKrw)}
                             </td>
-                            <td className={`px-4 py-3 text-right tabular-nums font-bold ${changeClass(position.unrealizedPnlKrw)}`}>
+                            <td className={`px-4 py-3 text-right tabular-nums font-bold ${signedAmountClass(position.unrealizedPnlKrw)}`}>
                               <div>{signedMoney(position.unrealizedPnlKrw)}</div>
                               <div className="mt-0.5 text-xs">{percent(position.pnlRate == null ? null : position.pnlRate * 100)}</div>
                             </td>
@@ -1220,6 +1431,80 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
           </section>
         )}
       </section>
+    </div>
+  );
+}
+
+function ExpenseCumulativeChart({ data, hasBudget }: { data: DailyExpense[]; hasBudget: boolean }) {
+  const chartData = data.map((point) => ({
+    label: `${point.day}일`,
+    spent: point.cumulativeAmount,
+    pace: point.budgetPaceKrw,
+  }));
+  const firstPoint = data[0];
+  const lastPoint = data[data.length - 1];
+  const ariaLabel =
+    firstPoint && lastPoint
+      ? `일별 누적 소비 그래프. ${firstPoint.day}일 ${money(firstPoint.cumulativeAmount)}에서 ${lastPoint.day}일 ${money(lastPoint.cumulativeAmount)}`
+      : '일별 누적 소비 그래프';
+
+  return (
+    <div className="h-[220px] min-w-0" role="img" aria-label={ariaLabel}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="expenseCumulativeGradient" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={COLORS.expense} stopOpacity={0.34} />
+              <stop offset="100%" stopColor={COLORS.expense} stopOpacity={0.04} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
+            minTickGap={16}
+          />
+          <YAxis
+            tickFormatter={shortMoney}
+            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
+            width={56}
+            domain={[0, 'dataMax']}
+          />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(value, name) => [
+              money(Number(value ?? 0)),
+              name === 'pace' ? '예산 페이스' : '누적 소비',
+            ]}
+          />
+          <Area
+            type="monotone"
+            dataKey="spent"
+            name="spent"
+            stroke={COLORS.expense}
+            strokeWidth={2.5}
+            fill="url(#expenseCumulativeGradient)"
+            dot={data.length === 1 ? { r: 4, fill: COLORS.expense, strokeWidth: 0 } : false}
+            activeDot={{ r: 5, stroke: COLORS.expense, strokeWidth: 2, fill: 'var(--bg-card)' }}
+          />
+          {hasBudget && (
+            <Line
+              type="monotone"
+              dataKey="pace"
+              name="pace"
+              stroke="#fbbf24"
+              strokeWidth={1.8}
+              strokeDasharray="5 4"
+              dot={false}
+              activeDot={{ r: 4, stroke: '#fbbf24', strokeWidth: 2, fill: 'var(--bg-card)' }}
+            />
+          )}
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -1296,6 +1581,9 @@ function ReportMetric({
   icon,
   label,
   value,
+  valueClass,
+  delta,
+  deltaClass,
   sub,
   tone,
   active,
@@ -1304,6 +1592,9 @@ function ReportMetric({
   icon: ReactNode;
   label: string;
   value: string;
+  valueClass?: string;
+  delta?: string;
+  deltaClass?: string;
   sub: string;
   tone: 'expense' | 'savings' | 'investment';
   active: boolean;
@@ -1319,11 +1610,21 @@ function ReportMetric({
       }`}
       onClick={onClick}
     >
-      <div className="flex items-center gap-2 text-base font-bold text-text-muted">
-        <span className="text-xl" style={{ color }}>{icon}</span>
-        {label}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2 text-base font-bold text-text-muted">
+          <span className="text-xl" style={{ color }}>{icon}</span>
+          {label}
+        </div>
+        {delta && (
+          <span className={`shrink-0 rounded-lg bg-bg-secondary px-2 py-1 text-xs font-bold tabular-nums ${deltaClass ?? 'text-text-muted'}`}>
+            전월 {delta}
+          </span>
+        )}
       </div>
-      <div className="mt-5 tabular-nums text-3xl font-bold tracking-tight" style={{ color }}>
+      <div
+        className={`mt-5 tabular-nums text-3xl font-bold tracking-tight ${valueClass ?? ''}`}
+        style={valueClass ? undefined : { color }}
+      >
         {value}
       </div>
       <div className="mt-2 text-sm font-semibold text-text-muted">{sub}</div>

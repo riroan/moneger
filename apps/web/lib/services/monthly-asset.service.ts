@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { getMonthRangeKST } from '@/lib/date-utils';
+import { getKSTDateParts, getMonthRangeKST } from '@/lib/date-utils';
 import {
   buildMonthWindow,
   formatMonthKey,
@@ -84,6 +84,23 @@ export interface MonthlySavingsGoalReport {
   monthlyDepositKrw: number;
 }
 
+export interface MonthlyDailyExpense {
+  date: string;
+  day: number;
+  amount: number;
+  cumulativeAmount: number;
+  budgetPaceKrw: number | null;
+}
+
+export interface MonthlyRecentExpense {
+  id: string;
+  date: string;
+  description: string | null;
+  amount: number;
+  categoryName: string;
+  categoryColor: string | null;
+}
+
 export interface MonthlyAssetReport {
   months: string[];
   snapshots: MonthlyAssetSnapshotData[];
@@ -98,6 +115,8 @@ export interface MonthlyAssetReport {
     expenseMomPercent: number | null;
     savingsRate: number | null;
     emergencyMonths: number | null;
+    dailyExpenses: MonthlyDailyExpense[];
+    recentExpenses: MonthlyRecentExpense[];
     topExpenseCategories: Array<{
       categoryId: string;
       name: string;
@@ -166,6 +185,11 @@ function percentDelta(current: number, previous: number): number | null {
 
 function dateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function kstDateKey(date: Date): string {
+  const parts = getKSTDateParts(date);
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
 }
 
 async function getCashAt(userId: string, monthEnd: Date): Promise<number> {
@@ -410,6 +434,57 @@ async function getMonthlyFlow(userId: string, monthKey: Date) {
   };
 }
 
+async function getDailyExpenseAmounts(
+  userId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<Map<string, number>> {
+  const rows = await prisma.transaction.findMany({
+    where: {
+      userId,
+      deletedAt: null,
+      date: { gte: startDate, lte: endDate },
+      type: 'EXPENSE',
+      savingsGoalId: null,
+    },
+    select: {
+      date: true,
+      amount: true,
+    },
+    orderBy: { date: 'asc' },
+  });
+
+  const amountByDate = new Map<string, number>();
+  for (const row of rows) {
+    const key = kstDateKey(row.date);
+    amountByDate.set(key, (amountByDate.get(key) ?? 0) + row.amount);
+  }
+  return amountByDate;
+}
+
+function buildDailyExpenses(
+  year: number,
+  month: number,
+  amountByDate: Map<string, number>,
+  budgetKrw: number
+): MonthlyDailyExpense[] {
+  const days = new Date(year, month, 0).getDate();
+  let cumulativeAmount = 0;
+  return Array.from({ length: days }, (_, index) => {
+    const day = index + 1;
+    const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const amount = roundWon(amountByDate.get(date) ?? 0);
+    cumulativeAmount += amount;
+    return {
+      date,
+      day,
+      amount,
+      cumulativeAmount: roundWon(cumulativeAmount),
+      budgetPaceKrw: budgetKrw > 0 ? roundWon((budgetKrw / days) * day) : null,
+    };
+  });
+}
+
 async function computeSnapshot(
   userId: string,
   monthKey: Date,
@@ -599,9 +674,43 @@ async function getCurrentMonthReportDetail(
   const { startDate, endDate } = getMonthRangeKST(year, month);
   const previousExpense = previous?.monthlyExpenseKrw ?? 0;
 
-  const [investment, dailyBalances, categories, expenseRows, budgets, savingsGoals, savingsDepositRows] = await Promise.all([
+  const [
+    investment,
+    dailyBalances,
+    dailyExpenseAmounts,
+    recentExpenseRows,
+    categories,
+    expenseRows,
+    budgets,
+    savingsGoals,
+    savingsDepositRows,
+  ] = await Promise.all([
     getInvestmentAt(userId, kstMonthEndUTC(year, month)),
     getInvestmentDailyBalances(userId, startDate, endDate),
+    getDailyExpenseAmounts(userId, startDate, endDate),
+    prisma.transaction.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+        date: { gte: startDate, lte: endDate },
+        type: 'EXPENSE',
+        savingsGoalId: null,
+      },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      take: 5,
+      select: {
+        id: true,
+        date: true,
+        description: true,
+        amount: true,
+        category: {
+          select: {
+            name: true,
+            color: true,
+          },
+        },
+      },
+    }),
     prisma.category.findMany({
       where: { userId, deletedAt: null },
       select: { id: true, name: true, color: true, defaultBudget: true },
@@ -651,6 +760,7 @@ async function getCurrentMonthReportDetail(
   const budgetByCategory = new Map(budgets.map((budget) => [budget.categoryId, budget.amount]));
   const totalBudgetRow = budgets.find((budget) => budget.categoryId == null);
   const totalBudget = totalBudgetRow?.amount ?? budgets.reduce((sum, budget) => sum + budget.amount, 0);
+  const dailyExpenses = buildDailyExpenses(year, month, dailyExpenseAmounts, totalBudget);
   const averageExpense = await getRecentAverageMonthlyExpense(userId, monthKey, 3);
   const depositByGoal = new Map(
     savingsDepositRows
@@ -690,6 +800,14 @@ async function getCurrentMonthReportDetail(
     .filter((row): row is NonNullable<typeof row> => row !== null)
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 3);
+  const recentExpenses = recentExpenseRows.map((row) => ({
+    id: row.id,
+    date: kstDateKey(row.date),
+    description: row.description,
+    amount: roundWon(row.amount),
+    categoryName: row.category?.name ?? '미분류',
+    categoryColor: row.category?.color ?? null,
+  }));
 
   return {
     expenseBudgetKrw: roundWon(totalBudget),
@@ -697,6 +815,8 @@ async function getCurrentMonthReportDetail(
     expenseMomPercent: previous ? percentDelta(current.monthlyExpenseKrw, previousExpense) : null,
     savingsRate: current.monthlyIncomeKrw > 0 ? Number(((current.monthlySavingsKrw / current.monthlyIncomeKrw) * 100).toFixed(1)) : null,
     emergencyMonths: averageExpense > 0 ? Number((current.cashKrw / averageExpense).toFixed(1)) : null,
+    dailyExpenses,
+    recentExpenses,
     topExpenseCategories,
     primarySavingsGoal: primaryGoal,
     savingsGoals: savingsGoalReports,
