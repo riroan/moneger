@@ -87,4 +87,33 @@ describe('getMonthlyAssetReport', () => {
     expect(prev.savingsKrw).toBe(5000);
     expect(prev.stored).toBe(true);
   });
+
+  it('소비 카테고리는 상위 3개로 자르지 않고 모두 반환한다', async () => {
+    const endMonthKey = kstMonthKey(new Date());
+    (prisma.monthlyAssetSnapshot.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.category.findMany as jest.Mock).mockResolvedValue([
+      { id: 'cat-food', name: '식비', color: '#ef4444', defaultBudget: 500000 },
+      { id: 'cat-traffic', name: '교통', color: '#f59e0b', defaultBudget: 200000 },
+      { id: 'cat-life', name: '생활', color: '#10b981', defaultBudget: 300000 },
+      { id: 'cat-culture', name: '문화', color: '#6366f1', defaultBudget: 150000 },
+    ]);
+    (prisma.transaction.groupBy as jest.Mock)
+      .mockResolvedValueOnce([
+        { categoryId: 'cat-food', _sum: { amount: 400000 } },
+        { categoryId: 'cat-traffic', _sum: { amount: 120000 } },
+        { categoryId: 'cat-life', _sum: { amount: 250000 } },
+        { categoryId: 'cat-culture', _sum: { amount: 90000 } },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const report = await getMonthlyAssetReport('user-1', endMonthKey, 1);
+
+    expect(report.report.expenseCategories).toHaveLength(4);
+    expect(report.report.expenseCategories.map((category) => category.name)).toEqual([
+      '식비',
+      '생활',
+      '교통',
+      '문화',
+    ]);
+  });
 });

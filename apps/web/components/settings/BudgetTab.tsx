@@ -117,225 +117,231 @@ export default function BudgetTab({
         카테고리별 월 예산을 설정합니다. 예산을 설정하면 대시보드에서 사용량을 확인할 수 있습니다.
       </p>
 
-      {/* 월 선택 */}
-      <div ref={budgetDatePickerRef} className="flex items-center justify-center bg-bg-card border border-[var(--border)] rounded-[12px] relative select-none p-3 mb-4 gap-3">
-        <button
-          onClick={handleBudgetPreviousMonth}
-          disabled={isBudgetPreviousMonthDisabled()}
-          className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          ◀
-        </button>
-        <span
-          onClick={handleBudgetDatePickerToggle}
-          className="text-base font-semibold min-w-[120px] text-center cursor-pointer"
-        >
-          {formatYearMonth(budgetDate)}
-        </span>
-        <button
-          onClick={handleBudgetNextMonth}
-          disabled={isBudgetNextMonthDisabled()}
-          className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          ▶
-        </button>
+      <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px] p-4 mb-4">
+        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
+          <FaCreditCard className="text-base sm:text-lg text-accent-coral" /> 기본 예산
+        </h2>
 
-        {/* 달력 Picker */}
-        {isBudgetDatePickerOpen && (
-          <div
-            className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none w-80 p-5 mt-0.5 shadow-2xl"
+        {isLoadingBudgets || isLoadingCategories ? (
+          <div className="text-center text-text-muted py-8 text-sm">로딩 중...</div>
+        ) : (
+          <button
+            type="button"
+            className="w-full bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4 text-left"
+            onClick={onOpenDefaultBudgetModal}
           >
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => setBudgetPickerYear(prev => prev - 1)}
-                disabled={isBudgetPastYear(budgetPickerYear - 1)}
-                className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                ◀
-              </button>
-              <div className="text-text-primary font-semibold text-base">
-                {budgetPickerYear}년
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm sm:text-base font-medium">기본 소비예산</div>
+                <div className="text-[11px] sm:text-xs text-text-muted mt-0.5">
+                  {hasDefaultExpenseBudget ? '모든 월 공통 적용' : '없으면 카테고리 합산 적용'}
+                </div>
               </div>
-              <button
-                onClick={() => setBudgetPickerYear(prev => prev + 1)}
-                disabled={budgetPickerYear >= new Date().getFullYear()}
-                className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                ▶
-              </button>
+              <span className="text-[11px] sm:text-xs text-text-muted shrink-0">설정 →</span>
             </div>
-
-            <div className="grid grid-cols-4 gap-2">
-              {Array.from({ length: 12 }, (_, i) => i).map(month => {
-                const isSelected = budgetDate.getFullYear() === budgetPickerYear && budgetDate.getMonth() === month;
-                const now = new Date();
-                const isFuture = budgetPickerYear > now.getFullYear() ||
-                  (budgetPickerYear === now.getFullYear() && month > now.getMonth());
-                const isPast = isBudgetPastMonth(budgetPickerYear, month);
-                const isDisabled = isFuture || isPast;
-                return (
-                  <button
-                    key={month}
-                    onClick={() => handleBudgetMonthSelect(budgetPickerYear, month)}
-                    disabled={isDisabled}
-                    className={`rounded-[8px] font-medium transition-all py-2.5 text-sm ${
-                      isDisabled
-                        ? 'bg-bg-secondary text-text-muted opacity-30 cursor-not-allowed'
-                        : isSelected
-                        ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary cursor-pointer'
-                        : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover cursor-pointer'
-                    }`}
-                  >
-                    {month + 1}월
-                  </button>
-                );
-              })}
+            <div className="border-t border-[var(--border)] mt-3 pt-3 text-right">
+              {hasDefaultExpenseBudget ? (
+                <span className="text-lg sm:text-xl font-bold text-accent-mint">
+                  <span className="mr-px">₩</span>{formatNumber(defaultExpenseBudget)}
+                </span>
+              ) : categoryBudgetTotal > 0 ? (
+                <span className="text-lg sm:text-xl font-bold text-text-primary">
+                  <span className="mr-px">₩</span>{formatNumber(categoryBudgetTotal)}
+                </span>
+              ) : (
+                <span className="text-sm sm:text-base text-text-muted">미설정</span>
+              )}
             </div>
-          </div>
+          </button>
         )}
       </div>
 
       <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px] p-4 mb-4">
         <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
-          <FaCreditCard className="text-base sm:text-lg text-accent-coral" /> 소비 예산
+          <FaCreditCard className="text-base sm:text-lg text-accent-coral" /> 월별 예산
         </h2>
 
-        {isLoadingBudgets || isLoadingCategories ? (
-          <div className="text-center text-text-muted py-8 text-sm">로딩 중...</div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4 text-left"
-              onClick={onOpenTotalBudgetModal}
+        <div ref={budgetDatePickerRef} className="flex items-center justify-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none py-2 px-3 mb-3 gap-2">
+          <button
+            onClick={handleBudgetPreviousMonth}
+            disabled={isBudgetPreviousMonthDisabled()}
+            className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            ◀
+          </button>
+          <span
+            onClick={handleBudgetDatePickerToggle}
+            className="text-sm sm:text-base font-semibold min-w-[80px] sm:min-w-[120px] text-center cursor-pointer"
+          >
+            {formatYearMonth(budgetDate)}
+          </span>
+          <button
+            onClick={handleBudgetNextMonth}
+            disabled={isBudgetNextMonthDisabled()}
+            className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            ▶
+          </button>
+
+          {isBudgetDatePickerOpen && (
+            <div
+              className="absolute top-full left-1/2 -translate-x-1/2 bg-bg-card border border-[var(--border)] rounded-[16px] z-50 select-none w-[min(320px,calc(100vw-2rem))] p-5 mt-0.5 shadow-2xl"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-medium">월 소비 예산</div>
-                  <div className="text-[11px] sm:text-xs text-text-muted mt-0.5">
-                    {totalBudget
-                      ? '월별 설정'
-                      : hasDefaultExpenseBudget
-                        ? '기본 소비예산 적용'
-                        : categoryBudgetTotal > 0
-                          ? '카테고리 합산 적용'
-                          : '예산 없음'}
-                  </div>
-                </div>
-                <span className="text-[11px] sm:text-xs text-text-muted shrink-0">설정 →</span>
-              </div>
-              <div className="border-t border-[var(--border)] mt-3 pt-3 text-right">
-                {effectiveTotalBudget > 0 ? (
-                  <span className="text-lg sm:text-xl font-bold text-accent-mint">
-                    <span className="mr-px">₩</span>{formatNumber(effectiveTotalBudget)}
-                  </span>
-                ) : (
-                  <span className="text-sm sm:text-base text-text-muted">미설정</span>
-                )}
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4 text-left"
-              onClick={onOpenDefaultBudgetModal}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-medium">기본 소비예산</div>
-                  <div className="text-[11px] sm:text-xs text-text-muted mt-0.5">
-                    {hasDefaultExpenseBudget ? '기본값 설정' : '카테고리 합산 적용'}
-                  </div>
-                </div>
-                <span className="text-[11px] sm:text-xs text-text-muted shrink-0">설정 →</span>
-              </div>
-              <div className="border-t border-[var(--border)] mt-3 pt-3 text-right">
-                {hasDefaultExpenseBudget ? (
-                  <span className="text-lg sm:text-xl font-bold text-text-primary">
-                    <span className="mr-px">₩</span>{formatNumber(defaultExpenseBudget)}
-                  </span>
-                ) : categoryBudgetTotal > 0 ? (
-                  <span className="text-lg sm:text-xl font-bold text-text-primary">
-                    <span className="mr-px">₩</span>{formatNumber(categoryBudgetTotal)}
-                  </span>
-                ) : (
-                  <span className="text-sm sm:text-base text-text-muted">미설정</span>
-                )}
-              </div>
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px] p-4">
-        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
-          <FaCreditCard className="text-base sm:text-lg text-accent-coral" /> 지출 카테고리별 예산
-        </h2>
-
-        {isLoadingBudgets || isLoadingCategories ? (
-          <div className="text-center text-text-muted py-8 text-sm">로딩 중...</div>
-        ) : expenseCategories.length === 0 ? (
-          <div className="text-center text-text-muted py-8 text-sm">지출 카테고리가 없습니다</div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {expenseCategories.map(category => {
-              const budget = getBudgetForCategory(category.id);
-              const hasMonthlyBudget = budget != null;
-              const hasDefaultBudget = category.defaultBudget != null && category.defaultBudget > 0;
-              const effectiveBudget = hasMonthlyBudget
-                ? budget.amount
-                : category.defaultBudget ?? 0;
-              const IconComponent = getIconComponent(category.icon);
-
-              return (
-                <div
-                  key={category.id}
-                  className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4"
-                  onClick={() => onOpenBudgetModal(category)}
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => setBudgetPickerYear(prev => prev - 1)}
+                  disabled={isBudgetPastYear(budgetPickerYear - 1)}
+                  className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  {/* 상단: 아이콘, 카테고리명, 기본예산, 설정 버튼 */}
-                  <div className="flex items-center">
-                    <div
-                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-[10px] sm:rounded-[12px] flex items-center justify-center text-lg sm:text-xl mr-3"
-                      style={{ backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
-                    >
-                      <IconComponent />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm sm:text-base font-medium truncate">{category.name}</div>
-                      {hasDefaultBudget && (
-                        <div className="text-[11px] sm:text-xs text-text-muted mt-0.5">
-                          기본 <span className="mr-px">₩</span>{formatNumber(category.defaultBudget || 0)}
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-[11px] sm:text-xs text-text-muted">설정 →</span>
-                  </div>
-
-                  {/* 하단: 예산 금액 */}
-                  <div className="border-t border-[var(--border)] mt-3 pt-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[11px] sm:text-xs text-text-muted">
-                        {hasMonthlyBudget ? '월별 설정' : hasDefaultBudget ? '기본 적용' : '예산 없음'}
-                      </span>
-                      {hasMonthlyBudget ? (
-                        <span className="text-lg sm:text-xl font-bold text-accent-mint">
-                          <span className="mr-px">₩</span>{formatNumber(budget.amount)}
-                        </span>
-                      ) : hasDefaultBudget ? (
-                        <span className="text-lg sm:text-xl font-bold text-text-primary">
-                          <span className="mr-px">₩</span>{formatNumber(effectiveBudget)}
-                        </span>
-                      ) : (
-                        <span className="text-sm sm:text-base text-text-muted">미설정</span>
-                      )}
-                    </div>
-                  </div>
+                  ◀
+                </button>
+                <div className="text-text-primary font-semibold text-base">
+                  {budgetPickerYear}년
                 </div>
-              );
-            })}
-          </div>
+                <button
+                  onClick={() => setBudgetPickerYear(prev => prev + 1)}
+                  disabled={budgetPickerYear >= new Date().getFullYear()}
+                  className="text-text-secondary hover:text-text-primary transition-colors text-lg cursor-pointer w-8 h-8 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ▶
+                </button>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2">
+                {Array.from({ length: 12 }, (_, i) => i).map(month => {
+                  const isSelected = budgetDate.getFullYear() === budgetPickerYear && budgetDate.getMonth() === month;
+                  const now = new Date();
+                  const isFuture = budgetPickerYear > now.getFullYear() ||
+                    (budgetPickerYear === now.getFullYear() && month > now.getMonth());
+                  const isPast = isBudgetPastMonth(budgetPickerYear, month);
+                  const isDisabled = isFuture || isPast;
+                  return (
+                    <button
+                      key={month}
+                      onClick={() => handleBudgetMonthSelect(budgetPickerYear, month)}
+                      disabled={isDisabled}
+                      className={`rounded-[8px] font-medium transition-all py-2.5 text-sm ${
+                        isDisabled
+                          ? 'bg-bg-secondary text-text-muted opacity-30 cursor-not-allowed'
+                          : isSelected
+                          ? 'bg-gradient-to-br from-accent-mint to-accent-blue text-bg-primary cursor-pointer'
+                          : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover cursor-pointer'
+                      }`}
+                    >
+                      {month + 1}월
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {isLoadingBudgets || isLoadingCategories ? (
+          <div className="text-center text-text-muted py-8 text-sm">로딩 중...</div>
+        ) : (
+          <button
+            type="button"
+            className="w-full bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4 text-left"
+            onClick={onOpenTotalBudgetModal}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm sm:text-base font-medium">월 소비 예산</div>
+                <div className="text-[11px] sm:text-xs text-text-muted mt-0.5">
+                  {totalBudget
+                    ? '이 달만 덮어쓰기'
+                    : hasDefaultExpenseBudget
+                      ? '기본 소비예산 적용'
+                      : categoryBudgetTotal > 0
+                        ? '카테고리 합산 적용'
+                        : '예산 없음'}
+                </div>
+              </div>
+              <span className="text-[11px] sm:text-xs text-text-muted shrink-0">설정 →</span>
+            </div>
+            <div className="border-t border-[var(--border)] mt-3 pt-3 text-right">
+              {effectiveTotalBudget > 0 ? (
+                <span className="text-lg sm:text-xl font-bold text-accent-mint">
+                  <span className="mr-px">₩</span>{formatNumber(effectiveTotalBudget)}
+                </span>
+              ) : (
+                <span className="text-sm sm:text-base text-text-muted">미설정</span>
+              )}
+            </div>
+          </button>
         )}
+
+        <div className="mt-4 border-t border-[var(--border)] pt-4">
+          <h3 className="text-sm sm:text-base font-semibold flex items-center gap-2 mb-3 text-text-primary">
+            카테고리별 월 예산
+          </h3>
+
+          {isLoadingBudgets || isLoadingCategories ? (
+            <div className="text-center text-text-muted py-8 text-sm">로딩 중...</div>
+          ) : expenseCategories.length === 0 ? (
+            <div className="text-center text-text-muted py-8 text-sm">지출 카테고리가 없습니다</div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {expenseCategories.map(category => {
+                const budget = getBudgetForCategory(category.id);
+                const hasMonthlyBudget = budget != null;
+                const hasDefaultBudget = category.defaultBudget != null && category.defaultBudget > 0;
+                const effectiveBudget = hasMonthlyBudget
+                  ? budget.amount
+                  : category.defaultBudget ?? 0;
+                const IconComponent = getIconComponent(category.icon);
+
+                return (
+                  <div
+                    key={category.id}
+                    className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4"
+                    onClick={() => onOpenBudgetModal(category)}
+                  >
+                    {/* 상단: 아이콘, 카테고리명, 기본예산, 설정 버튼 */}
+                    <div className="flex items-center">
+                      <div
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-[10px] sm:rounded-[12px] flex items-center justify-center text-lg sm:text-xl mr-3"
+                        style={{ backgroundColor: `${category.color || '#888888'}20`, color: category.color || '#888888' }}
+                      >
+                        <IconComponent />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm sm:text-base font-medium truncate">{category.name}</div>
+                        {hasDefaultBudget && (
+                          <div className="text-[11px] sm:text-xs text-text-muted mt-0.5">
+                            기본 <span className="mr-px">₩</span>{formatNumber(category.defaultBudget || 0)}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[11px] sm:text-xs text-text-muted">설정 →</span>
+                    </div>
+
+                    {/* 하단: 예산 금액 */}
+                    <div className="border-t border-[var(--border)] mt-3 pt-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] sm:text-xs text-text-muted">
+                          {hasMonthlyBudget ? '월별 설정' : hasDefaultBudget ? '기본 적용' : '예산 없음'}
+                        </span>
+                        {hasMonthlyBudget ? (
+                          <span className="text-lg sm:text-xl font-bold text-accent-mint">
+                            <span className="mr-px">₩</span>{formatNumber(budget.amount)}
+                          </span>
+                        ) : hasDefaultBudget ? (
+                          <span className="text-lg sm:text-xl font-bold text-text-primary">
+                            <span className="mr-px">₩</span>{formatNumber(effectiveBudget)}
+                          </span>
+                        ) : (
+                          <span className="text-sm sm:text-base text-text-muted">미설정</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

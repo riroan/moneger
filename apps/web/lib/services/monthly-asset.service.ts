@@ -119,7 +119,15 @@ export interface MonthlyAssetReport {
     emergencyMonths: number | null;
     dailyExpenses: MonthlyDailyExpense[];
     recentExpenses: MonthlyRecentExpense[];
-    topExpenseCategories: Array<{
+    expenseCategories: Array<{
+      categoryId: string;
+      name: string;
+      color: string | null;
+      amount: number;
+      budgetKrw: number | null;
+      usedPercent: number | null;
+    }>;
+    topExpenseCategories?: Array<{
       categoryId: string;
       name: string;
       color: string | null;
@@ -805,7 +813,7 @@ async function getCurrentMonthReportDetail(
   }));
   const primaryGoal = savingsGoalReports.find((goal) => goal.isPrimary) ?? savingsGoalReports[0] ?? null;
 
-  const topExpenseCategories = expenseRows
+  const expenseCategories = expenseRows
     .map((row) => {
       const categoryId = row.categoryId!;
       const category = categoryMap.get(categoryId);
@@ -822,8 +830,7 @@ async function getCurrentMonthReportDetail(
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null)
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 3);
+    .sort((a, b) => b.amount - a.amount);
   const recentExpenses = recentExpenseRows.map((row) => ({
     id: row.id,
     date: kstDateKey(row.date),
@@ -841,7 +848,8 @@ async function getCurrentMonthReportDetail(
     emergencyMonths: averageExpense > 0 ? Number((current.cashKrw / averageExpense).toFixed(1)) : null,
     dailyExpenses,
     recentExpenses,
-    topExpenseCategories,
+    expenseCategories,
+    topExpenseCategories: expenseCategories,
     primarySavingsGoal: primaryGoal,
     savingsGoals: savingsGoalReports,
     investment: {

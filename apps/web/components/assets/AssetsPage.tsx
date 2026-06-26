@@ -7,8 +7,6 @@ import {
   MdAccountBalanceWallet,
   MdCalendarToday,
   MdCheckCircle,
-  MdChevronLeft,
-  MdChevronRight,
   MdEdit,
   MdFlag,
   MdInfoOutline,
@@ -108,6 +106,15 @@ interface RecentExpense {
   categoryColor: string | null;
 }
 
+interface ExpenseCategoryReport {
+  categoryId: string;
+  name: string;
+  color: string | null;
+  amount: number;
+  budgetKrw: number | null;
+  usedPercent: number | null;
+}
+
 interface SavingsGoalReport {
   id: string;
   name: string;
@@ -136,14 +143,8 @@ interface AssetReport {
     emergencyMonths: number | null;
     dailyExpenses: DailyExpense[];
     recentExpenses: RecentExpense[];
-    topExpenseCategories: Array<{
-      categoryId: string;
-      name: string;
-      color: string | null;
-      amount: number;
-      budgetKrw: number | null;
-      usedPercent: number | null;
-    }>;
+    expenseCategories?: ExpenseCategoryReport[];
+    topExpenseCategories?: ExpenseCategoryReport[];
     primarySavingsGoal: {
       id: string;
       name: string;
@@ -557,7 +558,8 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
   const projectedMonthlyExpense = elapsedDays > 0 ? (current.monthlyExpenseKrw / elapsedDays) * totalDaysInSelectedMonth : 0;
   const projectedBudgetDelta =
     data.report.expenseBudgetKrw > 0 ? projectedMonthlyExpense - data.report.expenseBudgetKrw : null;
-  const topExpenseCategory = data.report.topExpenseCategories[0] ?? null;
+  const expenseCategories = data.report.expenseCategories ?? data.report.topExpenseCategories ?? [];
+  const topExpenseCategory = expenseCategories[0] ?? null;
   const topExpenseShare =
     topExpenseCategory && current.monthlyExpenseKrw > 0
       ? (topExpenseCategory.amount / current.monthlyExpenseKrw) * 100
@@ -663,7 +665,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
       valueClass: signedAmountClass(investmentChange),
     },
   ];
-  const maxTopExpenseCategoryAmount = Math.max(1, ...data.report.topExpenseCategories.map((category) => category.amount));
+  const maxExpenseCategoryAmount = Math.max(1, ...expenseCategories.map((category) => category.amount));
   return (
     <div className="space-y-6 animate-[fadeIn_0.4s_ease-out]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -675,24 +677,24 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex min-h-11 items-center rounded-xl border border-[var(--border)] bg-bg-card px-2">
+          <div className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none py-2 px-3 gap-2">
             <button
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-bg-card-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 cursor-pointer"
+              className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="이전 달"
               onClick={() => setMonth((value) => moveMonth(value, -1))}
             >
-              <MdChevronLeft className="text-xl" />
+              ◀
             </button>
-            <span className="min-w-[104px] text-center text-sm font-semibold text-text-secondary sm:text-base">
-              {month}
+            <span className="min-w-[80px] sm:min-w-[120px] text-center text-sm font-semibold text-text-secondary sm:text-base">
+              {fullMonthLabel(month)}
             </span>
             <button
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-bg-card-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 cursor-pointer"
+              className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="다음 달"
               disabled={month >= currentMonthKey()}
               onClick={() => setMonth((value) => moveMonth(value, 1))}
             >
-              <MdChevronRight className="text-xl" />
+              ▶
             </button>
           </div>
         </div>
@@ -1009,13 +1011,13 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                   <div className="text-xs font-semibold text-text-muted">예산 대비</div>
                 </div>
                 <div className="space-y-4">
-                  {data.report.topExpenseCategories.length === 0 ? (
+                  {expenseCategories.length === 0 ? (
                     <div className="py-8 text-center text-sm text-text-muted">이번 달 소비 데이터가 없습니다</div>
                   ) : (
-                    data.report.topExpenseCategories.map((category) => {
+                    expenseCategories.map((category) => {
                       const width =
                         category.usedPercent == null
-                          ? Math.round((category.amount / maxTopExpenseCategoryAmount) * 100)
+                          ? Math.round((category.amount / maxExpenseCategoryAmount) * 100)
                           : Math.min(category.usedPercent, 100);
                       const remaining =
                         category.budgetKrw == null ? null : category.budgetKrw - category.amount;

@@ -168,7 +168,7 @@ export default function BudgetEditModal({
           </div>
         )}
 
-        {!hasDefaultBudget && !isTotalBudget && <div className="mb-2" />}
+        {!hasDefaultBudget && !isTotalBudget && !isDefaultTotalBudget && <div className="mb-2" />}
 
         {hasOverride && onDelete && (
           <button
@@ -177,7 +177,7 @@ export default function BudgetEditModal({
             disabled={isSaving || isDeleting}
             className="w-full text-sm text-text-muted hover:text-accent-coral transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mb-4 text-left"
           >
-            {isDeleting ? '삭제 중...' : '월별 설정 삭제'}
+            {isDeleting ? '삭제 중...' : isDefaultTotalBudget ? '기본값 삭제' : '월별 설정 삭제'}
           </button>
         )}
 
