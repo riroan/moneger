@@ -14,6 +14,9 @@ jest.mock('@/lib/prisma', () => ({
     budget: {
       findMany: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
     savingsGoal: {
       findMany: jest.fn(),
     },
@@ -34,6 +37,7 @@ jest.mock('@/lib/prisma-selects', () => ({
 describe('summary.service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: null });
   });
 
   describe('getTransactionSummary', () => {
@@ -57,7 +61,7 @@ describe('summary.service', () => {
     // 1. category.findMany
     // 2. budget.findMany (for categories)
     //
-    // Then another budget.findMany (for overall budget)
+    // Then category.findMany + budget.findMany (for overall effective budget)
 
     const setupDefaultMocks = () => {
       // aggregate calls: income, expense, monthlySavings, previousIncome, previousExpense, previousSavings
@@ -307,7 +311,7 @@ describe('summary.service', () => {
       expect(result.categories).toHaveLength(0);
     });
 
-    it('전체 예산이 없으면 0으로 처리해야 함', async () => {
+    it('전체 예산이 없으면 카테고리별 예산과 기본 예산을 합산해야 함', async () => {
       jest.clearAllMocks();
       (prisma.transaction.aggregate as jest.Mock)
         .mockResolvedValueOnce({ _sum: { amount: 3000000 } }) // income
@@ -350,12 +354,53 @@ describe('summary.service', () => {
         .mockResolvedValueOnce([ // category budgets (only cat-1 specific budget, no overall)
           { id: 'budget-1', categoryId: 'cat-1', amount: 500000 },
         ])
-        .mockResolvedValueOnce([]); // overall budget - empty
+        .mockResolvedValueOnce([ // effective overall budget uses the same category override, but no total row
+          { id: 'budget-1', categoryId: 'cat-1', amount: 500000 },
+        ]);
 
       const result = await getTransactionSummary(userId, year, month);
 
-      expect(result.budget.amount).toBe(0);
-      expect(result.budget.usagePercent).toBe(0);
+      expect(result.budget.amount).toBe(700000);
+      expect(result.budget.remaining).toBe(0);
+      expect(result.budget.usagePercent).toBe(100);
+    });
+
+    it('전체 예산이 없고 기본 소비예산이 있으면 기본 소비예산을 사용해야 함', async () => {
+      jest.clearAllMocks();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: 1200000 });
+      (prisma.transaction.aggregate as jest.Mock)
+        .mockResolvedValueOnce({ _sum: { amount: 3000000 } }) // income
+        .mockResolvedValueOnce({ _sum: { amount: 1500000 } }) // expense
+        .mockResolvedValueOnce({ _sum: { amount: 100000 }, _count: 2 }) // monthlySavings
+        .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousIncome
+        .mockResolvedValueOnce({ _sum: { amount: 0 } }) // previousExpense
+        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // previousSavings
+
+      (prisma.transaction.groupBy as jest.Mock)
+        .mockResolvedValueOnce([
+          { categoryId: 'cat-1', _sum: { amount: 500000 }, _count: 15 },
+          { categoryId: 'cat-2', _sum: { amount: 300000 }, _count: 8 },
+        ])
+        .mockResolvedValueOnce([
+          { type: 'INCOME', _count: 2 },
+          { type: 'EXPENSE', _count: 23 },
+        ])
+        .mockResolvedValueOnce([]);
+
+      (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.category.findMany as jest.Mock).mockResolvedValue([
+        { id: 'cat-1', name: '식비', icon: '🍽️', color: '#EF4444', defaultBudget: 600000 },
+        { id: 'cat-2', name: '교통비', icon: '🚗', color: '#3B82F6', defaultBudget: 200000 },
+      ]);
+      (prisma.budget.findMany as jest.Mock)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result = await getTransactionSummary(userId, year, month);
+
+      expect(result.budget.amount).toBe(1200000);
+      expect(result.budget.remaining).toBe(0);
+      expect(result.budget.usagePercent).toBe(100);
     });
   });
 });

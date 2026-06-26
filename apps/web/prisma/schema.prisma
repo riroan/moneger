@@ -18,6 +18,7 @@ model User {
   email     String    @unique
   name      String?
   password  String
+  defaultExpenseBudget Float?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?

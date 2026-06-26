@@ -7,26 +7,35 @@ import {
   validateUserId,
   apiHandler,
 } from '@/lib/api-utils';
+import { getMonthRangeKST } from '@/lib/date-utils';
 
 // GET /api/budgets - 예산 목록 조회
 export const GET = apiHandler('fetch budgets', async (request: NextRequest) => {
   const searchParams = request.nextUrl.searchParams;
   const userId = searchParams.get('userId');
+  const scope = searchParams.get('scope');
   const year = searchParams.get('year');
   const month = searchParams.get('month');
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
 
+  if (scope === 'default') {
+    const user = await prisma.user.findUnique({
+      where: { id: userId! },
+      select: { defaultExpenseBudget: true },
+    });
+    return successResponse({ amount: user?.defaultExpenseBudget ?? null });
+  }
+
   // 월별 조회 시 해당 월의 예산만 반환
   if (year && month) {
-    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const { startDate, endDate } = getMonthRangeKST(parseInt(year), parseInt(month));
 
-    // 기존 예산 조회
-    let budgets = await prisma.budget.findMany({
+    const budgets = await prisma.budget.findMany({
       where: {
         userId: userId!,
-        month: startDate,
+        month: { gte: startDate, lt: new Date(endDate.getTime() + 1) },
         deletedAt: null,
       },
       include: {
@@ -36,41 +45,6 @@ export const GET = apiHandler('fetch budgets', async (request: NextRequest) => {
       },
       orderBy: { createdAt: 'asc' },
     });
-
-    // defaultBudget이 있는 카테고리 중 해당 월에 예산이 없는 경우 자동 생성
-    const existingCategoryIds = new Set(budgets.map(b => b.categoryId));
-    const categoriesWithDefaultBudget = await prisma.category.findMany({
-      where: {
-        userId: userId!,
-        deletedAt: null,
-        defaultBudget: { not: null },
-        id: { notIn: Array.from(existingCategoryIds).filter((id): id is string => id !== null) },
-      },
-      select: { id: true, name: true, icon: true, color: true, defaultBudget: true },
-    });
-
-    if (categoriesWithDefaultBudget.length > 0) {
-      // 새 예산 레코드 생성
-      const newBudgets = await prisma.$transaction(
-        categoriesWithDefaultBudget.map(category =>
-          prisma.budget.create({
-            data: {
-              userId: userId!,
-              categoryId: category.id,
-              amount: category.defaultBudget!,
-              month: startDate,
-            },
-            include: {
-              category: {
-                select: { id: true, name: true, icon: true, color: true },
-              },
-            },
-          })
-        )
-      );
-
-      budgets = [...budgets, ...newBudgets];
-    }
 
     return successResponse(budgets);
   }
@@ -95,17 +69,26 @@ export const GET = apiHandler('fetch budgets', async (request: NextRequest) => {
 // POST /api/budgets - 예산 생성/업데이트
 export const POST = apiHandler('save budget', async (request: NextRequest) => {
   const body = await request.json();
-  const { userId, categoryId, amount, year, month } = body;
+  const { userId, categoryId, amount, year, month, scope } = body;
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
 
-  if (!categoryId) {
-    return errorResponse('categoryId is required', 400);
-  }
-
   if (amount === undefined || amount < 0) {
     return errorResponse('amount must be 0 or greater', 400);
+  }
+
+  if (scope === 'default') {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { defaultExpenseBudget: amount > 0 ? amount : null },
+      select: { defaultExpenseBudget: true },
+    });
+    return successResponseWithMessage({ amount: user.defaultExpenseBudget }, 'Default budget saved successfully', 201);
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(body, 'categoryId')) {
+    return errorResponse('categoryId is required', 400);
   }
 
   if (!year || !month) {
@@ -113,29 +96,58 @@ export const POST = apiHandler('save budget', async (request: NextRequest) => {
   }
 
   const monthDate = new Date(year, month - 1, 1);
+  const budgetCategoryId = categoryId ?? null;
 
-  // upsert로 생성 또는 업데이트
-  const budget = await prisma.budget.upsert({
+  const existingBudget = await prisma.budget.findFirst({
     where: {
-      userId_categoryId_month: {
-        userId,
-        categoryId,
-        month: monthDate,
-      },
-    },
-    update: { amount },
-    create: {
       userId,
-      categoryId,
-      amount,
+      categoryId: budgetCategoryId,
       month: monthDate,
     },
-    include: {
-      category: {
-        select: { id: true, name: true, icon: true, color: true },
-      },
-    },
+    orderBy: { updatedAt: 'desc' },
   });
+
+  const budgetPayload = {
+    amount,
+    deletedAt: null,
+  };
+
+  const budget = existingBudget
+    ? await prisma.budget.update({
+      where: { id: existingBudget.id },
+      data: budgetPayload,
+      include: {
+        category: {
+          select: { id: true, name: true, icon: true, color: true },
+        },
+      },
+    })
+    : await prisma.budget.create({
+      data: {
+        userId,
+        categoryId: budgetCategoryId,
+        amount,
+        month: monthDate,
+      },
+      include: {
+        category: {
+          select: { id: true, name: true, icon: true, color: true },
+        },
+      },
+    });
+
+  if (budgetCategoryId == null) {
+    await prisma.budget.updateMany({
+      where: {
+        userId,
+        categoryId: null,
+        month: monthDate,
+        deletedAt: null,
+        id: { not: budget.id },
+      },
+      data: { deletedAt: new Date() },
+    });
+  }
 
   return successResponseWithMessage(budget, 'Budget saved successfully', 201);
 });
@@ -145,24 +157,34 @@ export const DELETE = apiHandler('delete budget', async (request: NextRequest) =
   const searchParams = request.nextUrl.searchParams;
   const userId = searchParams.get('userId');
   const categoryId = searchParams.get('categoryId');
+  const scope = searchParams.get('scope');
   const year = searchParams.get('year');
   const month = searchParams.get('month');
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
 
-  if (!categoryId || !year || !month) {
-    return errorResponse('categoryId, year, and month are required', 400);
+  const isTotalBudget = scope === 'total';
+  if (scope === 'default') {
+    await prisma.user.update({
+      where: { id: userId! },
+      data: { defaultExpenseBudget: null },
+    });
+    return successResponseWithMessage(null, 'Default budget deleted successfully');
   }
 
-  const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+  if ((!isTotalBudget && !categoryId) || !year || !month) {
+    return errorResponse('categoryId or scope=total, year, and month are required', 400);
+  }
+
+  const { startDate, endDate } = getMonthRangeKST(parseInt(year), parseInt(month));
 
   // Soft delete로 변경 (다른 테이블과 일관성 유지)
   await prisma.budget.updateMany({
     where: {
       userId: userId!,
-      categoryId,
-      month: monthDate,
+      categoryId: isTotalBudget ? null : categoryId,
+      month: { gte: startDate, lt: new Date(endDate.getTime() + 1) },
       deletedAt: null,
     },
     data: {

@@ -13,7 +13,10 @@ jest.mock('@/lib/prisma', () => ({
       findMany: jest.fn(),
     },
     budget: {
-      findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
+    user: {
+      findUnique: jest.fn(),
     },
   },
 }));
@@ -21,6 +24,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('stats.service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: null });
   });
 
   describe('getMonthlyStats', () => {
@@ -29,8 +33,8 @@ describe('stats.service', () => {
     const month = 1;
 
     const mockCategories = [
-      { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️' },
-      { id: 'cat-2', name: '교통비', type: 'EXPENSE', color: '#3B82F6', icon: '🚗' },
+      { id: 'cat-1', name: '식비', type: 'EXPENSE', color: '#EF4444', icon: '🍽️', defaultBudget: 600000 },
+      { id: 'cat-2', name: '교통비', type: 'EXPENSE', color: '#3B82F6', icon: '🚗', defaultBudget: 200000 },
     ];
 
     const setupDefaultMocks = () => {
@@ -53,7 +57,7 @@ describe('stats.service', () => {
         ]); // 최근 7일 지출
 
       (prisma.category.findMany as jest.Mock).mockResolvedValue(mockCategories);
-      (prisma.budget.findFirst as jest.Mock).mockResolvedValue({ amount: 2000000 });
+      (prisma.budget.findMany as jest.Mock).mockResolvedValue([{ categoryId: null, amount: 2000000 }]);
     };
 
     it('월별 통계 요약을 반환해야 함', async () => {
@@ -161,18 +165,34 @@ describe('stats.service', () => {
       expect(result.last7Days.every((d) => 'date' in d && 'amount' in d)).toBe(true);
     });
 
-    it('예산이 없으면 0으로 처리해야 함', async () => {
+    it('전체 예산이 없으면 기본 예산 합산을 사용해야 함', async () => {
       setupDefaultMocks();
-      (prisma.budget.findFirst as jest.Mock).mockReset();
-      (prisma.budget.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.budget.findMany as jest.Mock).mockReset();
+      (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
 
       const result = await getMonthlyStats(userId, year, month);
 
       expect(result.budget).toEqual({
-        amount: 0,
+        amount: 800000,
         used: 1500000,
         remaining: 0,
-        usagePercent: 0,
+        usagePercent: 100,
+      });
+    });
+
+    it('전체 예산이 없고 기본 소비예산이 있으면 기본 소비예산을 사용해야 함', async () => {
+      setupDefaultMocks();
+      (prisma.budget.findMany as jest.Mock).mockReset();
+      (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: 1200000 });
+
+      const result = await getMonthlyStats(userId, year, month);
+
+      expect(result.budget).toEqual({
+        amount: 1200000,
+        used: 1500000,
+        remaining: 0,
+        usagePercent: 100,
       });
     });
 
@@ -188,7 +208,7 @@ describe('stats.service', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
       (prisma.category.findMany as jest.Mock).mockResolvedValue(mockCategories);
-      (prisma.budget.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
 
       const result = await getMonthlyStats(userId, year, month);
 
@@ -209,7 +229,7 @@ describe('stats.service', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
       (prisma.category.findMany as jest.Mock).mockResolvedValue(mockCategories);
-      (prisma.budget.findFirst as jest.Mock).mockResolvedValue({ amount: 2000000 });
+      (prisma.budget.findMany as jest.Mock).mockResolvedValue([{ categoryId: null, amount: 2000000 }]);
 
       const result = await getMonthlyStats(userId, year, month);
 
@@ -232,7 +252,7 @@ describe('stats.service', () => {
         ])
         .mockResolvedValueOnce([]);
       (prisma.category.findMany as jest.Mock).mockResolvedValue(mockCategories);
-      (prisma.budget.findFirst as jest.Mock).mockResolvedValue({ amount: 2000000 });
+      (prisma.budget.findMany as jest.Mock).mockResolvedValue([{ categoryId: null, amount: 2000000 }]);
 
       const result = await getMonthlyStats(userId, year, month);
 

@@ -10,22 +10,28 @@ import { getIconComponent } from './constants';
 interface BudgetTabProps {
   categories: Category[];
   budgets: Budget[];
+  defaultExpenseBudget: number | null;
   isLoadingCategories: boolean;
   isLoadingBudgets: boolean;
   budgetDate: Date;
   oldestTransactionDate: { year: number; month: number } | null;
   onBudgetDateChange: (date: Date) => void;
+  onOpenTotalBudgetModal: () => void;
+  onOpenDefaultBudgetModal: () => void;
   onOpenBudgetModal: (category: Category) => void;
 }
 
 export default function BudgetTab({
   categories,
   budgets,
+  defaultExpenseBudget,
   isLoadingCategories,
   isLoadingBudgets,
   budgetDate,
   oldestTransactionDate,
   onBudgetDateChange,
+  onOpenTotalBudgetModal,
+  onOpenDefaultBudgetModal,
   onOpenBudgetModal,
 }: BudgetTabProps) {
   const [isBudgetDatePickerOpen, setIsBudgetDatePickerOpen] = useState(false);
@@ -93,6 +99,14 @@ export default function BudgetTab({
   const getBudgetForCategory = (categoryId: string) => {
     return budgets.find(b => b.categoryId === categoryId);
   };
+
+  const totalBudget = budgets.find(b => b.categoryId == null);
+  const hasDefaultExpenseBudget = defaultExpenseBudget != null && defaultExpenseBudget > 0;
+  const categoryBudgetTotal = expenseCategories.reduce((sum, category) => {
+    const budget = getBudgetForCategory(category.id);
+    return sum + (budget?.amount ?? category.defaultBudget ?? 0);
+  }, 0);
+  const effectiveTotalBudget = totalBudget?.amount ?? (hasDefaultExpenseBudget ? defaultExpenseBudget : categoryBudgetTotal);
 
   return (
     <div>
@@ -181,6 +195,78 @@ export default function BudgetTab({
         )}
       </div>
 
+      <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px] p-4 mb-4">
+        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
+          <FaCreditCard className="text-base sm:text-lg text-accent-coral" /> 소비 예산
+        </h2>
+
+        {isLoadingBudgets || isLoadingCategories ? (
+          <div className="text-center text-text-muted py-8 text-sm">로딩 중...</div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4 text-left"
+              onClick={onOpenTotalBudgetModal}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm sm:text-base font-medium">월 소비 예산</div>
+                  <div className="text-[11px] sm:text-xs text-text-muted mt-0.5">
+                    {totalBudget
+                      ? '월별 설정'
+                      : hasDefaultExpenseBudget
+                        ? '기본 소비예산 적용'
+                        : categoryBudgetTotal > 0
+                          ? '카테고리 합산 적용'
+                          : '예산 없음'}
+                  </div>
+                </div>
+                <span className="text-[11px] sm:text-xs text-text-muted shrink-0">설정 →</span>
+              </div>
+              <div className="border-t border-[var(--border)] mt-3 pt-3 text-right">
+                {effectiveTotalBudget > 0 ? (
+                  <span className="text-lg sm:text-xl font-bold text-accent-mint">
+                    <span className="mr-px">₩</span>{formatNumber(effectiveTotalBudget)}
+                  </span>
+                ) : (
+                  <span className="text-sm sm:text-base text-text-muted">미설정</span>
+                )}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className="bg-bg-secondary rounded-[12px] sm:rounded-[14px] cursor-pointer transition-all hover:bg-bg-card-hover p-4 text-left"
+              onClick={onOpenDefaultBudgetModal}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm sm:text-base font-medium">기본 소비예산</div>
+                  <div className="text-[11px] sm:text-xs text-text-muted mt-0.5">
+                    {hasDefaultExpenseBudget ? '기본값 설정' : '카테고리 합산 적용'}
+                  </div>
+                </div>
+                <span className="text-[11px] sm:text-xs text-text-muted shrink-0">설정 →</span>
+              </div>
+              <div className="border-t border-[var(--border)] mt-3 pt-3 text-right">
+                {hasDefaultExpenseBudget ? (
+                  <span className="text-lg sm:text-xl font-bold text-text-primary">
+                    <span className="mr-px">₩</span>{formatNumber(defaultExpenseBudget)}
+                  </span>
+                ) : categoryBudgetTotal > 0 ? (
+                  <span className="text-lg sm:text-xl font-bold text-text-primary">
+                    <span className="mr-px">₩</span>{formatNumber(categoryBudgetTotal)}
+                  </span>
+                ) : (
+                  <span className="text-sm sm:text-base text-text-muted">미설정</span>
+                )}
+              </div>
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="bg-bg-card border border-[var(--border)] rounded-[14px] sm:rounded-[16px] p-4">
         <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
           <FaCreditCard className="text-base sm:text-lg text-accent-coral" /> 지출 카테고리별 예산
@@ -194,8 +280,11 @@ export default function BudgetTab({
           <div className="flex flex-col gap-3">
             {expenseCategories.map(category => {
               const budget = getBudgetForCategory(category.id);
-              const hasMonthlyBudget = budget && budget.amount > 0;
-              const hasDefaultBudget = category.defaultBudget && category.defaultBudget > 0;
+              const hasMonthlyBudget = budget != null;
+              const hasDefaultBudget = category.defaultBudget != null && category.defaultBudget > 0;
+              const effectiveBudget = hasMonthlyBudget
+                ? budget.amount
+                : category.defaultBudget ?? 0;
               const IconComponent = getIconComponent(category.icon);
 
               return (
@@ -225,10 +314,17 @@ export default function BudgetTab({
 
                   {/* 하단: 예산 금액 */}
                   <div className="border-t border-[var(--border)] mt-3 pt-3">
-                    <div className="text-right">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] sm:text-xs text-text-muted">
+                        {hasMonthlyBudget ? '월별 설정' : hasDefaultBudget ? '기본 적용' : '예산 없음'}
+                      </span>
                       {hasMonthlyBudget ? (
                         <span className="text-lg sm:text-xl font-bold text-accent-mint">
                           <span className="mr-px">₩</span>{formatNumber(budget.amount)}
+                        </span>
+                      ) : hasDefaultBudget ? (
+                        <span className="text-lg sm:text-xl font-bold text-text-primary">
+                          <span className="mr-px">₩</span>{formatNumber(effectiveBudget)}
                         </span>
                       ) : (
                         <span className="text-sm sm:text-base text-text-muted">미설정</span>

@@ -13,10 +13,10 @@ import {
   MdBarChart,
   MdCategory,
   MdDarkMode,
-  MdDashboard,
   MdLightMode,
   MdLogout,
   MdPerson,
+  MdSettings,
 } from 'react-icons/md';
 import Footer from '@/components/layout/Footer';
 import { AccountTab, CategoryTab, BudgetTab } from '@/components/settings';
@@ -63,8 +63,11 @@ export default function SettingsPage() {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [defaultExpenseBudget, setDefaultExpenseBudget] = useState<number | null>(null);
   const [isLoadingBudgets, setIsLoadingBudgets] = useState(false);
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [isTotalBudgetModalOpen, setIsTotalBudgetModalOpen] = useState(false);
+  const [isDefaultBudgetModalOpen, setIsDefaultBudgetModalOpen] = useState(false);
   const [editingBudgetCategory, setEditingBudgetCategory] = useState<Category | null>(null);
   const [oldestTransactionDate, setOldestTransactionDate] = useState<{ year: number; month: number } | null>(null);
 
@@ -128,11 +131,20 @@ export default function SettingsPage() {
       try {
         const year = budgetDate.getFullYear();
         const month = budgetDate.getMonth() + 1;
-        const response = await fetch(`/api/budgets?userId=${userId}&year=${year}&month=${month}`);
-        const data = await response.json();
+        const [budgetResponse, defaultBudgetResponse] = await Promise.all([
+          fetch(`/api/budgets?userId=${userId}&year=${year}&month=${month}`),
+          fetch(`/api/budgets?userId=${userId}&scope=default`),
+        ]);
+        const [data, defaultData] = await Promise.all([
+          budgetResponse.json(),
+          defaultBudgetResponse.json(),
+        ]);
 
         if (data.success) {
           setBudgets(data.data);
+        }
+        if (defaultData.success) {
+          setDefaultExpenseBudget(defaultData.data.amount);
         }
       } catch (error) {
         console.error('Failed to fetch budgets:', error instanceof Error ? error.message : 'Unknown error');
@@ -145,7 +157,14 @@ export default function SettingsPage() {
   }, [userId, activeTab, budgetDate]);
 
   // 모달이 열렸을 때 body 스크롤 비활성화
-  useBodyScrollLock(isCategoryModalOpen || isDeleteCategoryConfirmOpen || isDeleteAccountModalOpen || isBudgetModalOpen);
+  useBodyScrollLock(
+    isCategoryModalOpen ||
+    isDeleteCategoryConfirmOpen ||
+    isDeleteAccountModalOpen ||
+    isBudgetModalOpen ||
+    isTotalBudgetModalOpen ||
+    isDefaultBudgetModalOpen
+  );
 
   const handleLogout = () => {
     localStorage.removeItem('userId');
@@ -177,8 +196,6 @@ export default function SettingsPage() {
       ? parseInt(data.defaultBudget, 10)
       : null;
 
-    let categoryId: string | null = null;
-
     if (categoryModalMode === 'add') {
       // 카테고리 개수 제한 (최대 20개)
       const currentTypeCategories = categories.filter(c => c.type === data.type);
@@ -203,7 +220,6 @@ export default function SettingsPage() {
       if (!response.ok) {
         throw new Error(result.error || '카테고리 추가에 실패했습니다');
       }
-      categoryId = result.data?.id;
     } else if (editingCategory) {
       const response = await fetch(`/api/categories/${editingCategory.id}`, {
         method: 'PATCH',
@@ -221,23 +237,6 @@ export default function SettingsPage() {
       if (!response.ok) {
         throw new Error(result.error || '카테고리 수정에 실패했습니다');
       }
-      categoryId = editingCategory.id;
-    }
-
-    // 기본 예산이 설정되어 있으면 이번 달 예산도 자동 설정
-    if (categoryId && defaultBudgetAmount !== null) {
-      const now = new Date();
-      await fetch('/api/budgets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          categoryId,
-          amount: defaultBudgetAmount,
-          year: now.getFullYear(),
-          month: now.getMonth() + 1,
-        }),
-      });
     }
 
     // 카테고리 목록 새로고침
@@ -330,6 +329,103 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDeleteBudget = async () => {
+    if (!userId || !editingBudgetCategory) return;
+
+    const response = await fetch(
+      `/api/budgets?userId=${userId}&categoryId=${editingBudgetCategory.id}&year=${budgetDate.getFullYear()}&month=${budgetDate.getMonth() + 1}`,
+      { method: 'DELETE' }
+    );
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || '예산 삭제에 실패했습니다');
+    }
+
+    setBudgets(prev => prev.filter(b => b.categoryId !== editingBudgetCategory.id));
+  };
+
+  const handleSaveTotalBudget = async (amount: number) => {
+    if (!userId) return;
+
+    const response = await fetch('/api/budgets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        categoryId: null,
+        amount,
+        year: budgetDate.getFullYear(),
+        month: budgetDate.getMonth() + 1,
+      }),
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      setBudgets(prev => {
+        const existing = prev.findIndex(b => b.categoryId == null);
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = data.data;
+          return updated;
+        }
+        return [...prev, data.data];
+      });
+    }
+  };
+
+  const handleDeleteTotalBudget = async () => {
+    if (!userId) return;
+
+    const response = await fetch(
+      `/api/budgets?userId=${userId}&scope=total&year=${budgetDate.getFullYear()}&month=${budgetDate.getMonth() + 1}`,
+      { method: 'DELETE' }
+    );
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || '소비 예산 삭제에 실패했습니다');
+    }
+
+    setBudgets(prev => prev.filter(b => b.categoryId != null));
+  };
+
+  const handleSaveDefaultBudget = async (amount: number) => {
+    if (!userId) return;
+
+    const response = await fetch('/api/budgets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        scope: 'default',
+        amount,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || '기본 소비예산 저장에 실패했습니다');
+    }
+
+    setDefaultExpenseBudget(data.data.amount);
+  };
+
+  const handleDeleteDefaultBudget = async () => {
+    if (!userId) return;
+
+    const response = await fetch(`/api/budgets?userId=${userId}&scope=default`, {
+      method: 'DELETE',
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || '기본 소비예산 삭제에 실패했습니다');
+    }
+
+    setDefaultExpenseBudget(null);
+  };
+
   // 로딩 중일 때는 빈 화면 표시
   if (isLoading) {
     return null;
@@ -337,6 +433,19 @@ export default function SettingsPage() {
 
   const getBudgetForCategory = (categoryId: string) => {
     return budgets.find(b => b.categoryId === categoryId);
+  };
+
+  const getTotalBudget = () => {
+    return budgets.find(b => b.categoryId == null);
+  };
+
+  const getCategoryBudgetTotal = () => {
+    return categories
+      .filter(category => category.type === 'EXPENSE')
+      .reduce((sum, category) => {
+        const budget = getBudgetForCategory(category.id);
+        return sum + (budget?.amount ?? category.defaultBudget ?? 0);
+      }, 0);
   };
 
   return (
@@ -406,15 +515,6 @@ export default function SettingsPage() {
                       className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
                       onClick={() => {
                         setIsProfileMenuOpen(false);
-                        router.push('/');
-                      }}
-                    >
-                      <span className="flex items-center gap-2"><MdDashboard className="text-lg" /> 대시보드</span>
-                    </button>
-                    <button
-                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
                         router.push('/assets');
                       }}
                     >
@@ -428,6 +528,15 @@ export default function SettingsPage() {
                       }}
                     >
                       <span className="flex items-center gap-2"><MdBarChart className="text-lg" /> 소비 분석</span>
+                    </button>
+                    <button
+                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        router.push('/settings');
+                      }}
+                    >
+                      <span className="flex items-center gap-2"><MdSettings className="text-lg" /> 설정</span>
                     </button>
                     <button
                       className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
@@ -546,11 +655,14 @@ export default function SettingsPage() {
               <BudgetTab
                 categories={categories}
                 budgets={budgets}
+                defaultExpenseBudget={defaultExpenseBudget}
                 isLoadingCategories={isLoadingCategories}
                 isLoadingBudgets={isLoadingBudgets}
                 budgetDate={budgetDate}
                 oldestTransactionDate={oldestTransactionDate}
                 onBudgetDateChange={setBudgetDate}
+                onOpenTotalBudgetModal={() => setIsTotalBudgetModalOpen(true)}
+                onOpenDefaultBudgetModal={() => setIsDefaultBudgetModalOpen(true)}
                 onOpenBudgetModal={openBudgetModal}
               />
             )}
@@ -596,11 +708,41 @@ export default function SettingsPage() {
         category={editingBudgetCategory}
         budgetDate={budgetDate}
         initialAmount={editingBudgetCategory ? getBudgetForCategory(editingBudgetCategory.id)?.amount : undefined}
+        hasOverride={editingBudgetCategory ? getBudgetForCategory(editingBudgetCategory.id) != null : false}
         onClose={() => {
           setIsBudgetModalOpen(false);
           setEditingBudgetCategory(null);
         }}
         onSave={handleSaveBudget}
+        onDelete={handleDeleteBudget}
+      />
+
+      <BudgetEditModal
+        isOpen={isTotalBudgetModalOpen}
+        mode="total"
+        category={null}
+        budgetDate={budgetDate}
+        initialAmount={getTotalBudget()?.amount}
+        hasOverride={getTotalBudget() != null}
+        fallbackAmount={defaultExpenseBudget != null && defaultExpenseBudget > 0 ? defaultExpenseBudget : getCategoryBudgetTotal()}
+        fallbackLabel={defaultExpenseBudget != null && defaultExpenseBudget > 0 ? '기본 소비예산' : '카테고리 합산'}
+        onClose={() => setIsTotalBudgetModalOpen(false)}
+        onSave={handleSaveTotalBudget}
+        onDelete={handleDeleteTotalBudget}
+      />
+
+      <BudgetEditModal
+        isOpen={isDefaultBudgetModalOpen}
+        mode="defaultTotal"
+        category={null}
+        budgetDate={budgetDate}
+        initialAmount={defaultExpenseBudget ?? undefined}
+        hasOverride={defaultExpenseBudget != null && defaultExpenseBudget > 0}
+        fallbackAmount={getCategoryBudgetTotal()}
+        fallbackLabel="카테고리 합산"
+        onClose={() => setIsDefaultBudgetModalOpen(false)}
+        onSave={handleSaveDefaultBudget}
+        onDelete={handleDeleteDefaultBudget}
       />
 
       {/* Delete Account Modal */}

@@ -1,9 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { getKSTDateParts, getMonthRangeKST } from '@/lib/date-utils';
+import { calculateEffectiveMonthlyBudget } from './budget-calculation';
 import {
   buildMonthWindow,
   formatMonthKey,
   kstMonthEndUTC,
+  kstMonthKey,
   previousMonth,
   ymFromMonthKey,
 } from '@/lib/utils/asset-month';
@@ -192,26 +194,32 @@ function kstDateKey(date: Date): string {
   return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
 }
 
+// 메인 대시보드의 "잔액"과 동일: 월말까지 누적 수입 − 누적 소비(저축 제외) − 누적 저축 이체
 async function getCashAt(userId: string, monthEnd: Date): Promise<number> {
-  const row = await prisma.dailyBalance.findFirst({
-    where: { userId, date: { lte: monthEnd } },
-    orderBy: { date: 'desc' },
-    select: { balance: true },
-  });
-  return row?.balance ?? 0;
+  const [incomeAgg, expenseAgg, savingsAgg] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: { userId, deletedAt: null, date: { lte: monthEnd }, type: 'INCOME' },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { userId, deletedAt: null, date: { lte: monthEnd }, type: 'EXPENSE', savingsGoalId: null },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { userId, deletedAt: null, date: { lte: monthEnd }, savingsGoalId: { not: null } },
+      _sum: { amount: true },
+    }),
+  ]);
+  return (incomeAgg._sum.amount ?? 0) - (expenseAgg._sum.amount ?? 0) - (savingsAgg._sum.amount ?? 0);
 }
 
-async function getSavingsTotalAt(userId: string, monthEnd: Date): Promise<number> {
-  const result = await prisma.transaction.aggregate({
-    where: {
-      userId,
-      savingsGoalId: { not: null },
-      date: { lte: monthEnd },
-      deletedAt: null,
-    },
-    _sum: { amount: true },
+// /savings 페이지의 "총 저축액"과 동일: 저축 목표들의 currentAmount 합
+async function getSavingsTotalAt(userId: string): Promise<number> {
+  const goals = await prisma.savingsGoal.findMany({
+    where: { userId, deletedAt: null },
+    select: { currentAmount: true },
   });
-  return result._sum.amount ?? 0;
+  return goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
 }
 
 async function getOtherAssetsAt(userId: string, monthKey: Date): Promise<number> {
@@ -495,7 +503,7 @@ async function computeSnapshot(
   const monthEnd = kstMonthEndUTC(year, month);
   const [cash, savings, other, investment, flow] = await Promise.all([
     getCashAt(userId, monthEnd),
-    getSavingsTotalAt(userId, monthEnd),
+    getSavingsTotalAt(userId),
     getOtherAssetsAt(userId, monthKey),
     getInvestmentAt(userId, monthEnd),
     getMonthlyFlow(userId, monthKey),
@@ -635,9 +643,14 @@ export async function getMonthlyAssetReport(
   });
   const storedByMonth = new Map(storedRows.map((row) => [formatMonthKey(row.month), snapshotFromRow(row)]));
 
+  // 진행 중인 이번 달은 항상 실시간 계산한다. 스냅샷은 월말(KST)에 cron이 freeze 하는 "완료된 달"의 값이므로,
+  // 이번 달 행이 (수동 저장 등으로) 남아 있어도 무시하고 현재 현금/저축/투자 값을 그대로 반영한다.
+  const currentMonthKey = formatMonthKey(kstMonthKey(new Date()));
+
   const snapshots = await Promise.all(
     monthKeys.map(async (monthKey) => {
       const key = formatMonthKey(monthKey);
+      if (key === currentMonthKey) return computeSnapshot(userId, monthKey);
       return storedByMonth.get(key) ?? computeSnapshot(userId, monthKey);
     })
   );
@@ -682,6 +695,7 @@ async function getCurrentMonthReportDetail(
     categories,
     expenseRows,
     budgets,
+    userBudgetSetting,
     savingsGoals,
     savingsDepositRows,
   ] = await Promise.all([
@@ -712,7 +726,7 @@ async function getCurrentMonthReportDetail(
       },
     }),
     prisma.category.findMany({
-      where: { userId, deletedAt: null },
+      where: { userId, deletedAt: null, type: 'EXPENSE' },
       select: { id: true, name: true, color: true, defaultBudget: true },
     }),
     prisma.transaction.groupBy({
@@ -737,6 +751,10 @@ async function getCurrentMonthReportDetail(
         },
       },
       select: { categoryId: true, amount: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { defaultExpenseBudget: true },
     }),
     prisma.savingsGoal.findMany({
       where: { userId, deletedAt: null },
@@ -765,8 +783,7 @@ async function getCurrentMonthReportDetail(
 
   const categoryMap = new Map(categories.map((category) => [category.id, category]));
   const budgetByCategory = new Map(budgets.map((budget) => [budget.categoryId, budget.amount]));
-  const totalBudgetRow = budgets.find((budget) => budget.categoryId == null);
-  const totalBudget = totalBudgetRow?.amount ?? budgets.reduce((sum, budget) => sum + budget.amount, 0);
+  const totalBudget = calculateEffectiveMonthlyBudget(categories, budgets, userBudgetSetting?.defaultExpenseBudget);
   const dailyExpenses = buildDailyExpenses(year, month, dailyExpenseAmounts, totalBudget);
   const averageExpense = await getRecentAverageMonthlyExpense(userId, monthKey, 3);
   const depositByGoal = new Map(

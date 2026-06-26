@@ -886,7 +886,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                   <div className="mt-2 flex items-end justify-between gap-2">
                     <span className="tabular-nums text-lg font-bold text-text-primary">{item.ratio.toFixed(0)}%</span>
                     <span className={`tabular-nums text-xs font-bold ${changeClass(delta)}`}>
-                      {delta == null ? '-' : percent(delta)}
+                      {percentagePoint(delta)}
                     </span>
                   </div>
                 </div>

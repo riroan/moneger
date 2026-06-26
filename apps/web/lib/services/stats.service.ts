@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
-import { CATEGORY_SELECT } from '@/lib/prisma-selects';
+import { CATEGORY_WITH_BUDGET_SELECT } from '@/lib/prisma-selects';
 import { getMonthRangeKST, getLastNDaysRange, getDateKey } from '@/lib/date-utils';
+import { calculateEffectiveMonthlyBudget } from './budget-calculation';
 
 interface CategoryStat {
   categoryId: string;
@@ -26,6 +27,8 @@ export async function getMonthlyStats(userId: string, year: number, month: numbe
     expenseCount,
     categoryGrouped,
     categories,
+    budgets,
+    userBudgetSetting,
   ] = await Promise.all([
     // 총 수입
     prisma.transaction.aggregate({
@@ -61,8 +64,20 @@ export async function getMonthlyStats(userId: string, year: number, month: numbe
     }),
     // 카테고리 정보 (한 번만 조회)
     prisma.category.findMany({
-      where: { userId, deletedAt: null },
-      select: CATEGORY_SELECT,
+      where: { userId, deletedAt: null, type: 'EXPENSE' },
+      select: CATEGORY_WITH_BUDGET_SELECT,
+    }),
+    prisma.budget.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+        month: { gte: startDate, lt: new Date(endDate.getTime() + 1) },
+      },
+      select: { categoryId: true, amount: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { defaultExpenseBudget: true },
     }),
   ]);
 
@@ -90,12 +105,7 @@ export async function getMonthlyStats(userId: string, year: number, month: numbe
     .filter((item): item is CategoryStat => item !== null)
     .sort((a, b) => b.total - a.total);
 
-  // 예산 정보 조회
-  const budget = await prisma.budget.findFirst({
-    where: { userId, deletedAt: null, month: startDate },
-  });
-
-  const budgetAmount = budget?.amount || 0;
+  const budgetAmount = calculateEffectiveMonthlyBudget(categories, budgets, userBudgetSetting?.defaultExpenseBudget);
   const budgetUsed = totalExpense;
   const budgetRemaining = Math.max(0, budgetAmount - budgetUsed);
   const budgetUsagePercent = budgetAmount > 0

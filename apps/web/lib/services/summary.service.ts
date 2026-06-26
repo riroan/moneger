@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { getMonthRangeKST } from '@/lib/date-utils';
 import { CATEGORY_WITH_BUDGET_SELECT } from '@/lib/prisma-selects';
+import { calculateEffectiveMonthlyBudget } from './budget-calculation';
 
 interface CategorySummary {
   id: string;
@@ -119,6 +120,7 @@ async function fetchMonthlyAggregations(
 async function buildCategoryStats(
   userId: string,
   startDate: Date,
+  endDate: Date,
   categoryStats: { categoryId: string | null; _sum: { amount: number | null }; _count: number }[],
   prevCategoryStats: { categoryId: string | null; _sum: { amount: number | null } }[],
 ): Promise<CategorySummary[]> {
@@ -131,7 +133,9 @@ async function buildCategoryStats(
       : [],
     prisma.budget.findMany({
       where: {
-        userId, month: startDate, deletedAt: null,
+        userId,
+        month: { gte: startDate, lt: new Date(endDate.getTime() + 1) },
+        deletedAt: null,
         OR: [{ categoryId: { in: categoryIds } }, { categoryId: null }],
       },
     }),
@@ -205,13 +209,28 @@ export async function getTransactionSummary(userId: string, year: number, month:
   const monthlySavingsCount = agg.monthlySavingsAgg._count || 0;
 
   // 3. 카테고리 통계 + 예산 조합
-  const categoryList = await buildCategoryStats(userId, startDate, agg.categoryStats, agg.prevCategoryStats);
+  const categoryList = await buildCategoryStats(userId, startDate, endDate, agg.categoryStats, agg.prevCategoryStats);
 
   // 4. 예산 계산
-  const budgets = await prisma.budget.findMany({
-    where: { userId, month: startDate, deletedAt: null, categoryId: null },
-  });
-  const monthlyBudget = budgets[0]?.amount || 0;
+  const [expenseCategories, budgets, userBudgetSetting] = await Promise.all([
+    prisma.category.findMany({
+      where: { userId, deletedAt: null, type: 'EXPENSE' },
+      select: { id: true, defaultBudget: true },
+    }),
+    prisma.budget.findMany({
+      where: {
+        userId,
+        month: { gte: startDate, lt: new Date(endDate.getTime() + 1) },
+        deletedAt: null,
+      },
+      select: { categoryId: true, amount: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { defaultExpenseBudget: true },
+    }),
+  ]);
+  const monthlyBudget = calculateEffectiveMonthlyBudget(expenseCategories, budgets, userBudgetSetting?.defaultExpenseBudget);
   const budgetUsed = totalExpense;
   const budgetRemaining = Math.max(0, monthlyBudget - budgetUsed);
   const budgetUsagePercent = monthlyBudget > 0
