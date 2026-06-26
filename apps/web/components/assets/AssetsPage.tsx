@@ -11,7 +11,6 @@ import {
   MdFlag,
   MdInfoOutline,
   MdOutlineSavings,
-  MdReceiptLong,
   MdRefresh,
   MdShowChart,
   MdSouthEast,
@@ -97,15 +96,6 @@ interface DailyExpense {
   budgetPaceKrw: number | null;
 }
 
-interface RecentExpense {
-  id: string;
-  date: string;
-  description: string | null;
-  amount: number;
-  categoryName: string;
-  categoryColor: string | null;
-}
-
 interface ExpenseCategoryReport {
   categoryId: string;
   name: string;
@@ -142,7 +132,6 @@ interface AssetReport {
     savingsRate: number | null;
     emergencyMonths: number | null;
     dailyExpenses: DailyExpense[];
-    recentExpenses: RecentExpense[];
     expenseCategories?: ExpenseCategoryReport[];
     topExpenseCategories?: ExpenseCategoryReport[];
     primarySavingsGoal: {
@@ -256,11 +245,6 @@ function monthLabel(month: string): string {
 function dayLabel(date: string): string {
   const [, , day] = date.split('-');
   return `${Number(day)}일`;
-}
-
-function shortDateLabel(date: string): string {
-  const [, month, day] = date.split('-');
-  return `${Number(month)}/${Number(day)}`;
 }
 
 function fullMonthLabel(month: string): string {
@@ -550,9 +534,6 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
   const remainingDailyBudget =
     expenseBudgetRemaining != null && remainingDays > 0 ? expenseBudgetRemaining / remainingDays : null;
   const expenseTrendRows = data.report.dailyExpenses.slice(0, Math.max(1, elapsedDays));
-  const todayExpense = expenseTrendRows[expenseTrendRows.length - 1]?.amount ?? 0;
-  const todayExpenseLabel = current.month === currentMonthKey() ? '오늘' : '마지막 날';
-  const recentSevenDayExpense = expenseTrendRows.slice(-7).reduce((sum, row) => sum + row.amount, 0);
   const latestExpensePace = expenseTrendRows[expenseTrendRows.length - 1]?.budgetPaceKrw ?? null;
   const expensePaceDelta = latestExpensePace == null ? null : current.monthlyExpenseKrw - latestExpensePace;
   const projectedMonthlyExpense = elapsedDays > 0 ? (current.monthlyExpenseKrw / elapsedDays) * totalDaysInSelectedMonth : 0;
@@ -668,16 +649,16 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
   const maxExpenseCategoryAmount = Math.max(1, ...expenseCategories.map((category) => category.amount));
   return (
     <div className="space-y-6 animate-[fadeIn_0.4s_ease-out]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-bg-card text-text-secondary">
             <MdAccountBalanceWallet className="text-2xl" />
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">자산 현황</h1>
+          <h1 className="min-w-0 truncate text-xl font-bold tracking-tight text-text-primary sm:text-3xl">자산 현황</h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none py-2 px-3 gap-2">
+        <div className="flex shrink-0 items-center">
+          <div className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none py-2 px-2 gap-1 sm:px-3 sm:gap-2">
             <button
               className="text-text-secondary hover:text-text-primary transition-colors text-sm sm:text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="이전 달"
@@ -685,7 +666,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
             >
               ◀
             </button>
-            <span className="min-w-[80px] sm:min-w-[120px] text-center text-sm font-semibold text-text-secondary sm:text-base">
+            <span className="min-w-[76px] sm:min-w-[120px] text-center text-sm font-semibold text-text-secondary sm:text-base">
               {fullMonthLabel(month)}
             </span>
             <button
@@ -1004,85 +985,45 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
               <ExpenseCumulativeChart data={expenseTrendRows} hasBudget={data.report.expenseBudgetKrw > 0} />
             </div>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-              <div className="rounded-xl border border-[var(--border)] bg-bg-primary p-4">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div className="text-sm font-bold text-text-primary">카테고리별 지출</div>
-                  <div className="text-xs font-semibold text-text-muted">예산 대비</div>
-                </div>
-                <div className="space-y-4">
-                  {expenseCategories.length === 0 ? (
-                    <div className="py-8 text-center text-sm text-text-muted">이번 달 소비 데이터가 없습니다</div>
-                  ) : (
-                    expenseCategories.map((category) => {
-                      const width =
-                        category.usedPercent == null
-                          ? Math.round((category.amount / maxExpenseCategoryAmount) * 100)
-                          : Math.min(category.usedPercent, 100);
-                      const remaining =
-                        category.budgetKrw == null ? null : category.budgetKrw - category.amount;
-                      return (
-                        <div key={category.categoryId}>
-                          <div className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold">
-                            <span className="min-w-0 truncate text-text-secondary">{category.name}</span>
-                            <span className="shrink-0 tabular-nums text-text-muted">
-                              {money(category.amount)} · {category.usedPercent == null ? '예산 없음' : `${category.usedPercent}%`}
-                            </span>
-                          </div>
-                          <div className="h-3 overflow-hidden rounded-full bg-bg-card">
-                            <div
-                              className="h-full rounded-full"
-                              style={{ width: `${width}%`, backgroundColor: category.color ?? COLORS.expense }}
-                            />
-                          </div>
-                          {remaining != null && (
-                            <div className={`mt-1 text-right text-xs font-bold tabular-nums ${positiveGoodClass(remaining)}`}>
-                              {remaining >= 0 ? `${money(remaining)} 남음` : `${money(Math.abs(remaining))} 초과`}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+            <div className="mt-5 rounded-xl border border-[var(--border)] bg-bg-primary p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="text-sm font-bold text-text-primary">카테고리별 지출</div>
+                <div className="text-xs font-semibold text-text-muted">예산 대비</div>
               </div>
-
-              <div className="rounded-xl border border-[var(--border)] bg-bg-primary p-4">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div className="text-sm font-bold text-text-primary">최근 소비</div>
-                  <MdReceiptLong className="text-lg text-text-muted" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-bg-card px-3 py-3">
-                    <div className="text-xs font-semibold text-text-muted">{todayExpenseLabel}</div>
-                    <div className="mt-2 tabular-nums text-lg font-bold text-text-primary">{money(todayExpense)}</div>
-                  </div>
-                  <div className="rounded-xl bg-bg-card px-3 py-3">
-                    <div className="text-xs font-semibold text-text-muted">최근 7일</div>
-                    <div className="mt-2 tabular-nums text-lg font-bold text-text-primary">{money(recentSevenDayExpense)}</div>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {data.report.recentExpenses.length === 0 ? (
-                    <div className="py-6 text-center text-sm text-text-muted">최근 소비 내역이 없습니다</div>
-                  ) : (
-                    data.report.recentExpenses.map((expense) => (
-                      <div key={expense.id} className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3 first:border-t-0 first:pt-0">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-bold text-text-primary">
-                            {expense.description?.trim() || expense.categoryName}
-                          </div>
-                          <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-text-muted">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: expense.categoryColor ?? COLORS.expense }} />
-                            <span>{expense.categoryName}</span>
-                            <span>{shortDateLabel(expense.date)}</span>
-                          </div>
+              <div className="space-y-4">
+                {expenseCategories.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-text-muted">이번 달 소비 데이터가 없습니다</div>
+                ) : (
+                  expenseCategories.map((category) => {
+                    const width =
+                      category.usedPercent == null
+                        ? Math.round((category.amount / maxExpenseCategoryAmount) * 100)
+                        : Math.min(category.usedPercent, 100);
+                    const remaining =
+                      category.budgetKrw == null ? null : category.budgetKrw - category.amount;
+                    return (
+                      <div key={category.categoryId}>
+                        <div className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold">
+                          <span className="min-w-0 truncate text-text-secondary">{category.name}</span>
+                          <span className="shrink-0 tabular-nums text-text-muted">
+                            {money(category.amount)} · {category.usedPercent == null ? '예산 없음' : `${category.usedPercent}%`}
+                          </span>
                         </div>
-                        <div className="shrink-0 tabular-nums text-sm font-bold text-text-primary">{money(expense.amount)}</div>
+                        <div className="h-3 overflow-hidden rounded-full bg-bg-card">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${width}%`, backgroundColor: category.color ?? COLORS.expense }}
+                          />
+                        </div>
+                        {remaining != null && (
+                          <div className={`mt-1 text-right text-xs font-bold tabular-nums ${positiveGoodClass(remaining)}`}>
+                            {remaining >= 0 ? `${money(remaining)} 남음` : `${money(Math.abs(remaining))} 초과`}
+                          </div>
+                        )}
                       </div>
-                    ))
-                  )}
-                </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </section>
