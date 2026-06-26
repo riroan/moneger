@@ -165,8 +165,8 @@ interface AssetReport {
   };
 }
 
-const CARD = 'rounded-[16px] border border-[var(--border)] bg-bg-card p-4 sm:rounded-[20px] sm:p-5';
-const PANEL = 'rounded-[16px] border border-[var(--border)] bg-bg-secondary/60 p-4 sm:rounded-[20px] sm:p-5';
+const CARD = 'min-w-0 rounded-[16px] border border-[var(--border)] bg-bg-card p-4 sm:rounded-[20px] sm:p-5';
+const PANEL = 'min-w-0 rounded-[16px] border border-[var(--border)] bg-bg-secondary/60 p-4 sm:rounded-[20px] sm:p-5';
 const ICON_BTN =
   'inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-[var(--border)] bg-bg-card px-3 text-text-secondary transition-colors hover:bg-bg-card-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer';
 
@@ -796,9 +796,9 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         <section className={CARD}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-text-muted">자산 변화 원인</h2>
               <p className="mt-1 text-sm text-text-muted">
@@ -807,7 +807,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                   : '전월 데이터가 쌓이면 변화 원인을 분해합니다'}
               </p>
             </div>
-            <div className={`tabular-nums text-right text-xl font-bold ${signedAmountClass(current.totalMomDelta)}`}>
+            <div className={`tabular-nums text-xl font-bold sm:text-right ${signedAmountClass(current.totalMomDelta)}`}>
               {current.totalMomDelta == null ? '-' : signedMoney(current.totalMomDelta)}
             </div>
           </div>
@@ -822,7 +822,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                 const width = Math.round((Math.abs(item.value) / maxDriverAmount) * 100);
                 return (
                   <div key={item.key}>
-                    <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="text-lg" style={{ color: item.color }}>{item.icon}</span>
                         <div className="min-w-0">
