@@ -14,14 +14,14 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String?
-  password  String
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  name                 String?
+  password             String
   defaultExpenseBudget Float?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
 
   transactions          Transaction[]
   categories            Category[]
@@ -135,7 +135,8 @@ model SavingsGoal {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  transactions Transaction[]
+  transactions      Transaction[]
+  brokerageAccounts BrokerageAccount[]
 
   @@index([userId, deletedAt])
 }
@@ -306,14 +307,20 @@ model BrokerageAccount {
   displayName       String
   accountType       String // domestic | overseas | isa | unknown
   baseCurrency      String // KRW 등
+  // 저축 목표 연결(1목표 ↔ N계좌). 계좌는 최대 1목표에 속한다.
+  // 연결되면 총자산 savingsKrw에서 그 목표의 원금을 제외(투자 평가액이 대신 카운트)해
+  // 이중계상을 막는다. 목표 삭제 시 SetNull → 계좌는 다시 미연결.
+  savingsGoalId     String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  connection BrokerageConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  snapshots  BrokerageSnapshot[]
+  connection  BrokerageConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  savingsGoal SavingsGoal?        @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
+  snapshots   BrokerageSnapshot[]
 
   @@unique([connectionId, externalAccountId])
   @@index([connectionId])
+  @@index([savingsGoalId])
 }
 
 // 일별 스냅샷. 멱등 키 = (accountId, date). 금액은 KRW 정규화 + Decimal.

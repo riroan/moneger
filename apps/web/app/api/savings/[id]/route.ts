@@ -5,12 +5,13 @@ import {
   updateSavingsGoalWithPrimary,
   togglePrimarySavingsGoal,
   deleteSavingsGoal,
+  setSavingsGoalLinkedAccounts,
 } from '@/lib/services/savings.service';
 
-// PUT /api/savings/[id] - 저축 목표 수정
+// PUT /api/savings/[id] - 저축 목표 수정 (+ 증권 계좌 연결)
 export const PUT = apiHandlerWithParams<{ id: string }>('update savings goal', async (request: NextRequest, { id }) => {
   const body = await request.json();
-  const { userId, name, icon, targetAmount, targetYear, targetMonth, isPrimary } = body;
+  const { userId, name, icon, targetAmount, targetYear, targetMonth, isPrimary, brokerageAccountIds } = body;
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
@@ -18,6 +19,14 @@ export const PUT = apiHandlerWithParams<{ id: string }>('update savings goal', a
   const existingGoal = await findSavingsGoal(id, userId);
   if (!existingGoal) {
     return errorResponse('Savings goal not found', 404);
+  }
+
+  // 증권 계좌 연결 변경이 포함된 경우: 소유권 검증 후 적용. 실패 시 목표 수정도 막는다.
+  if (Array.isArray(brokerageAccountIds)) {
+    const linkResult = await setSavingsGoalLinkedAccounts(id, userId, brokerageAccountIds);
+    if (!linkResult.ok) {
+      return errorResponse(linkResult.reason, 400);
+    }
   }
 
   const updatedGoal = await updateSavingsGoalWithPrimary(id, userId, {

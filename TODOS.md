@@ -44,3 +44,17 @@
 3. 신규 저장은 항상 최신 키.
 **Depends on:** 증권 연동 PR1a(`BrokerageConnection` + `keyVersion` 컬럼) 선행.
 **Source:** /plan-eng-review 2026-06-24 (codex outside voice).
+
+---
+
+## 투자 이중계상: 과거 월 스냅샷 백필 (P3)
+
+**What:** 증권 연동 시점 ~ 저축↔계좌 링크 기능 적용 전 사이에 cron이 freeze한 `MonthlyAssetSnapshot` 월이 있으면, 그 월들은 링크 제외 로직 이전 값이라 이중계상이 남아 있음. 해당 월만 재계산.
+**Why:** /assets 추세 그래프 연속성. 링크 적용 후 현재 월만 실시간 재계산되므로 과거 freeze 월은 자동 보정 안 됨.
+**현재 상태:** 미구현. **연동(2026-06-24)과 링크 적용이 같은 6월(현재 월=항상 실시간)이면 영향 freeze 월은 0개**일 가능성 큼.
+**Implementation (나중):**
+1. 배포 후 확인: `MonthlyAssetSnapshot` 중 `month >= 증권 첫 스냅샷 월` AND freeze된 행이 있는지 1줄 쿼리.
+2. 있으면 그 월들에 `upsertMonthlyAssetSnapshot(userId, monthKey)` 재실행(링크 제외 반영).
+3. 없으면 이 TODO 닫음.
+**Depends on:** 투자 이중계상 링크 기능 머지 후.
+**Source:** /plan-eng-review 2026-06-27 (codex outside voice — frozen-month 지적).

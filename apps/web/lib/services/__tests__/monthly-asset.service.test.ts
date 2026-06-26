@@ -53,7 +53,7 @@ describe('getMonthlyAssetReport', () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: null });
     // /savings 총 저축액과 동일: 목표들의 currentAmount 합
     (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([
-      { id: 'g1', name: '목표', currentAmount: 33000, targetAmount: 100000, targetYear: 2030, targetMonth: 1, isPrimary: true },
+      { id: 'g1', name: '목표', currentAmount: 33000, targetAmount: 100000, targetYear: 2030, targetMonth: 1, isPrimary: true, brokerageAccounts: [] },
     ]);
   });
 
@@ -115,5 +115,121 @@ describe('getMonthlyAssetReport', () => {
       '교통',
       '문화',
     ]);
+  });
+});
+
+// 투자 이중계상 제거: 저축 목표 ↔ 증권 계좌 링크
+//   연결 목표는 유효 스냅샷(totalEquityKrw>0)이 있을 때만 savingsKrw에서 제외되고,
+//   그 평가액은 investmentKrw로 카운트된다. 유효 스냅샷이 없으면 원금(currentAmount) fallback.
+describe('investment dedup (savingsGoal ↔ brokerage link)', () => {
+  function brokerageSnapshotRow(opts: {
+    accountId?: string;
+    savingsGoalId?: string | null;
+    totalEquityKrw: number;
+    date: Date;
+  }) {
+    const { accountId = 'acc-1', savingsGoalId = null, totalEquityKrw, date } = opts;
+    return {
+      accountId,
+      date,
+      asOf: date,
+      cashKrw: 0,
+      totalEquityKrw,
+      positionsValueKrw: totalEquityKrw,
+      account: {
+        displayName: '연동 계좌',
+        savingsGoalId,
+        connection: { broker: 'KIS' },
+      },
+      positions: [],
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (prisma.transaction.aggregate as jest.Mock).mockResolvedValue({ _sum: { amount: 0 }, _count: 0 });
+    (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.transaction.groupBy as jest.Mock).mockResolvedValue([]);
+    (prisma.assetSnapshot.aggregate as jest.Mock).mockResolvedValue({ _sum: { amount: 0 } });
+    (prisma.category.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: null });
+    (prisma.monthlyAssetSnapshot.findMany as jest.Mock).mockResolvedValue([]);
+  });
+
+  it('연결 목표 + 유효 스냅샷: savingsKrw에서 제외, 평가액은 investmentKrw로 1회만 카운트', async () => {
+    const endMonthKey = kstMonthKey(new Date());
+    const [currentMonth] = buildMonthWindow(endMonthKey, 1);
+    (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([
+      { id: 'g1', name: '주식', currentAmount: 33000, targetAmount: 100000, targetYear: 2030, targetMonth: 1, isPrimary: true, brokerageAccounts: [{ id: 'acc-1' }] },
+    ]);
+    (prisma.brokerageSnapshot.findMany as jest.Mock).mockResolvedValue([
+      brokerageSnapshotRow({ savingsGoalId: 'g1', totalEquityKrw: 50000, date: currentMonth }),
+    ]);
+
+    const report = await getMonthlyAssetReport('user-1', endMonthKey, 1);
+
+    // 이중계상이라면 savings 33000 + investment 50000 = 83000. 제외 후:
+    expect(report.current.savingsKrw).toBe(0);
+    expect(report.current.investmentKrw).toBe(50000);
+    expect(report.current.totalAssetKrw).toBe(50000);
+    // 원금/평가액/손익 페어링
+    const goal = report.report.savingsGoals[0];
+    expect(goal.currentAmount).toBe(33000);
+    expect(goal.marketValueKrw).toBe(50000);
+    expect(goal.pnlKrw).toBe(17000);
+    expect(goal.linkedAccountIds).toEqual(['acc-1']);
+  });
+
+  it('연결 목표인데 스냅샷 없음: 원금(currentAmount) fallback — 돈이 사라지지 않는다', async () => {
+    const endMonthKey = kstMonthKey(new Date());
+    (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([
+      { id: 'g1', name: '주식', currentAmount: 33000, targetAmount: 100000, targetYear: 2030, targetMonth: 1, isPrimary: true, brokerageAccounts: [{ id: 'acc-1' }] },
+    ]);
+    (prisma.brokerageSnapshot.findMany as jest.Mock).mockResolvedValue([]); // 아직 sync 전
+
+    const report = await getMonthlyAssetReport('user-1', endMonthKey, 1);
+
+    expect(report.current.savingsKrw).toBe(33000); // fallback
+    expect(report.current.investmentKrw).toBe(0);
+    const goal = report.report.savingsGoals[0];
+    expect(goal.linkedAccountIds).toEqual(['acc-1']); // 연결은 됨(동기화 중)
+    expect(goal.marketValueKrw).toBeNull();
+    expect(goal.pnlKrw).toBeNull();
+  });
+
+  it('연결 계좌 스냅샷이 0원(실패): 제외 트리거 안 함 — 원금 fallback', async () => {
+    const endMonthKey = kstMonthKey(new Date());
+    const [currentMonth] = buildMonthWindow(endMonthKey, 1);
+    (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([
+      { id: 'g1', name: '주식', currentAmount: 33000, targetAmount: 100000, targetYear: 2030, targetMonth: 1, isPrimary: true, brokerageAccounts: [{ id: 'acc-1' }] },
+    ]);
+    (prisma.brokerageSnapshot.findMany as jest.Mock).mockResolvedValue([
+      brokerageSnapshotRow({ savingsGoalId: 'g1', totalEquityKrw: 0, date: currentMonth }),
+    ]);
+
+    const report = await getMonthlyAssetReport('user-1', endMonthKey, 1);
+
+    expect(report.current.savingsKrw).toBe(33000); // 유효성 기준 미달 → fallback
+    expect(report.report.savingsGoals[0].marketValueKrw).toBeNull();
+  });
+
+  it('비연결 목표는 변경 후에도 savingsKrw에 그대로 합산된다 (회귀 방지)', async () => {
+    const endMonthKey = kstMonthKey(new Date());
+    const [currentMonth] = buildMonthWindow(endMonthKey, 1);
+    (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([
+      { id: 'g1', name: '비상금', currentAmount: 33000, targetAmount: 100000, targetYear: 2030, targetMonth: 1, isPrimary: true, brokerageAccounts: [] },
+    ]);
+    // 다른 사용자/미연결 계좌 스냅샷이 있어도 g1과 무관
+    (prisma.brokerageSnapshot.findMany as jest.Mock).mockResolvedValue([
+      brokerageSnapshotRow({ accountId: 'acc-x', savingsGoalId: null, totalEquityKrw: 50000, date: currentMonth }),
+    ]);
+
+    const report = await getMonthlyAssetReport('user-1', endMonthKey, 1);
+
+    expect(report.current.savingsKrw).toBe(33000);
+    expect(report.current.investmentKrw).toBe(50000);
+    expect(report.report.savingsGoals[0].marketValueKrw).toBeNull();
+    expect(report.report.savingsGoals[0].linkedAccountIds).toEqual([]);
   });
 });

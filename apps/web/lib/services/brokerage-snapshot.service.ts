@@ -227,6 +227,7 @@ export interface InvestmentsOverview {
       id: string;
       displayName: string;
       accountType: string;
+      savingsGoalId: string | null;
       asOf: string | null;
       cashKrw: string | null;
       cashBalances: Money[];
@@ -268,6 +269,7 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
             id: true,
             displayName: true,
             accountType: true,
+            savingsGoalId: true,
             snapshots: {
               orderBy: { date: 'desc' },
               take: 2, // [0] 최신, [1] 전일 — 전일 대비 계산용
@@ -355,6 +357,7 @@ export async function getInvestmentsOverview(userId: string): Promise<Investment
         id: a.id,
         displayName: a.displayName,
         accountType: a.accountType,
+        savingsGoalId: a.savingsGoalId,
         asOf: snap?.asOf ? snap.asOf.toISOString() : null,
         cashKrw: decStr(snap?.cashKrw),
         cashBalances,

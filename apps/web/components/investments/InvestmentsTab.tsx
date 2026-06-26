@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatCurrency } from '@moneger/shared';
+import { pnlClass, pnlMark, signedCurrency, signedPercent } from '@/lib/utils/pnl';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import {
   FaBuilding,
@@ -90,16 +91,6 @@ const FIELD =
   'w-full rounded-lg border border-[var(--border)] bg-bg-secondary px-3 py-2.5 text-base text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent-blue';
 const LABEL = 'block text-xs font-medium text-text-secondary mb-1.5';
 
-function pnlClass(v: number): string {
-  return v > 0 ? 'text-accent-coral' : v < 0 ? 'text-accent-blue' : 'text-text-muted';
-}
-function pnlMark(v: number): string {
-  return v > 0 ? '▲' : v < 0 ? '▼' : '·';
-}
-function signedCurrency(v: number): string {
-  const s = formatCurrency(Math.abs(v));
-  return v > 0 ? `+${s}` : v < 0 ? `-${s}` : s;
-}
 function brokerName(broker: string): string {
   if (broker === 'KIS') return '한국투자증권';
   if (broker === 'TOSS') return '토스증권';
@@ -140,10 +131,6 @@ function priceDayChange(
   const abs = Math.abs(diff);
   const amount = currency === 'KRW' ? formatCurrency(Math.round(abs)) : abs.toFixed(2);
   return { rate, delta: `${sign}${amount}` };
-}
-function signedPercent(rate: number): string {
-  const pct = rate * 100;
-  return `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
 }
 /** 1주 가격 표기. KRW는 ₩ 포맷, 그 외는 원통화 값 + 통화 코드. */
 function formatSharePrice(lastPrice: string, currency: string): string {

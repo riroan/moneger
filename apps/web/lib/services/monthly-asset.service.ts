@@ -64,6 +64,7 @@ export interface MonthlyInvestmentAccount {
   cashKrw: number;
   positionsValueKrw: number;
   totalEquityKrw: number;
+  savingsGoalId: string | null;
 }
 
 export interface MonthlyInvestmentDailyBalance {
@@ -84,6 +85,12 @@ export interface MonthlySavingsGoalReport {
   isPrimary: boolean;
   progressPercent: number;
   monthlyDepositKrw: number;
+  // 증권 계좌 연결(원금 vs 평가액). 연결 계좌 ids, 평가액 = Σ 연결계좌 totalEquityKrw,
+  // 손익 = 평가액 − 원금. 연결됐지만 유효 스냅샷이 없으면 marketValueKrw/pnlKrw = null
+  // (동기화 중 상태). 미연결이면 linkedAccountIds = [], 둘 다 null.
+  linkedAccountIds: string[];
+  marketValueKrw: number | null;
+  pnlKrw: number | null;
 }
 
 export interface MonthlyDailyExpense {
@@ -221,13 +228,42 @@ async function getCashAt(userId: string, monthEnd: Date): Promise<number> {
   return (incomeAgg._sum.amount ?? 0) - (expenseAgg._sum.amount ?? 0) - (savingsAgg._sum.amount ?? 0);
 }
 
-// /savings 페이지의 "총 저축액"과 동일: 저축 목표들의 currentAmount 합
-async function getSavingsTotalAt(userId: string): Promise<number> {
+// 저축 목표들의 currentAmount 합. 단, 증권 계좌에 연결되어 투자 평가액(investmentKrw)으로
+// 이미 카운트되는 목표(excludedGoalIds)는 원금을 제외해 이중계상을 막는다.
+// 연결됐지만 유효 스냅샷이 없는 목표는 excludedGoalIds에 없으므로 원금 fallback으로 합산된다.
+async function getSavingsTotalAt(userId: string, excludedGoalIds: Set<string>): Promise<number> {
   const goals = await prisma.savingsGoal.findMany({
     where: { userId, deletedAt: null },
-    select: { currentAmount: true },
+    select: { id: true, currentAmount: true },
   });
-  return goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+  return goals.reduce(
+    (sum, goal) => (excludedGoalIds.has(goal.id) ? sum : sum + goal.currentAmount),
+    0
+  );
+}
+
+// 연결된 저축 목표별 증권 평가액 집계.
+//
+//   BrokerageAccount.savingsGoalId ──┐ (1목표 ↔ N계좌)
+//                                    ▼
+//   goalId ──> { marketValueKrw = Σ 연결계좌 totalEquityKrw(>0), accountIds }
+//
+// 유효 스냅샷(totalEquityKrw > 0)이 있는 연결 계좌만 합산한다. 맵의 key(goalId)는
+// savingsKrw 총합에서 제외해야 한다(평가액이 대신 카운트). 유효 스냅샷이 없으면 맵에
+// 없음 → 그 목표는 원금(currentAmount)으로 fallback되어 돈이 사라지지 않는다.
+function linkedGoalValuations(
+  accounts: MonthlyInvestmentAccount[]
+): Map<string, { marketValueKrw: number; accountIds: string[] }> {
+  const byGoal = new Map<string, { marketValueKrw: number; accountIds: string[] }>();
+  for (const account of accounts) {
+    if (!account.savingsGoalId) continue;
+    if (account.totalEquityKrw <= 0) continue; // 유효성: 0원/실패 스냅샷은 제외 트리거 안 함
+    const entry = byGoal.get(account.savingsGoalId) ?? { marketValueKrw: 0, accountIds: [] };
+    entry.marketValueKrw += account.totalEquityKrw;
+    entry.accountIds.push(account.accountId);
+    byGoal.set(account.savingsGoalId, entry);
+  }
+  return byGoal;
 }
 
 async function getOtherAssetsAt(userId: string, monthKey: Date): Promise<number> {
@@ -255,6 +291,7 @@ async function getInvestmentAt(userId: string, monthEnd: Date) {
       account: {
         select: {
           displayName: true,
+          savingsGoalId: true,
           connection: {
             select: {
               broker: true,
@@ -313,6 +350,7 @@ async function getInvestmentAt(userId: string, monthEnd: Date) {
       cashKrw: roundWon(num(row.cashKrw)),
       positionsValueKrw: roundWon(num(row.positionsValueKrw)),
       totalEquityKrw: roundWon(accountTotalKrw),
+      savingsGoalId: row.account.savingsGoalId,
     });
     for (const position of row.positions) {
       const pnl = num(position.unrealizedPnl);
@@ -509,13 +547,15 @@ async function computeSnapshot(
 ): Promise<MonthlyAssetSnapshotData> {
   const { year, month } = ymFromMonthKey(monthKey);
   const monthEnd = kstMonthEndUTC(year, month);
-  const [cash, savings, other, investment, flow] = await Promise.all([
+  const [cash, other, investment, flow] = await Promise.all([
     getCashAt(userId, monthEnd),
-    getSavingsTotalAt(userId),
     getOtherAssetsAt(userId, monthKey),
     getInvestmentAt(userId, monthEnd),
     getMonthlyFlow(userId, monthKey),
   ]);
+  // 투자 평가액으로 카운트되는 연결 목표는 savings 총합에서 제외(이중계상 방지).
+  const excludedGoalIds = new Set(linkedGoalValuations(investment.accounts).keys());
+  const savings = await getSavingsTotalAt(userId, excludedGoalIds);
 
   const cashKrw = roundWon(cash);
   const savingsKrw = roundWon(savings);
@@ -775,6 +815,7 @@ async function getCurrentMonthReportDetail(
         targetYear: true,
         targetMonth: true,
         isPrimary: true,
+        brokerageAccounts: { select: { id: true } },
       },
     }),
     prisma.transaction.groupBy({
@@ -799,18 +840,31 @@ async function getCurrentMonthReportDetail(
       .filter((row) => row.savingsGoalId != null)
       .map((row) => [row.savingsGoalId!, roundWon(row._sum.amount ?? 0)])
   );
-  const savingsGoalReports = savingsGoals.map((goal) => ({
-    id: goal.id,
-    name: goal.name,
-    currentAmount: roundWon(goal.currentAmount),
-    targetAmount: roundWon(goal.targetAmount),
-    targetYear: goal.targetYear,
-    targetMonth: goal.targetMonth,
-    isPrimary: goal.isPrimary,
-    progressPercent:
-      goal.targetAmount > 0 ? Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100)) : 0,
-    monthlyDepositKrw: depositByGoal.get(goal.id) ?? 0,
-  }));
+  // 연결 목표 평가액: 유효 스냅샷이 있는 연결 계좌만. 연결됐지만 유효 스냅샷 없으면
+  // marketValueKrw=null(동기화 중)로 두어 UI가 원금만 표시한다.
+  const goalValuations = linkedGoalValuations(investment.accounts);
+  const savingsGoalReports = savingsGoals.map((goal) => {
+    const currentAmount = roundWon(goal.currentAmount);
+    const linkedAccountIds = goal.brokerageAccounts.map((account) => account.id);
+    const valuation = goalValuations.get(goal.id);
+    const marketValueKrw = valuation ? roundWon(valuation.marketValueKrw) : null;
+    const pnlKrw = marketValueKrw != null ? marketValueKrw - currentAmount : null;
+    return {
+      id: goal.id,
+      name: goal.name,
+      currentAmount,
+      targetAmount: roundWon(goal.targetAmount),
+      targetYear: goal.targetYear,
+      targetMonth: goal.targetMonth,
+      isPrimary: goal.isPrimary,
+      progressPercent:
+        goal.targetAmount > 0 ? Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100)) : 0,
+      monthlyDepositKrw: depositByGoal.get(goal.id) ?? 0,
+      linkedAccountIds,
+      marketValueKrw,
+      pnlKrw,
+    };
+  });
   const primaryGoal = savingsGoalReports.find((goal) => goal.isPrimary) ?? savingsGoalReports[0] ?? null;
 
   const expenseCategories = expenseRows

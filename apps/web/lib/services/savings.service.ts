@@ -189,3 +189,47 @@ export async function getActiveSavingsGoalsWithProgress(userId: string) {
     };
   });
 }
+
+/**
+ * 저축 목표에 증권 계좌 연결 설정 (1목표 ↔ N계좌).
+ *
+ *   accountIds(새 목록) ──> 이 목표에 연결 (다른 목표에 있었어도 이동)
+ *   기존에 이 목표였지만 목록에 없는 계좌 ──> 연결 해제(savingsGoalId=null)
+ *
+ * 모든 계좌는 해당 유저 소유(connection.userId)여야 한다. 하나라도 아니면 거부.
+ * 연결되면 monthly-asset.service가 그 목표의 원금을 savingsKrw에서 제외(평가액이 대신
+ * 카운트)해 이중계상을 막는다.
+ */
+export async function setSavingsGoalLinkedAccounts(
+  goalId: string,
+  userId: string,
+  accountIds: string[]
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const unique = [...new Set(accountIds)];
+
+  if (unique.length > 0) {
+    // 소유권 검증: 모든 계좌가 이 유저의 (삭제 안 된) connection 소속이어야 한다.
+    const owned = await prisma.brokerageAccount.count({
+      where: { id: { in: unique }, connection: { userId, deletedAt: null } },
+    });
+    if (owned !== unique.length) {
+      return { ok: false, reason: 'One or more brokerage accounts do not belong to the user' };
+    }
+  }
+
+  const clearWhere =
+    unique.length > 0
+      ? { savingsGoalId: goalId, id: { notIn: unique } }
+      : { savingsGoalId: goalId };
+
+  await prisma.$transaction([
+    // 이 목표에서 빠진 계좌 연결 해제
+    prisma.brokerageAccount.updateMany({ where: clearWhere, data: { savingsGoalId: null } }),
+    // 새 목록의 계좌를 이 목표에 연결
+    ...(unique.length > 0
+      ? [prisma.brokerageAccount.updateMany({ where: { id: { in: unique } }, data: { savingsGoalId: goalId } })]
+      : []),
+  ]);
+
+  return { ok: true };
+}

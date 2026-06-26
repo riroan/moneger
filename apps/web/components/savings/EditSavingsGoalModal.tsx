@@ -18,9 +18,17 @@ interface SavingsGoal {
   monthlyRequired: number;
 }
 
+interface BrokerageAccountOption {
+  id: string;
+  displayName: string;
+  broker: string;
+  savingsGoalId: string | null;
+}
+
 interface EditSavingsGoalModalProps {
   isOpen: boolean;
   goal: SavingsGoal | null;
+  userId: string;
   onClose: () => void;
   onSave: (goal: {
     id: string;
@@ -29,6 +37,7 @@ interface EditSavingsGoalModalProps {
     targetAmount: number;
     targetYear: number;
     targetMonth: number;
+    brokerageAccountIds: string[];
   }) => void;
 }
 
@@ -40,7 +49,7 @@ function parseTargetDate(targetDate: string): { year: number; month: number } {
   return { year: new Date().getFullYear() + 1, month: 12 };
 }
 
-export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave }: EditSavingsGoalModalProps) {
+export default function EditSavingsGoalModal({ isOpen, goal, userId, onClose, onSave }: EditSavingsGoalModalProps) {
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('home');
   const [targetAmount, setTargetAmount] = useState('');
@@ -48,6 +57,9 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave }: 
   const [targetYear, setTargetYear] = useState(new Date().getFullYear() + 1);
   const [targetMonth, setTargetMonth] = useState(12);
   const [isSaving, setIsSaving] = useState(false);
+  // 증권 계좌 연결(1목표 ↔ N계좌). 전체 계좌 목록 + 이 목표에 연결할 계좌 선택.
+  const [brokerageAccounts, setBrokerageAccounts] = useState<BrokerageAccountOption[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
 
   const [nameError, setNameError] = useState('');
   const [targetAmountError, setTargetAmountError] = useState('');
@@ -87,6 +99,45 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave }: 
     }
   }, [goal, isOpen]);
 
+  // 증권 계좌 목록 로드 (/api/brokerage/overview 재사용). 이 목표에 이미 연결된 계좌를 선택 상태로 초기화.
+  useEffect(() => {
+    if (!goal || !isOpen) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`/api/brokerage/overview?userId=${userId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        const list: BrokerageAccountOption[] = (data.data?.connections ?? []).flatMap(
+          (connection: {
+            broker: string;
+            accounts?: Array<{ id: string; displayName: string; savingsGoalId: string | null }>;
+          }) =>
+            (connection.accounts ?? []).map((account) => ({
+              id: account.id,
+              displayName: account.displayName,
+              broker: connection.broker,
+              savingsGoalId: account.savingsGoalId,
+            }))
+        );
+        if (cancelled) return;
+        setBrokerageAccounts(list);
+        setSelectedAccountIds(list.filter((account) => account.savingsGoalId === goal.id).map((account) => account.id));
+      } catch {
+        // 연결 UI는 보조 — 실패해도 목표 수정은 가능.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [goal, isOpen, userId]);
+
+  const toggleAccount = (accountId: string) => {
+    setSelectedAccountIds((prev) =>
+      prev.includes(accountId) ? prev.filter((id) => id !== accountId) : [...prev, accountId]
+    );
+  };
+
   const handleSave = async () => {
     if (!goal) return;
 
@@ -118,6 +169,7 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave }: 
         targetAmount: targetNum,
         targetYear,
         targetMonth,
+        brokerageAccountIds: selectedAccountIds,
       });
       onClose();
     } finally {
@@ -232,6 +284,52 @@ export default function EditSavingsGoalModal({ isOpen, goal, onClose, onSave }: 
           <p className="text-xs text-text-muted mt-1.5">
             저축액은 &apos;저축하기&apos; 버튼으로만 변경할 수 있습니다
           </p>
+        </div>
+
+        {/* 증권 계좌 연결 (원금 vs 평가액) */}
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
+            증권 계좌 연결
+          </label>
+          {brokerageAccounts.length === 0 ? (
+            <div className="rounded-[12px] border border-[var(--border)] bg-bg-secondary p-4 text-sm text-text-muted">
+              연결된 증권 계좌가 없어요.
+              <a href="/investments" className="text-accent-blue hover:underline ml-1">
+                증권 연결 설정으로 →
+              </a>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {brokerageAccounts.map((account) => {
+                  const isSelected = selectedAccountIds.includes(account.id);
+                  const takenByOther =
+                    account.savingsGoalId != null && account.savingsGoalId !== goal.id && !isSelected;
+                  return (
+                    <button
+                      key={account.id}
+                      type="button"
+                      onClick={() => toggleAccount(account.id)}
+                      className={`min-h-[44px] flex flex-col items-start justify-center rounded-[12px] px-3 py-2 text-left transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-accent-blue/20 text-accent-blue'
+                          : 'bg-bg-secondary text-text-secondary hover:bg-bg-card-hover'
+                      }`}
+                    >
+                      <span className="text-sm font-medium truncate w-full">{account.displayName}</span>
+                      <span className="text-[10px] text-text-muted truncate w-full">
+                        {account.broker}
+                        {takenByOther ? ' · 다른 목표 연결됨' : ''}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-text-muted mt-2">
+                연결하면 이 목표의 원금이 자산 합계에서 중복 계산되지 않고, 평가액·손익이 함께 표시됩니다.
+              </p>
+            </>
+          )}
         </div>
 
         {/* 목표 날짜 */}

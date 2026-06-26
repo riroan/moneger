@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { formatNumber } from '@/utils/formatters';
+import { formatCurrency } from '@moneger/shared';
+import { pnlClass, pnlMark, signedCurrency, signedPercent } from '@/lib/utils/pnl';
 import { FaPlus, FaGift, FaHeartbeat, FaStar, FaRegStar } from 'react-icons/fa';
 import { MdSavings, MdTrendingUp, MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices, MdEdit, MdDelete, MdCalendarToday, MdCheckCircle } from 'react-icons/md';
 
@@ -53,6 +55,11 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
   const [depositGoal, setDepositGoal] = useState<SavingsGoal | null>(null);
   const [deleteTargetGoal, setDeleteTargetGoal] = useState<SavingsGoal | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // 연결된 증권 계좌의 평가액(goalId → { 평가액 합, 유효 스냅샷 여부 }).
+  // key가 있으면 "연결됨", hasValue=false면 "동기화 중"(아직 유효 스냅샷 없음).
+  const [goalValuations, setGoalValuations] = useState<
+    Record<string, { marketValueKrw: number; hasValue: boolean }>
+  >({});
 
   const fetchSavingsGoals = useCallback(async () => {
     try {
@@ -68,9 +75,38 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
     }
   }, [userId]);
 
+  // 증권 연동 평가액을 목표별로 집계. /api/brokerage/overview를 단일 소스로 재사용.
+  const fetchGoalValuations = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/brokerage/overview?userId=${userId}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      const accounts: Array<{ savingsGoalId: string | null; totalEquityKrw: string | null }> =
+        (data.data?.connections ?? []).flatMap(
+          (connection: { accounts?: Array<{ savingsGoalId: string | null; totalEquityKrw: string | null }> }) =>
+            connection.accounts ?? []
+        );
+      const byGoal: Record<string, { marketValueKrw: number; hasValue: boolean }> = {};
+      for (const account of accounts) {
+        if (!account.savingsGoalId) continue;
+        const equity = Number(account.totalEquityKrw ?? 0);
+        const entry = byGoal[account.savingsGoalId] ?? { marketValueKrw: 0, hasValue: false };
+        if (Number.isFinite(equity) && equity > 0) {
+          entry.marketValueKrw += equity;
+          entry.hasValue = true;
+        }
+        byGoal[account.savingsGoalId] = entry; // key 존재 = 연결됨
+      }
+      setGoalValuations(byGoal);
+    } catch {
+      // 평가액은 보조 정보 — 실패해도 목표 카드는 정상 표시.
+    }
+  }, [userId]);
+
   useEffect(() => {
     fetchSavingsGoals();
-  }, [fetchSavingsGoals]);
+    fetchGoalValuations();
+  }, [fetchSavingsGoals, fetchGoalValuations]);
 
   const totalSavings = savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
   const totalTarget = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
@@ -113,6 +149,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
     targetAmount: number;
     targetYear: number;
     targetMonth: number;
+    brokerageAccountIds: string[];
   }) => {
     try {
       const response = await fetch(`/api/savings/${goalData.id}`, {
@@ -122,7 +159,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
       });
 
       if (response.ok) {
-        await fetchSavingsGoals();
+        await Promise.all([fetchSavingsGoals(), fetchGoalValuations()]);
         onDataChange?.();
       }
     } catch (error) {
@@ -290,6 +327,11 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
             <div className="flex flex-col gap-3">
               {savingsGoals.map((goal) => {
                 const IconComponent = getIconComponent(goal.icon);
+                const valuation = goalValuations[goal.id];
+                const isLinked = valuation != null;
+                const hasValue = valuation?.hasValue ?? false;
+                const marketValue = valuation?.marketValueKrw ?? 0;
+                const pnl = marketValue - goal.currentAmount;
                 return (
                   <div
                     key={goal.id}
@@ -319,6 +361,11 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                           {goal.isPrimary && (
                             <span className="text-xs text-amber-400 font-medium shrink-0">대표</span>
                           )}
+                          {isLinked && (
+                            <span className="text-[10px] sm:text-xs font-medium rounded-lg px-2 py-0.5 bg-accent-blue/20 text-accent-blue shrink-0">
+                              연동
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-text-muted mt-0.5 whitespace-nowrap">{goal.targetDate}</p>
                       </div>
@@ -333,13 +380,35 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                       </div>
                     </div>
 
-                    {/* 진행률 바 */}
+                    {/* 진행률 바 (원금/목표 기준 — 비연결 목표와 의미 동일) */}
                     <div className="w-full h-2 bg-bg-card rounded-full overflow-hidden mb-3">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-accent-mint to-accent-blue transition-all duration-300"
                         style={{ width: `${Math.min(goal.progressPercent, 100)}%` }}
                       />
                     </div>
+
+                    {/* 연동 목표: 원금(위 currentAmount) 대비 평가액·손익 보조줄.
+                        손익 색/마크는 InvestmentsTab과 동일 컨벤션(pnl 유틸 재사용). */}
+                    {isLinked && (
+                      <div className="flex items-center justify-between gap-2 mb-3 text-xs sm:text-sm tabular-nums overflow-hidden">
+                        {hasValue ? (
+                          <>
+                            <span className="text-text-secondary truncate">
+                              평가액 {formatCurrency(marketValue)}
+                            </span>
+                            <span className={`font-medium shrink-0 whitespace-nowrap ${pnlClass(pnl)}`}>
+                              {pnlMark(pnl)} {signedCurrency(pnl)}
+                              {goal.currentAmount > 0 && (
+                                <span className="ml-1 opacity-70">{signedPercent(pnl / goal.currentAmount)}</span>
+                              )}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-text-muted">평가액 동기화 중…</span>
+                        )}
+                      </div>
+                    )}
 
                     {/* 하단: 저축하기 + 편집/삭제 | 이번 달 상태 */}
                     <div className="flex items-center justify-between gap-2 pt-3 border-t border-[var(--border)] overflow-hidden">
@@ -528,6 +597,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
       <EditSavingsGoalModal
         isOpen={isEditModalOpen}
         goal={selectedGoal}
+        userId={userId}
         onClose={() => {
           setIsEditModalOpen(false);
           setSelectedGoal(null);
