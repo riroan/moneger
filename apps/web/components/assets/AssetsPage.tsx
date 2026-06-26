@@ -341,12 +341,6 @@ function checkToneIcon(tone: CheckTone) {
   return <MdFlag />;
 }
 
-function sourceStatusLabel(snapshot: Snapshot): string {
-  if (!snapshot.stored) return '실시간 계산';
-  if (snapshot.sourceStatus === 'cron') return '월말 자동 저장';
-  return '저장됨';
-}
-
 export default function AssetsPage({ userId }: AssetsPageProps) {
   const [month, setMonth] = useState(currentMonthKey);
   const [selectedReport, setSelectedReport] = useState<'expense' | 'savings' | 'investment'>('expense');
@@ -777,9 +771,6 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
               수입, 소비, 저축, 투자 변동을 한 번에 확인합니다
             </p>
           </div>
-          <span className="rounded-xl bg-bg-secondary px-3 py-1.5 text-xs font-bold text-text-muted">
-            {fullMonthLabel(current.month)}
-          </span>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {monthlyStatusItems.map((item) => (
@@ -800,9 +791,6 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
               {elapsedDays}/{totalDaysInSelectedMonth}일 기준으로 바로 확인할 지표입니다
             </p>
           </div>
-          <span className="rounded-xl bg-bg-secondary px-3 py-1.5 text-xs font-bold text-text-muted">
-            상태
-          </span>
         </div>
         <div className="mt-5 grid gap-0 overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-2 lg:grid-cols-4">
           {monthChecks.map((item, index) => (
@@ -884,11 +872,6 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                 {previousSnapshot ? `${monthLabel(previousSnapshot.month)} 대비` : '전월 스냅샷 대기 중'}
               </p>
             </div>
-            <span className={`rounded-xl px-3 py-1.5 text-xs font-bold ${
-              current.stored ? 'bg-accent-mint/15 text-accent-mint' : 'bg-bg-secondary text-text-muted'
-            }`}>
-              {sourceStatusLabel(current)}
-            </span>
           </div>
 
           <div className="mt-5 grid gap-3">

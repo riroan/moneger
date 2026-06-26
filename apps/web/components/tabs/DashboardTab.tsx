@@ -164,7 +164,7 @@ export default function DashboardTab({
 
         {/* 가운데: 차트/캘린더 */}
         <div
-          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-2 p-4"
+          className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] order-3 p-4 lg:order-2"
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
@@ -214,7 +214,7 @@ export default function DashboardTab({
         </div>
 
         {/* 오른쪽: 증권 자산 + 최근 내역 */}
-        <div className="order-3 flex flex-col gap-4 self-start">
+        <div className="order-2 flex flex-col gap-4 self-start lg:order-3">
           <InvestmentsSummaryCard userId={userId || ''} />
 
           <div

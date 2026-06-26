@@ -728,7 +728,14 @@ async function getCurrentMonthReportDetail(
       _sum: { amount: true },
     }),
     prisma.budget.findMany({
-      where: { userId, deletedAt: null, month: startDate },
+      where: {
+        userId,
+        deletedAt: null,
+        month: {
+          gte: startDate,
+          lt: new Date(endDate.getTime() + 1),
+        },
+      },
       select: { categoryId: true, amount: true },
     }),
     prisma.savingsGoal.findMany({

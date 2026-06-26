@@ -8,7 +8,16 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useOutsideClick, useBodyScrollLock } from '@/hooks';
 import type { Category, Budget } from '@/types';
-import { MdDarkMode, MdLightMode, MdDashboard, MdLogout, MdPerson, MdCategory, MdAccountBalanceWallet } from 'react-icons/md';
+import {
+  MdAccountBalanceWallet,
+  MdBarChart,
+  MdCategory,
+  MdDarkMode,
+  MdDashboard,
+  MdLightMode,
+  MdLogout,
+  MdPerson,
+} from 'react-icons/md';
 import Footer from '@/components/layout/Footer';
 import { AccountTab, CategoryTab, BudgetTab } from '@/components/settings';
 import type { CategoryFormData } from '@/components/settings';
@@ -401,6 +410,24 @@ export default function SettingsPage() {
                       }}
                     >
                       <span className="flex items-center gap-2"><MdDashboard className="text-lg" /> 대시보드</span>
+                    </button>
+                    <button
+                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        router.push('/assets');
+                      }}
+                    >
+                      <span className="flex items-center gap-2"><MdAccountBalanceWallet className="text-lg" /> 자산 현황</span>
+                    </button>
+                    <button
+                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        router.push('/analytics');
+                      }}
+                    >
+                      <span className="flex items-center gap-2"><MdBarChart className="text-lg" /> 소비 분석</span>
                     </button>
                     <button
                       className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
