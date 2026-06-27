@@ -27,7 +27,7 @@ export default function SavingsPage() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout requiredFeature="SAVINGS">
       <SavingsTab userId={userId} onDataChange={refreshData} />
     </MainLayout>
   );

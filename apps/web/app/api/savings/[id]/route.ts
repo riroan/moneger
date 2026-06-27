@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, validateUserId, apiHandlerWithParams } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import {
   findSavingsGoal,
   updateSavingsGoalWithPrimary,
@@ -15,6 +16,8 @@ export const PUT = apiHandlerWithParams<{ id: string }>('update savings goal', a
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'SAVINGS');
+  if (featureError) return featureError;
 
   const existingGoal = await findSavingsGoal(id, userId);
   if (!existingGoal) {
@@ -43,6 +46,8 @@ export const PATCH = apiHandlerWithParams<{ id: string }>('update primary saving
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'SAVINGS');
+  if (featureError) return featureError;
 
   const existingGoal = await findSavingsGoal(id, userId);
   if (!existingGoal) {
@@ -61,6 +66,8 @@ export const DELETE = apiHandlerWithParams<{ id: string }>('delete savings goal'
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'SAVINGS');
+  if (featureError) return featureError;
 
   const existingGoal = await findSavingsGoal(id, userId!);
   if (!existingGoal) {

@@ -23,7 +23,7 @@ export default function InvestmentsPage() {
   if (isAuthLoading || !userId) return null;
 
   return (
-    <MainLayout>
+    <MainLayout requiredFeature="BROKERAGE">
       <InvestmentsTab userId={userId} />
     </MainLayout>
   );

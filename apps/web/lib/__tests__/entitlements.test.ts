@@ -41,4 +41,27 @@ describe('entitlements', () => {
     expect(effectivePlan(u)).toBe('ULTIMATE');
     expect(hasFeature(u, 'AI_SUMMARY')).toBe(true);
   });
+
+  it('FREE는 게이트 기능을 하나도 갖지 않는다', () => {
+    const u = { plan: 'FREE' as const, planExpiresAt: null };
+    for (const f of ['RECURRING', 'SAVINGS', 'GROUPS', 'ASSETS', 'ANALYTICS', 'BROKERAGE'] as const) {
+      expect(hasFeature(u, f)).toBe(false);
+    }
+  });
+
+  it('PRO는 자산현황(ASSETS)·증권(BROKERAGE)을 제외한 기능을 갖는다', () => {
+    const u = { plan: 'PRO' as const, planExpiresAt: null };
+    for (const f of ['RECURRING', 'SAVINGS', 'GROUPS', 'ANALYTICS'] as const) {
+      expect(hasFeature(u, f)).toBe(true);
+    }
+    expect(hasFeature(u, 'ASSETS')).toBe(false);
+    expect(hasFeature(u, 'BROKERAGE')).toBe(false);
+  });
+
+  it('ULTIMATE는 증권(BROKERAGE)까지 모든 기능을 갖는다', () => {
+    const u = { plan: 'ULTIMATE' as const, planExpiresAt: null };
+    for (const f of ['RECURRING', 'SAVINGS', 'GROUPS', 'ASSETS', 'ANALYTICS', 'BROKERAGE'] as const) {
+      expect(hasFeature(u, f)).toBe(true);
+    }
+  });
 });

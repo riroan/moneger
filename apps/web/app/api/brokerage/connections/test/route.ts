@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiHandler, errorResponse, successResponse, validateUserId } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import { testCredentials } from '@/lib/services/brokerage.service';
 import { BrokerageError, type Broker } from '@/lib/services/brokerage/types';
 
@@ -12,6 +13,8 @@ export const POST = apiHandler('test brokerage credentials', async (request: Nex
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'BROKERAGE');
+  if (featureError) return featureError;
   if (!VALID_BROKERS.includes(broker)) {
     return errorResponse('broker must be KIS or TOSS', 400);
   }

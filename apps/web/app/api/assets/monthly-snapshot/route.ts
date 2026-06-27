@@ -5,6 +5,7 @@ import {
   successResponse,
   validateUserId,
 } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import { upsertMonthlyAssetSnapshot } from '@/lib/services/monthly-asset.service';
 import { kstMonthKey, parseMonthKey } from '@/lib/utils/asset-month';
 
@@ -14,6 +15,8 @@ export const POST = apiHandler('upsert monthly asset snapshot', async (request: 
 
   const userIdError = validateUserId(typeof userId === 'string' ? userId : null);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'ASSETS');
+  if (featureError) return featureError;
 
   if (month != null && (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month))) {
     return errorResponse('month must be YYYY-MM', 400);

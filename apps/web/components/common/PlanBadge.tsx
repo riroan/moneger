@@ -5,7 +5,7 @@ import { MdWorkspacePremium } from 'react-icons/md';
 
 const PLAN_META: Record<'FREE' | 'PRO', { label: string; className: string }> = {
   FREE: { label: 'FREE', className: 'bg-bg-secondary text-text-muted' },
-  PRO: { label: 'PRO', className: 'bg-accent-blue/15 text-accent-blue' },
+  PRO: { label: 'PRO', className: 'bg-gradient-to-r from-accent-mint to-accent-blue text-bg-primary' },
 };
 
 interface PlanBadgeProps {

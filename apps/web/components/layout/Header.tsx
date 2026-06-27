@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { MdAccountBalanceWallet, MdSettings, MdLogout, MdDarkMode, MdLightMode, MdBarChart } from 'react-icons/md';
 import type { Plan } from '@prisma/client';
 import { PlanBadge } from '@/components/common';
+import type { Feature } from '@/lib/entitlements';
 
 interface HeaderProps {
   userName: string;
@@ -20,6 +21,7 @@ interface HeaderProps {
   oldestDate?: { year: number; month: number } | null;
   showDatePicker?: boolean;
   plan?: Plan | null;
+  features?: Feature[];
 }
 
 export default function Header({
@@ -33,6 +35,7 @@ export default function Header({
   oldestDate,
   showDatePicker = true,
   plan,
+  features,
 }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -252,24 +255,28 @@ export default function Header({
                     />
                   </button>
                 </div>
-                <button
-                  className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
-                  onClick={() => {
-                    setIsProfileMenuOpen(false);
-                    router.push('/assets');
-                  }}
-                >
-                  <span className="flex items-center gap-2"><MdAccountBalanceWallet className="text-lg" /> 자산 현황</span>
-                </button>
-                <button
-                  className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
-                  onClick={() => {
-                    setIsProfileMenuOpen(false);
-                    router.push('/analytics');
-                  }}
-                >
-                  <span className="flex items-center gap-2"><MdBarChart className="text-lg" /> 소비 분석</span>
-                </button>
+                {features?.includes('ASSETS') && (
+                  <button
+                    className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      router.push('/assets');
+                    }}
+                  >
+                    <span className="flex items-center gap-2"><MdAccountBalanceWallet className="text-lg" /> 자산 현황</span>
+                  </button>
+                )}
+                {features?.includes('ANALYTICS') && (
+                  <button
+                    className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      router.push('/analytics');
+                    }}
+                  >
+                    <span className="flex items-center gap-2"><MdBarChart className="text-lg" /> 소비 분석</span>
+                  </button>
+                )}
                 <button
                   className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
                   onClick={() => {

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiHandler, errorResponse, successResponse, validateUserId } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import {
   listConnections,
   createConnection,
@@ -15,6 +16,8 @@ export const GET = apiHandler('list brokerage connections', async (request: Next
   const userId = request.nextUrl.searchParams.get('userId');
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'BROKERAGE');
+  if (featureError) return featureError;
 
   return successResponse(await listConnections(userId!));
 });
@@ -25,6 +28,8 @@ export const POST = apiHandler('create brokerage connection', async (request: Ne
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'BROKERAGE');
+  if (featureError) return featureError;
   if (!VALID_BROKERS.includes(broker)) {
     return errorResponse('broker must be KIS or TOSS', 400);
   }

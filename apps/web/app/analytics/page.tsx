@@ -25,7 +25,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout requiredFeature="ANALYTICS">
       <AnalyticsTab />
     </MainLayout>
   );

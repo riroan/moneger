@@ -5,6 +5,7 @@ import {
   successResponse,
   validateUserId,
 } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import {
   getMonthlyAssetReport,
   normalizeRange,
@@ -18,6 +19,8 @@ export const GET = apiHandler('fetch monthly asset report', async (request: Next
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'ASSETS');
+  if (featureError) return featureError;
 
   if (monthStr && !/^\d{4}-\d{2}$/.test(monthStr)) {
     return errorResponse('month must be YYYY-MM', 400);

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { successResponse, validateUserId, apiHandler, errorResponse } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import { getAnalytics } from '@/lib/services/analytics.service';
 
 // GET /api/analytics?userId=...&months=6
@@ -9,6 +10,8 @@ export const GET = apiHandler('fetch analytics', async (request: NextRequest) =>
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'ANALYTICS');
+  if (featureError) return featureError;
 
   const monthsStr = searchParams.get('months') ?? '6';
   const months = parseInt(monthsStr);

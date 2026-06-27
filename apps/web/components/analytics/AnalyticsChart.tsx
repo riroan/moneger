@@ -16,6 +16,7 @@ import { MdBarChart, MdCategory, MdCalendarViewWeek } from 'react-icons/md';
 import type { AnalyticsResult } from '@/lib/services/analytics.service';
 import { formatNumber } from '@/utils/formatters';
 import { useAppStore } from '@/stores';
+import { usePlan } from '@/hooks';
 import AssetTrendCard from '@/components/analytics/AssetTrendCard';
 
 // DESIGN.md accent colors
@@ -84,6 +85,7 @@ function ChartLegend({ items }: { items: { label: string; color: string; type: '
 
 export default function AnalyticsChart({ data, months: selectedMonths, userId }: AnalyticsChartProps) {
   const isMobile = useAppStore((state) => state.isMobile);
+  const { features } = usePlan(userId);
   const { months, averages, monthlyTarget, categoryTrends, dowPattern } = data;
 
   // --- 차트 1: 수입/지출/저축/순저축 ---
@@ -195,7 +197,7 @@ export default function AnalyticsChart({ data, months: selectedMonths, userId }:
         ]} />
       </div>
 
-      {userId && <AssetTrendCard userId={userId} months={selectedMonths} />}
+      {userId && features.includes('ASSETS') && <AssetTrendCard userId={userId} months={selectedMonths} />}
 
       {/* ② 요일별 지출 패턴 */}
       <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">

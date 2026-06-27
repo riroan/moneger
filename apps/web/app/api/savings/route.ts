@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, validateUserId, apiHandler } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import { prisma } from '@/lib/prisma';
 import { getActiveSavingsGoalsWithProgress } from '@/lib/services/savings.service';
 
@@ -9,6 +10,8 @@ export const GET = apiHandler('fetch savings goals', async (request: NextRequest
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'SAVINGS');
+  if (featureError) return featureError;
 
   const goalsWithProgress = await getActiveSavingsGoalsWithProgress(userId!);
   return successResponse(goalsWithProgress);
@@ -21,6 +24,8 @@ export const POST = apiHandler('create savings goal', async (request: NextReques
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'SAVINGS');
+  if (featureError) return featureError;
 
   if (!name || !icon || !targetAmount || !targetYear || !targetMonth) {
     return errorResponse('Missing required fields', 400);

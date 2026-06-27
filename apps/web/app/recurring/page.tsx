@@ -27,7 +27,7 @@ export default function RecurringPage() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout requiredFeature="RECURRING">
       <RecurringTab userId={userId} onDataChange={refreshData} />
     </MainLayout>
   );

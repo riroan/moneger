@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, validateUserId, apiHandler } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import { getGroupsWithSummary, createGroup, findDuplicateGroup } from '@/lib/services/group.service';
 
 // GET /api/groups - 그룹 목록 조회
@@ -8,6 +9,8 @@ export const GET = apiHandler('fetch groups', async (request: NextRequest) => {
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'GROUPS');
+  if (featureError) return featureError;
 
   const groups = await getGroupsWithSummary(userId!);
   return successResponse(groups);
@@ -20,6 +23,8 @@ export const POST = apiHandler('create group', async (request: NextRequest) => {
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'GROUPS');
+  if (featureError) return featureError;
 
   if (!name || !name.trim()) {
     return errorResponse('그룹 이름을 입력해주세요', 400);

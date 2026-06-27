@@ -130,7 +130,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
   if (isLoading) {
     return (
-      <MainLayout>
+      <MainLayout requiredFeature="GROUPS">
         <div className="text-center text-text-muted py-20">로딩 중...</div>
       </MainLayout>
     );
@@ -138,7 +138,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
   if (!group) {
     return (
-      <MainLayout>
+      <MainLayout requiredFeature="GROUPS">
         <div className="text-center text-text-muted py-20">그룹을 찾을 수 없습니다</div>
       </MainLayout>
     );
@@ -147,7 +147,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const IconComponent = GROUP_ICON_MAP[group.icon || 'folder'] || MdFolder;
 
   return (
-    <MainLayout>
+    <MainLayout requiredFeature="GROUPS">
       <div className="animate-[fadeIn_0.5s_ease-out]">
         {/* 헤더 */}
         <div className="flex items-center gap-3 mb-4">

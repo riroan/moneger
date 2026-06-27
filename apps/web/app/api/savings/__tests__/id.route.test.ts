@@ -2,6 +2,10 @@ import { NextRequest } from 'next/server';
 import { PUT, PATCH, DELETE } from '../[id]/route';
 import * as savingsService from '@/lib/services/savings.service';
 
+jest.mock('@/lib/entitlements-server', () => ({
+  requireFeature: jest.fn(async () => null),
+}));
+
 // Mock savings service
 jest.mock('@/lib/services/savings.service', () => ({
   findSavingsGoal: jest.fn(),

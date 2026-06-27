@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, validateUserId, apiHandlerWithParams } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import { findGroup, findDuplicateGroup, updateGroup, deleteGroup, getGroupDetail } from '@/lib/services/group.service';
 
 // GET /api/groups/[id] - 그룹 상세 조회
@@ -8,6 +9,8 @@ export const GET = apiHandlerWithParams<{ id: string }>('fetch group detail', as
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'GROUPS');
+  if (featureError) return featureError;
 
   const detail = await getGroupDetail(id, userId!);
   if (!detail) {
@@ -24,6 +27,8 @@ export const PATCH = apiHandlerWithParams<{ id: string }>('update group', async 
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'GROUPS');
+  if (featureError) return featureError;
 
   const existingGroup = await findGroup(id, userId);
   if (!existingGroup) {
@@ -53,6 +58,8 @@ export const DELETE = apiHandlerWithParams<{ id: string }>('delete group', async
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'GROUPS');
+  if (featureError) return featureError;
 
   const existingGroup = await findGroup(id, userId!);
   if (!existingGroup) {

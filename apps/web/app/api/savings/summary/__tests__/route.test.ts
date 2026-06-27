@@ -2,6 +2,10 @@ import { NextRequest } from 'next/server';
 import { GET } from '../route';
 import { prisma } from '@/lib/prisma';
 
+jest.mock('@/lib/entitlements-server', () => ({
+  requireFeature: jest.fn(async () => null),
+}));
+
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
   prisma: {

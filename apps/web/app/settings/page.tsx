@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
-import { useOutsideClick, useBodyScrollLock } from '@/hooks';
+import { useOutsideClick, useBodyScrollLock, usePlan } from '@/hooks';
 import type { Category, Budget } from '@/types';
 import {
   MdAccountBalanceWallet,
@@ -34,6 +34,7 @@ export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
+  const { features } = usePlan(userId);
   const [userName, setUserName] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -511,24 +512,28 @@ export default function SettingsPage() {
                         />
                       </button>
                     </div>
-                    <button
-                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        router.push('/assets');
-                      }}
-                    >
-                      <span className="flex items-center gap-2"><MdAccountBalanceWallet className="text-lg" /> 자산 현황</span>
-                    </button>
-                    <button
-                      className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        router.push('/analytics');
-                      }}
-                    >
-                      <span className="flex items-center gap-2"><MdBarChart className="text-lg" /> 소비 분석</span>
-                    </button>
+                    {features.includes('ASSETS') && (
+                      <button
+                        className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          router.push('/assets');
+                        }}
+                      >
+                        <span className="flex items-center gap-2"><MdAccountBalanceWallet className="text-lg" /> 자산 현황</span>
+                      </button>
+                    )}
+                    {features.includes('ANALYTICS') && (
+                      <button
+                        className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          router.push('/analytics');
+                        }}
+                      >
+                        <span className="flex items-center gap-2"><MdBarChart className="text-lg" /> 소비 분석</span>
+                      </button>
+                    )}
                     <button
                       className="w-full text-left text-text-primary hover:bg-bg-card-hover transition-colors cursor-pointer py-2.5 px-3.5 text-sm"
                       onClick={() => {

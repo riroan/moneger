@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../[id]/deposit/route';
 import { prisma } from '@/lib/prisma';
+
+jest.mock('@/lib/entitlements-server', () => ({
+  requireFeature: jest.fn(async () => null),
+}));
 import * as savingsService from '@/lib/services/savings.service';
 import * as dailyBalanceService from '@/lib/services/daily-balance.service';
 

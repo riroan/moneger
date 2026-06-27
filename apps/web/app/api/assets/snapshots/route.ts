@@ -5,6 +5,7 @@ import {
   successResponse,
   validateUserId,
 } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import {
   deleteAssetSnapshot,
   upsertAssetSnapshot,
@@ -17,6 +18,8 @@ export const PUT = apiHandler('upsert asset snapshot', async (request: NextReque
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'ASSETS');
+  if (featureError) return featureError;
 
   if (typeof assetItemId !== 'string' || !assetItemId) {
     return errorResponse('assetItemId is required', 400);
@@ -53,6 +56,8 @@ export const DELETE = apiHandler('delete asset snapshot', async (request: NextRe
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'ASSETS');
+  if (featureError) return featureError;
   if (!assetItemId) return errorResponse('assetItemId is required', 400);
   if (!month || !/^\d{4}-\d{2}$/.test(month)) {
     return errorResponse('month must be YYYY-MM', 400);

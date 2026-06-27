@@ -5,6 +5,7 @@ import {
   successResponse,
   validateUserId,
 } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import { syncConnection } from '@/lib/services/brokerage-snapshot.service';
 import { BrokerageError } from '@/lib/services/brokerage/types';
 
@@ -16,6 +17,8 @@ export const POST = apiHandlerWithParams<{ id: string }>(
     const userId = body?.userId ?? request.nextUrl.searchParams.get('userId');
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;
+    const featureError = await requireFeature(userId!, 'BROKERAGE');
+    if (featureError) return featureError;
 
     try {
       const result = await syncConnection(userId, id);

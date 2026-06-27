@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { successResponse, validateUserId, apiHandler } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import { prisma } from '@/lib/prisma';
 
 // GET /api/savings/summary - 저축 요약 조회
@@ -9,6 +10,8 @@ export const GET = apiHandler('fetch savings summary', async (request: NextReque
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'SAVINGS');
+  if (featureError) return featureError;
 
   const savingsGoals = await prisma.savingsGoal.findMany({
     where: {

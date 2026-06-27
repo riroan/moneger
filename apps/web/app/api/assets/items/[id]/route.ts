@@ -5,6 +5,7 @@ import {
   successResponse,
   validateUserId,
 } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import {
   softDeleteAssetItem,
   updateAssetItem,
@@ -18,6 +19,8 @@ export const PATCH = apiHandlerWithParams<{ id: string }>(
 
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;
+    const featureError = await requireFeature(userId!, 'ASSETS');
+    if (featureError) return featureError;
 
     try {
       const item = await updateAssetItem(id, userId, {
@@ -40,6 +43,8 @@ export const DELETE = apiHandlerWithParams<{ id: string }>(
     const userId = request.nextUrl.searchParams.get('userId');
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;
+    const featureError = await requireFeature(userId!, 'ASSETS');
+    if (featureError) return featureError;
 
     try {
       await softDeleteAssetItem(id, userId!);

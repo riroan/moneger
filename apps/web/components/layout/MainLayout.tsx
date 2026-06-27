@@ -7,6 +7,8 @@ import { useAuthStore, useAppStore, useModalStore, useCategoryStore, useTransact
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useTransactionHandlers } from '@/hooks/useTransactionHandlers';
 import { usePlan } from '@/hooks';
+import { LockedFeature } from '@/components/common';
+import type { Feature } from '@/lib/entitlements';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import FAB from '@/components/layout/FAB';
@@ -18,9 +20,10 @@ const EditSavingsTransactionModal = dynamic(() => import('@/components/savings/E
 
 interface MainLayoutProps {
   children: ReactNode;
+  requiredFeature?: Feature;
 }
 
-export default function MainLayout({ children }: MainLayoutProps) {
+export default function MainLayout({ children, requiredFeature }: MainLayoutProps) {
   const pathname = usePathname();
 
   // Auth store
@@ -49,7 +52,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   // Hooks
   const { refreshData } = useDashboardData();
-  const { plan } = usePlan(userId);
+  const { plan, features, isLoading: isPlanLoading } = usePlan(userId);
+
+  // 요금제 게이트: requiredFeature가 있고 권한이 없으면 잠금 화면을 보여준다.
+  const isLocked = !!requiredFeature && !isPlanLoading && !features.includes(requiredFeature);
+  const showChildren = !requiredFeature || (!isPlanLoading && features.includes(requiredFeature));
 
   const { handleSubmitTransaction, handleEditTransaction, handleDeleteTransaction, handleDeleteSavingsTransaction } =
     useTransactionHandlers({
@@ -101,9 +108,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
           oldestDate={oldestTransactionDate}
           showDatePicker={pathname === '/'}
           plan={plan}
+          features={features}
         />
 
-        {children}
+        {isLocked && requiredFeature && <LockedFeature feature={requiredFeature} />}
+        {showChildren && children}
 
         <Footer />
       </div>

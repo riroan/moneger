@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, validateUserId, apiHandlerWithParams } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import { prisma } from '@/lib/prisma';
 import { updateDailyBalanceInTransaction } from '@/lib/services/daily-balance.service';
 import { findSavingsGoal, depositToSavingsGoal } from '@/lib/services/savings.service';
@@ -11,6 +12,8 @@ export const POST = apiHandlerWithParams<{ id: string }>('deposit to savings goa
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'SAVINGS');
+  if (featureError) return featureError;
 
   if (!amount || amount <= 0) {
     return errorResponse('Amount must be greater than 0', 400);

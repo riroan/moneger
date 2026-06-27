@@ -7,6 +7,7 @@ import {
   validateAmount,
   apiHandler,
 } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import {
   createRecurringExpense,
   getRecurringExpenses,
@@ -18,6 +19,8 @@ export const GET = apiHandler('fetch recurring expenses', async (request: NextRe
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'RECURRING');
+  if (featureError) return featureError;
 
   const data = await getRecurringExpenses(userId!);
   return successResponse(data);
@@ -30,6 +33,8 @@ export const POST = apiHandler('create recurring expense', async (request: NextR
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'RECURRING');
+  if (featureError) return featureError;
 
   const amountError = validateAmount(amount);
   if (amountError) return amountError;

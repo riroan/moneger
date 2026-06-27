@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useAppStore, useTransactionStore, useCategoryStore, useAuthStore } from '@/stores';
 import { useFilterHandlers } from '@/hooks/useFilterHandlers';
+import { usePlan } from '@/hooks';
 import SummaryCards from '@/components/dashboard/SummaryCards';
 import TodaySummaryCard from '@/components/dashboard/TodaySummaryCard';
 import CommittedSpendingCard from '@/components/dashboard/CommittedSpendingCard';
@@ -54,6 +55,7 @@ export default function DashboardTab({
   const isMobile = useAppStore((state) => state.isMobile);
   const currentDate = useAppStore((state) => state.currentDate);
   const userId = useAuthStore((state) => state.userId);
+  const { features } = usePlan(userId);
 
   // 개별 selector로 불필요한 리렌더 방지
   const summary = useTransactionStore((state) => state.summary);
@@ -145,21 +147,23 @@ export default function DashboardTab({
         onSavingsClick={onViewSavings}
       />
 
-      <RecurringAlertBanner />
+      {features.includes('RECURRING') && <RecurringAlertBanner />}
 
       <div className="grid grid-cols-1 lg:grid-cols-[330px_1fr_380px] gap-4">
         {/* 왼쪽: 요약 카드 */}
         <div className="flex flex-col order-1 gap-4">
           <TodaySummaryCard data={todaySummary} isLoading={isLoadingTodaySummary} />
 
-          <CommittedSpendingCard onManage={onViewRecurring} />
+          {features.includes('RECURRING') && <CommittedSpendingCard onManage={onViewRecurring} />}
 
-          <SavingsCard
-            primaryGoal={summary?.savings?.primaryGoal}
-            onViewAll={onViewSavings}
-          />
+          {features.includes('SAVINGS') && (
+            <SavingsCard
+              primaryGoal={summary?.savings?.primaryGoal}
+              onViewAll={onViewSavings}
+            />
+          )}
 
-          <GroupsCard userId={userId || ''} onViewAll={onViewGroups} />
+          {features.includes('GROUPS') && <GroupsCard userId={userId || ''} onViewAll={onViewGroups} />}
         </div>
 
         {/* 가운데: 차트/캘린더 */}
@@ -215,7 +219,7 @@ export default function DashboardTab({
 
         {/* 오른쪽: 증권 자산 + 최근 내역 */}
         <div className="order-2 flex flex-col gap-4 self-start lg:order-3">
-          <InvestmentsSummaryCard userId={userId || ''} />
+          {features.includes('BROKERAGE') && <InvestmentsSummaryCard userId={userId || ''} />}
 
           <div
             className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] animate-[fadeIn_0.6s_ease-out_0.3s_backwards] p-4"

@@ -25,7 +25,7 @@ export default function AssetsRoutePage() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout requiredFeature="ASSETS">
       <AssetsPage userId={userId} />
     </MainLayout>
   );

@@ -27,7 +27,7 @@ export default function GroupsPage() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout requiredFeature="GROUPS">
       <GroupsTab userId={userId} onDataChange={refreshData} />
     </MainLayout>
   );

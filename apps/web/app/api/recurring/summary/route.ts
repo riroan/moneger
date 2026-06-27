@@ -4,6 +4,7 @@ import {
   validateUserId,
   apiHandler,
 } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import {
   getRecurringSummary,
   getUpcomingAlerts,
@@ -15,6 +16,8 @@ export const GET = apiHandler('fetch recurring summary', async (request: NextReq
 
   const userIdError = validateUserId(userId);
   if (userIdError) return userIdError;
+  const featureError = await requireFeature(userId!, 'RECURRING');
+  if (featureError) return featureError;
 
   const [summary, alerts] = await Promise.all([
     getRecurringSummary(userId!),

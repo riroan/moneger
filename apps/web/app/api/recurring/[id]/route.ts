@@ -5,6 +5,7 @@ import {
   validateUserId,
   apiHandlerWithParams,
 } from '@/lib/api-utils';
+import { requireFeature } from '@/lib/entitlements-server';
 import {
   updateRecurringExpense,
   deleteRecurringExpense,
@@ -19,6 +20,8 @@ export const PUT = apiHandlerWithParams<{ id: string }>(
 
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;
+    const featureError = await requireFeature(userId!, 'RECURRING');
+    if (featureError) return featureError;
 
     if (amount !== undefined && (isNaN(amount) || amount <= 0)) {
       return errorResponse('amount must be greater than 0', 400);
@@ -52,6 +55,8 @@ export const DELETE = apiHandlerWithParams<{ id: string }>(
 
     const userIdError = validateUserId(userId);
     if (userIdError) return userIdError;
+    const featureError = await requireFeature(userId!, 'RECURRING');
+    if (featureError) return featureError;
 
     const result = await deleteRecurringExpense(id, userId!);
 
