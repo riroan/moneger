@@ -11,16 +11,16 @@ describe('entitlements', () => {
     expect(hasFeature(u, 'AI_SUMMARY')).toBe(false);
   });
 
-  it('PRO(무기한)는 AI_SUMMARY가 있다', () => {
+  it('PRO(무기한)는 AI_SUMMARY가 없다', () => {
     const u = { plan: 'PRO' as const, planExpiresAt: null };
     expect(effectivePlan(u)).toBe('PRO');
-    expect(hasFeature(u, 'AI_SUMMARY')).toBe(true);
+    expect(hasFeature(u, 'AI_SUMMARY')).toBe(false);
   });
 
-  it('PRO(미래 만료)는 AI_SUMMARY가 있다', () => {
+  it('PRO(미래 만료)는 AI_SUMMARY가 없다', () => {
     const u = { plan: 'PRO' as const, planExpiresAt: future };
     expect(effectivePlan(u)).toBe('PRO');
-    expect(hasFeature(u, 'AI_SUMMARY')).toBe(true);
+    expect(hasFeature(u, 'AI_SUMMARY')).toBe(false);
   });
 
   it('만료된 PRO는 FREE로 취급한다', () => {
@@ -49,18 +49,19 @@ describe('entitlements', () => {
     }
   });
 
-  it('PRO는 자산현황(ASSETS)·증권(BROKERAGE)을 제외한 기능을 갖는다', () => {
+  it('PRO는 자산현황(ASSETS)·증권(BROKERAGE)·AI_SUMMARY를 제외한 기능을 갖는다', () => {
     const u = { plan: 'PRO' as const, planExpiresAt: null };
     for (const f of ['RECURRING', 'SAVINGS', 'GROUPS', 'ANALYTICS'] as const) {
       expect(hasFeature(u, f)).toBe(true);
     }
     expect(hasFeature(u, 'ASSETS')).toBe(false);
     expect(hasFeature(u, 'BROKERAGE')).toBe(false);
+    expect(hasFeature(u, 'AI_SUMMARY')).toBe(false);
   });
 
-  it('ULTIMATE는 증권(BROKERAGE)까지 모든 기능을 갖는다', () => {
+  it('ULTIMATE는 AI_SUMMARY와 증권(BROKERAGE)까지 모든 기능을 갖는다', () => {
     const u = { plan: 'ULTIMATE' as const, planExpiresAt: null };
-    for (const f of ['RECURRING', 'SAVINGS', 'GROUPS', 'ASSETS', 'ANALYTICS', 'BROKERAGE'] as const) {
+    for (const f of ['RECURRING', 'SAVINGS', 'GROUPS', 'ASSETS', 'ANALYTICS', 'BROKERAGE', 'AI_SUMMARY'] as const) {
       expect(hasFeature(u, f)).toBe(true);
     }
   });

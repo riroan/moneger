@@ -11,11 +11,11 @@ export type Feature =
   | 'ANALYTICS' // 소비 분석
   | 'BROKERAGE'; // 증권 자산
 
-// PRO 기능: 자산 현황(ASSETS)·증권(BROKERAGE)을 제외한 기능 + AI 분석.
-const PRO_FEATURES: Feature[] = ['RECURRING', 'SAVINGS', 'GROUPS', 'ANALYTICS', 'AI_SUMMARY'];
+// PRO 기능: 자산 현황(ASSETS)·증권(BROKERAGE)·AI 자산 분석(AI_SUMMARY)을 제외한 기능.
+const PRO_FEATURES: Feature[] = ['RECURRING', 'SAVINGS', 'GROUPS', 'ANALYTICS'];
 
-// 모든 기능. ULTIMATE 전용: 자산 현황(ASSETS), 증권 자산(BROKERAGE).
-const ALL_FEATURES: Feature[] = [...PRO_FEATURES, 'ASSETS', 'BROKERAGE'];
+// 모든 기능. ULTIMATE 전용: 자산 현황(ASSETS), 증권 자산(BROKERAGE), AI 자산 분석(AI_SUMMARY).
+const ALL_FEATURES: Feature[] = [...PRO_FEATURES, 'ASSETS', 'BROKERAGE', 'AI_SUMMARY'];
 
 const PLAN_FEATURES: Record<Plan, Feature[]> = {
   FREE: [],
@@ -36,7 +36,7 @@ export const FEATURE_LABELS: Record<Feature, string> = {
 
 // 기능을 처음 사용할 수 있는 요금제(업그레이드 안내용).
 export const FEATURE_MIN_PLAN: Record<Feature, Plan> = {
-  AI_SUMMARY: 'PRO',
+  AI_SUMMARY: 'ULTIMATE',
   RECURRING: 'PRO',
   SAVINGS: 'PRO',
   GROUPS: 'PRO',

@@ -38,6 +38,7 @@ model User {
   assetItems            AssetItem[]
   assetSnapshots        AssetSnapshot[]
   monthlyAssetSnapshots MonthlyAssetSnapshot[]
+  assetAiSummaries      AssetAiSummary[]
   brokerageConnections  BrokerageConnection[]
 }
 
@@ -255,6 +256,20 @@ model MonthlyAssetSnapshot {
   sourceStatus        String   @default("computed")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@index([userId, month])
+}
+
+model AssetAiSummary {
+  id          String   @id @default(cuid())
+  userId      String
+  month       DateTime @db.Date
+  text        String   @db.Text
+  source      String
+  generatedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

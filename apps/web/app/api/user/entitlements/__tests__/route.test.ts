@@ -35,7 +35,7 @@ describe('GET /api/user/entitlements', () => {
     expect(data.data.features).toEqual([]);
   });
 
-  it('PRO 유저는 AI_SUMMARY를 가진다', async () => {
+  it('PRO 유저는 AI_SUMMARY를 가지지 않는다', async () => {
     mockFindUnique.mockResolvedValue({ plan: 'PRO', planExpiresAt: null });
 
     const response = await GET(makeRequest('user-1'));
@@ -43,7 +43,7 @@ describe('GET /api/user/entitlements', () => {
 
     expect(response.status).toBe(200);
     expect(data.data.plan).toBe('PRO');
-    expect(data.data.features).toContain('AI_SUMMARY');
+    expect(data.data.features).not.toContain('AI_SUMMARY');
   });
 
   it('만료된 PRO 유저는 FREE로 취급된다', async () => {

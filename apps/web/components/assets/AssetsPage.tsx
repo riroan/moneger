@@ -5,11 +5,13 @@ import { formatCurrency } from '@moneger/shared';
 import { Area, AreaChart, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   MdAccountBalanceWallet,
+  MdAutoAwesome,
   MdCalendarToday,
   MdCheckCircle,
   MdEdit,
   MdFlag,
   MdInfoOutline,
+  MdLock,
   MdOutlineSavings,
   MdRefresh,
   MdShowChart,
@@ -17,6 +19,7 @@ import {
   MdTrendingUp,
 } from 'react-icons/md';
 import { FaPiggyBank } from 'react-icons/fa';
+import { usePlan } from '@/hooks';
 
 interface AssetsPageProps {
   userId: string;
@@ -163,6 +166,13 @@ interface AssetReport {
       positions: InvestmentPosition[];
     };
   };
+}
+
+interface AiSummaryResult {
+  month: string;
+  text: string;
+  generatedAt: string;
+  source: 'ai' | 'template';
 }
 
 const CARD = 'min-w-0 rounded-[16px] border border-[var(--border)] bg-bg-card p-4 sm:rounded-[20px] sm:p-5';
@@ -333,6 +343,12 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
   const [data, setData] = useState<AssetReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<AiSummaryResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiNoticeAccepted, setAiNoticeAccepted] = useState(false);
+  const { features, isLoading: isPlanLoading } = usePlan(userId);
+  const canUseAiSummary = features.includes('AI_SUMMARY');
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -352,6 +368,46 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
+
+  useEffect(() => {
+    setAiSummary(null);
+    setAiError(null);
+    setAiLoading(false);
+  }, [month]);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('moneger.assetAiSummary.noticeAccepted');
+    setAiNoticeAccepted(stored === 'true');
+  }, []);
+
+  const fetchAiSummary = useCallback(
+    async (regenerate = false) => {
+      if (!canUseAiSummary || aiLoading) return;
+      const requestedMonth = month;
+      setAiLoading(true);
+      setAiError(null);
+      if (!aiNoticeAccepted) {
+        window.localStorage.setItem('moneger.assetAiSummary.noticeAccepted', 'true');
+        setAiNoticeAccepted(true);
+      }
+
+      try {
+        const res = await fetch('/api/assets/ai-summary', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ userId, month: requestedMonth, regenerate }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.error || 'AI 한 줄 평을 불러오지 못했습니다');
+        setAiSummary({ month: requestedMonth, ...(json.data as Omit<AiSummaryResult, 'month'>) });
+      } catch (err) {
+        setAiError(err instanceof Error ? err.message : 'AI 한 줄 평을 불러오지 못했습니다');
+      } finally {
+        setAiLoading(false);
+      }
+    },
+    [aiLoading, aiNoticeAccepted, canUseAiSummary, month, userId]
+  );
 
   if (loading && !data) {
     return (
@@ -686,6 +742,74 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
           {error}
         </div>
       )}
+
+      <section className={CARD}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent-purple/15 text-accent-purple">
+                <MdAutoAwesome className="text-xl" />
+              </span>
+              <h2 className="text-base font-semibold text-text-primary">AI 한 줄 평</h2>
+            </div>
+            {!aiNoticeAccepted && canUseAiSummary && (
+              <p className="mt-3 max-w-3xl text-xs leading-5 text-text-muted">
+                AI 한 줄 평은 회원님의 자산 요약 지표(금액·비율 등)를 OpenAI에 전송해 생성됩니다.
+                보유 종목명·목표명 등 세부는 전송하지 않습니다.
+              </p>
+            )}
+          </div>
+
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {isPlanLoading ? (
+              <span className="inline-flex h-10 items-center rounded-xl bg-bg-secondary px-3 text-xs font-semibold text-text-muted">
+                확인 중
+              </span>
+            ) : canUseAiSummary ? (
+              <>
+                {aiSummary?.month === current.month ? (
+                  <button
+                    className={`${ICON_BTN} gap-2`}
+                    onClick={() => fetchAiSummary(true)}
+                    disabled={aiLoading}
+                  >
+                    <MdRefresh className="text-lg" />
+                    {aiLoading ? '생성 중...' : '다시 생성'}
+                  </button>
+                ) : (
+                  <button
+                    className={`${ICON_BTN} gap-2`}
+                    onClick={() => fetchAiSummary(false)}
+                    disabled={aiLoading}
+                  >
+                    <MdAutoAwesome className="text-lg" />
+                    {aiLoading ? '생성 중...' : '생성'}
+                  </button>
+                )}
+              </>
+            ) : (
+              <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-bg-secondary px-3 text-xs font-semibold text-text-muted">
+                <MdLock className="text-base" />
+                ULTIMATE 전용
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 min-h-12 rounded-xl border border-[var(--border)] bg-bg-primary px-4 py-3">
+          {aiError ? (
+            <div className="text-sm font-semibold text-accent-coral">{aiError}</div>
+          ) : aiSummary?.month === current.month ? (
+            <div className="text-sm leading-6 text-text-secondary">{aiSummary.text}</div>
+          ) : aiLoading ? (
+            <div className="text-sm font-semibold text-text-muted">생성 중...</div>
+          ) : (
+            <div className="text-sm text-text-muted">
+              {canUseAiSummary ? `${fullMonthLabel(current.month)} 요약을 생성할 수 있습니다` : '현재 요금제에서는 사용할 수 없습니다'}
+            </div>
+          )}
+        </div>
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
         <section className={CARD}>
