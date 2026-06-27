@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useTransactionForm, type TransactionFormData } from '@/hooks/useTransactionForm';
 import AmountInput from './AmountInput';
 import CategoryDropdown from './CategoryDropdown';
@@ -32,13 +31,6 @@ export default function TransactionForm({
     initialTransaction,
     mode,
   });
-
-  // Reset form when modal closes
-  useEffect(() => {
-    return () => {
-      reset();
-    };
-  }, [reset]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

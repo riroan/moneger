@@ -205,14 +205,29 @@ export async function getRecurringExpenses(userId: string) {
         where: { recurringExpenseId: id, deletedAt: null },
         orderBy: [{ date: 'desc' }, { id: 'desc' }],
         take: 5,
-        select: { id: true, amount: true, date: true },
+        select: {
+          id: true, amount: true, type: true, description: true, date: true,
+          categoryId: true, savingsGoalId: true, groupId: true, recurringExpenseId: true,
+          category: { select: { id: true, name: true, type: true, color: true, icon: true } },
+        },
       })
     )
   );
   const recentByExpense = new Map(
     expenseIds.map((id, i) => [
       id,
-      recentLists[i].map((t) => ({ id: t.id, amount: t.amount, date: t.date.toISOString() })),
+      recentLists[i].map((t) => ({
+        id: t.id,
+        amount: t.amount,
+        type: t.type,
+        description: t.description,
+        date: t.date.toISOString(),
+        categoryId: t.categoryId,
+        category: t.category,
+        savingsGoalId: t.savingsGoalId,
+        groupId: t.groupId,
+        recurringExpenseId: t.recurringExpenseId,
+      })),
     ])
   );
   const txCounts = await prisma.transaction.groupBy({

@@ -7,6 +7,8 @@ import { formatNumber, formatDateOnly } from '@/utils/formatters';
 import { FaPlus } from 'react-icons/fa';
 import { MdEventRepeat, MdEdit, MdDelete, MdHistory, MdExpandMore, MdPieChart, MdSchedule, MdCheckCircle, MdAccessTime } from 'react-icons/md';
 import { RECURRING_EXPENSE_LIMITS } from '@/lib/constants';
+import { useModalStore } from '@/stores';
+import type { TransactionWithCategory } from '@/types';
 
 const AddRecurringModal = dynamic(() => import('./AddRecurringModal'), { ssr: false });
 const EditRecurringModal = dynamic(() => import('./EditRecurringModal'), { ssr: false });
@@ -23,12 +25,12 @@ interface RecurringExpense {
   lastProcessedDate: string | null;
   category: { id: string; name: string; type: string; color: string | null; icon: string | null } | null;
   history: { id: string; previousAmount: number; newAmount: number; changedAt: string }[];
-  recentTransactions: { id: string; amount: number; date: string }[];
+  recentTransactions: TransactionWithCategory[];
   transactionCount: number;
 }
 
 interface TxPage {
-  items: { id: string; amount: number; date: string }[];
+  items: TransactionWithCategory[];
   cursor: string | null;
   hasMore: boolean;
   loading: boolean;
@@ -72,6 +74,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
   const [moreByExpense, setMoreByExpense] = useState<Record<string, TxPage>>({});
   const [deleteTargetExpense, setDeleteTargetExpense] = useState<RecurringExpense | null>(null);
+  const openEditModal = useModalStore((s) => s.openEditModal);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -126,9 +129,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
         const res = await fetch(`/api/transactions?${params.toString()}`);
         if (!res.ok) throw new Error('failed');
         const json = await res.json();
-        const items = ((json.data ?? []) as { id: string; amount: number; date: string }[]).map(
-          (t) => ({ id: t.id, amount: t.amount, date: t.date })
-        );
+        const items = (json.data ?? []) as TransactionWithCategory[];
         setMoreByExpense((m) => ({
           ...m,
           [expenseId]: {
@@ -377,7 +378,11 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                         {expanded && (
                           <div className="mt-1 flex flex-col gap-0.5">
                             {items.map((tx, index) => (
-                              <div key={tx.id} className="flex items-center gap-2 py-1.5 px-2">
+                              <button
+                                key={tx.id}
+                                onClick={() => openEditModal(tx)}
+                                className="flex items-center gap-2 py-1.5 px-2 rounded-[8px] hover:bg-bg-card transition-colors cursor-pointer text-left w-full"
+                              >
                                 <span className="text-[12px] text-text-muted tabular-nums shrink-0 w-[64px]">
                                   {formatDateOnly(tx.date)}
                                 </span>
@@ -387,7 +392,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                                 <span className="text-[13px] text-accent-coral tabular-nums whitespace-nowrap shrink-0">
                                   ₩{formatNumber(tx.amount)}
                                 </span>
-                              </div>
+                              </button>
                             ))}
                             {showLoadMore && (
                               <button
