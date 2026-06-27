@@ -19,6 +19,14 @@ export const formatDate = (dateStr: string): string => {
 };
 
 /**
+ * 날짜를 "YYYY.M.D" 형식으로 포맷팅 (시각 제외)
+ */
+export const formatDateOnly = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
+};
+
+/**
  * 년월 형식으로 포맷팅
  */
 export const formatYearMonth = (date: Date): string => {

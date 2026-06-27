@@ -54,9 +54,14 @@ describe('GET /api/savings', () => {
 
   it('저축 목표 목록을 조회해야 함', async () => {
     (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue(mockSavingsGoals);
-    (prisma.transaction.groupBy as jest.Mock).mockResolvedValue([
-      { savingsGoalId: 'savings-1', _sum: { amount: 100000 } },
-    ]);
+    // groupBy는 두 번 호출됨: 이번 달 합계(_sum) + 입금 건수(_count)
+    (prisma.transaction.groupBy as jest.Mock).mockImplementation((args) =>
+      Promise.resolve(
+        args._count
+          ? [{ savingsGoalId: 'savings-1', _count: { _all: 3 } }]
+          : [{ savingsGoalId: 'savings-1', _sum: { amount: 100000 } }]
+      )
+    );
 
     const url = new URL('http://localhost:3000/api/savings');
     url.searchParams.set('userId', 'user-1');
@@ -77,9 +82,13 @@ describe('GET /api/savings', () => {
 
   it('이번 달 저축액을 포함해야 함', async () => {
     (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue(mockSavingsGoals);
-    (prisma.transaction.groupBy as jest.Mock).mockResolvedValue([
-      { savingsGoalId: 'savings-1', _sum: { amount: 200000 } },
-    ]);
+    (prisma.transaction.groupBy as jest.Mock).mockImplementation((args) =>
+      Promise.resolve(
+        args._count
+          ? [{ savingsGoalId: 'savings-1', _count: { _all: 3 } }]
+          : [{ savingsGoalId: 'savings-1', _sum: { amount: 200000 } }]
+      )
+    );
 
     const url = new URL('http://localhost:3000/api/savings');
     url.searchParams.set('userId', 'user-1');

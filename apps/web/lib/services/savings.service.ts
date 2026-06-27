@@ -178,6 +178,17 @@ export async function getActiveSavingsGoalsWithProgress(userId: string) {
     ])
   );
 
+  // 목표별 전체 입금 건수 (회차 번호 계산용). 입금 목록은 date desc 정렬이므로
+  // 표시 인덱스 i의 회차 = depositCount - i (가장 오래된 입금이 1회차).
+  const depositCounts = await prisma.transaction.groupBy({
+    by: ['savingsGoalId'],
+    where: { savingsGoalId: { in: goalIds }, type: 'EXPENSE', deletedAt: null },
+    _count: { _all: true },
+  });
+  const depositCountByGoal = new Map(
+    depositCounts.map((d) => [d.savingsGoalId, d._count._all])
+  );
+
   // 진행률 및 월별 필요 금액 계산
   return activeGoals.map((goal) => {
     const startYear = goal.startYear ?? new Date(goal.createdAt).getFullYear();
@@ -216,6 +227,7 @@ export async function getActiveSavingsGoalsWithProgress(userId: string) {
       targetMonth: goal.targetMonth,
       isPrimary: goal.isPrimary,
       recentDeposits: recentByGoal.get(goal.id) ?? [],
+      depositCount: depositCountByGoal.get(goal.id) ?? 0,
     };
   });
 }

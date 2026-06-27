@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { formatNumber, formatDate } from '@/utils/formatters';
+import { formatNumber, formatDateOnly } from '@/utils/formatters';
 import { formatCurrency } from '@moneger/shared';
 import { pnlClass, pnlMark, signedCurrency, signedPercent } from '@/lib/utils/pnl';
 import { useModalStore } from '@/stores';
@@ -31,6 +31,7 @@ interface SavingsGoal {
   thisMonthSavings: number;
   isPrimary: boolean;
   recentDeposits: TransactionWithCategory[];
+  depositCount: number;
 }
 
 // 아코디언 "더보기"로 추가 로드된 입금 페이지 상태 (goalId별).
@@ -543,17 +544,17 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                           <p className="text-xs text-text-muted text-center py-3">아직 입금 내역이 없어요</p>
                         ) : (
                           <>
-                            {deposits.map((deposit) => (
+                            {deposits.map((deposit, index) => (
                               <button
                                 key={deposit.id}
                                 onClick={() => openSavingsTransactionModal(deposit)}
                                 className="flex items-center gap-2 py-1.5 px-2 rounded-[8px] hover:bg-bg-card transition-colors cursor-pointer text-left"
                               >
-                                <span className="text-[11px] text-text-muted tabular-nums shrink-0">
-                                  {formatDate(deposit.date)}
+                                <span className="text-[11px] text-text-muted tabular-nums shrink-0 w-[64px]">
+                                  {formatDateOnly(deposit.date)}
                                 </span>
-                                <span className="text-xs text-text-secondary truncate flex-1">
-                                  {deposit.description || '저축'}
+                                <span className="text-xs text-text-secondary tabular-nums flex-1">
+                                  {goal.depositCount - index}회차
                                 </span>
                                 <span className="text-xs text-accent-mint tabular-nums whitespace-nowrap shrink-0">
                                   +₩{formatNumber(deposit.amount)}
