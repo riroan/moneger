@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { formatNumber } from '@/utils/formatters';
+import { formatNumber, formatDate } from '@/utils/formatters';
 import { formatCurrency } from '@moneger/shared';
 import { pnlClass, pnlMark, signedCurrency, signedPercent } from '@/lib/utils/pnl';
+import { useModalStore } from '@/stores';
+import type { TransactionWithCategory } from '@/types';
+import { MdExpandMore } from 'react-icons/md';
 import { FaPlus, FaGift, FaHeartbeat, FaStar, FaRegStar } from 'react-icons/fa';
 import { MdSavings, MdTrendingUp, MdHome, MdDirectionsCar, MdSchool, MdFlight, MdDevices, MdEdit, MdDelete, MdCalendarToday, MdCheckCircle } from 'react-icons/md';
 
@@ -27,6 +30,15 @@ interface SavingsGoal {
   monthlyTarget: number;
   thisMonthSavings: number;
   isPrimary: boolean;
+  recentDeposits: TransactionWithCategory[];
+}
+
+// 아코디언 "더보기"로 추가 로드된 입금 페이지 상태 (goalId별).
+interface DepositPage {
+  items: TransactionWithCategory[];
+  cursor: string | null;
+  hasMore: boolean;
+  loading: boolean;
 }
 
 interface SavingsTabProps {
@@ -60,6 +72,12 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
   const [goalValuations, setGoalValuations] = useState<
     Record<string, { marketValueKrw: number; hasValue: boolean }>
   >({});
+  // 입금 내역 아코디언: 펼친 목표 + "더보기"로 추가 로드된 페이지(goalId별).
+  const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
+  const [moreByGoal, setMoreByGoal] = useState<Record<string, DepositPage>>({});
+  // 전역 저축 입금 모달(조회/삭제). 아코디언 항목 탭 → 이 모달을 연다.
+  const openSavingsTransactionModal = useModalStore((s) => s.openSavingsTransactionModal);
+  const isSavingsTxModalOpen = useModalStore((s) => s.isSavingsTransactionModalOpen);
 
   const fetchSavingsGoals = useCallback(async () => {
     try {
@@ -107,6 +125,63 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
     fetchSavingsGoals();
     fetchGoalValuations();
   }, [fetchSavingsGoals, fetchGoalValuations]);
+
+  // 전역 저축 입금 모달이 닫히면(삭제 등 변경 가능) 목표·평가액을 다시 불러 동기화.
+  // recentDeposits가 /api/savings에 embed돼 있어 이 한 번으로 모든 목표의 최근 입금·합계가 갱신된다.
+  // 입금이 다른 목표로 이동/삭제된 경우, 다중 펼침, "닫힘 시점 펼친 목표≠편집 대상" 모두 처리.
+  const prevModalOpenRef = useRef(false);
+  useEffect(() => {
+    if (prevModalOpenRef.current && !isSavingsTxModalOpen) {
+      setMoreByGoal({}); // 페이징 리셋 → embed된 최근 입금부터 다시 표시
+      fetchSavingsGoals();
+      fetchGoalValuations();
+    }
+    prevModalOpenRef.current = isSavingsTxModalOpen;
+  }, [isSavingsTxModalOpen, fetchSavingsGoals, fetchGoalValuations]);
+
+  const toggleExpand = useCallback((goalId: string) => {
+    setExpandedGoals((prev) => {
+      const next = new Set(prev);
+      if (next.has(goalId)) next.delete(goalId);
+      else next.add(goalId);
+      return next;
+    });
+  }, []);
+
+  // "더보기": 첫 클릭은 API 1페이지(최근 embed의 상위집합)로 교체, 이후 cursor로 append.
+  const loadMore = useCallback(
+    async (goalId: string) => {
+      const prev = moreByGoal[goalId];
+      if (prev?.loading) return;
+      const cursor = prev?.cursor ?? null;
+      setMoreByGoal((m) => ({
+        ...m,
+        [goalId]: { items: prev?.items ?? [], cursor, hasMore: prev?.hasMore ?? true, loading: true },
+      }));
+      try {
+        const params = new URLSearchParams({ userId, savingsGoalId: goalId, limit: '20' });
+        if (cursor) params.set('cursor', cursor);
+        const res = await fetch(`/api/transactions?${params.toString()}`);
+        if (!res.ok) throw new Error('failed');
+        const json = await res.json();
+        setMoreByGoal((m) => ({
+          ...m,
+          [goalId]: {
+            items: [...(prev?.items ?? []), ...((json.data ?? []) as TransactionWithCategory[])],
+            cursor: json.nextCursor ?? null,
+            hasMore: !!json.hasMore,
+            loading: false,
+          },
+        }));
+      } catch {
+        setMoreByGoal((m) => ({
+          ...m,
+          [goalId]: { items: prev?.items ?? [], cursor, hasMore: false, loading: false },
+        }));
+      }
+    },
+    [moreByGoal, userId]
+  );
 
   const totalSavings = savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
   const totalTarget = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
@@ -332,6 +407,10 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                 const hasValue = valuation?.hasValue ?? false;
                 const marketValue = valuation?.marketValueKrw ?? 0;
                 const pnl = marketValue - goal.currentAmount;
+                const expanded = expandedGoals.has(goal.id);
+                const more = moreByGoal[goal.id];
+                const deposits = more?.items ?? goal.recentDeposits;
+                const showLoadMore = more ? more.hasMore : goal.recentDeposits.length >= 5;
                 return (
                   <div
                     key={goal.id}
@@ -447,6 +526,53 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                         </p>
                       )}
                     </div>
+
+                    {/* 입금 내역 아코디언 (조회 + 탭하면 조회/삭제 모달). 기본 접힘.
+                        상단 구분선으로 액션 영역과 분리. */}
+                    <button
+                      onClick={() => toggleExpand(goal.id)}
+                      className="mt-3 w-full flex items-center justify-center gap-1 text-xs text-text-muted hover:text-text-secondary transition-colors cursor-pointer border-t border-[var(--border)] pt-3 pb-1"
+                      aria-expanded={expanded}
+                    >
+                      입금 내역
+                      <MdExpandMore className={`text-sm transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                    </button>
+                    {expanded && (
+                      <div className="mt-1 flex flex-col gap-0.5">
+                        {deposits.length === 0 ? (
+                          <p className="text-xs text-text-muted text-center py-3">아직 입금 내역이 없어요</p>
+                        ) : (
+                          <>
+                            {deposits.map((deposit) => (
+                              <button
+                                key={deposit.id}
+                                onClick={() => openSavingsTransactionModal(deposit)}
+                                className="flex items-center gap-2 py-1.5 px-2 rounded-[8px] hover:bg-bg-card transition-colors cursor-pointer text-left"
+                              >
+                                <span className="text-[11px] text-text-muted tabular-nums shrink-0">
+                                  {formatDate(deposit.date)}
+                                </span>
+                                <span className="text-xs text-text-secondary truncate flex-1">
+                                  {deposit.description || '저축'}
+                                </span>
+                                <span className="text-xs text-accent-mint tabular-nums whitespace-nowrap shrink-0">
+                                  +₩{formatNumber(deposit.amount)}
+                                </span>
+                              </button>
+                            ))}
+                            {showLoadMore && (
+                              <button
+                                onClick={() => loadMore(goal.id)}
+                                disabled={more?.loading}
+                                className="text-xs text-text-muted hover:text-text-secondary transition-colors cursor-pointer py-1.5 disabled:opacity-50"
+                              >
+                                {more?.loading ? '불러오는 중…' : '더보기'}
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

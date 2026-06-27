@@ -42,6 +42,7 @@ interface GetTransactionsInput {
   minAmount?: number;
   maxAmount?: number;
   savingsOnly?: boolean;
+  savingsGoalId?: string;
   groupId?: string;
   recurring?: 'all' | 'only' | 'none';
 }
@@ -212,8 +213,14 @@ function buildTransactionWhere(input: GetTransactionsInput): Prisma.TransactionW
   if (search) where.description = { contains: search };
   if (input.groupId) where.groupId = input.groupId;
 
-  // 저축 전용 필터
-  if (input.savingsOnly) {
+  // 저축 필터 (우선순위 순):
+  // 1) 특정 목표 입금("더보기" 페이징) → 그 목표로 한정 + 입금은 EXPENSE
+  // 2) savingsOnly → 모든 저축 입금
+  // 3) 기본 → 저축 제외(savingsGoalId=null)
+  if (input.savingsGoalId) {
+    where.savingsGoalId = input.savingsGoalId;
+    where.type = 'EXPENSE';
+  } else if (input.savingsOnly) {
     where.savingsGoalId = { not: null };
   } else {
     where.savingsGoalId = null;

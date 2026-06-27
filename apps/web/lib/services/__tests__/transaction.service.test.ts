@@ -392,6 +392,39 @@ describe('transaction.service', () => {
       );
     });
 
+    it('특정 목표 입금만 필터링해야 함 (savingsGoalId + type=EXPENSE)', async () => {
+      (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
+
+      await getTransactions({ userId: 'user-1', savingsGoalId: 'goal-1' });
+
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            savingsGoalId: 'goal-1',
+            type: 'EXPENSE',
+          }),
+        })
+      );
+    });
+
+    it('savingsGoalId가 savingsOnly보다 우선한다', async () => {
+      (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
+
+      await getTransactions({ userId: 'user-1', savingsGoalId: 'goal-1', savingsOnly: true });
+
+      const call = (prisma.transaction.findMany as jest.Mock).mock.calls[0][0];
+      expect(call.where.savingsGoalId).toBe('goal-1'); // { not: null }이 아니라 특정 id
+    });
+
+    it('savingsGoalId 미지정 시 기본은 저축 제외(savingsGoalId=null) 유지 (회귀)', async () => {
+      (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
+
+      await getTransactions({ userId: 'user-1' });
+
+      const call = (prisma.transaction.findMany as jest.Mock).mock.calls[0][0];
+      expect(call.where.savingsGoalId).toBeNull();
+    });
+
     it('금액 범위로 필터링해야 함', async () => {
       (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
 

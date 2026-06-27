@@ -149,6 +149,35 @@ export async function getActiveSavingsGoalsWithProgress(userId: string) {
     }
   });
 
+  // 목표별 최근 입금 5개 (아코디언 첫 페이지 embed). 입금 = EXPENSE + savingsGoalId.
+  // 편집/삭제 모달(EditSavingsTransactionModal)이 받는 TransactionWithCategory 형태로 shape.
+  // 결정적 정렬(date desc, id desc)로 동일 날짜 입금도 안정적.
+  const recentLists = await Promise.all(
+    goalIds.map((goalId) =>
+      prisma.transaction.findMany({
+        where: { savingsGoalId: goalId, type: 'EXPENSE', deletedAt: null },
+        orderBy: [{ date: 'desc' }, { id: 'desc' }],
+        take: 5,
+        select: { id: true, amount: true, type: true, description: true, date: true, savingsGoalId: true },
+      })
+    )
+  );
+  const recentByGoal = new Map(
+    goalIds.map((goalId, i) => [
+      goalId,
+      recentLists[i].map((t) => ({
+        id: t.id,
+        amount: t.amount,
+        type: t.type,
+        description: t.description,
+        date: t.date.toISOString(),
+        categoryId: null,
+        category: null,
+        savingsGoalId: t.savingsGoalId,
+      })),
+    ])
+  );
+
   // 진행률 및 월별 필요 금액 계산
   return activeGoals.map((goal) => {
     const startYear = goal.startYear ?? new Date(goal.createdAt).getFullYear();
@@ -186,6 +215,7 @@ export async function getActiveSavingsGoalsWithProgress(userId: string) {
       targetYear: goal.targetYear,
       targetMonth: goal.targetMonth,
       isPrimary: goal.isPrimary,
+      recentDeposits: recentByGoal.get(goal.id) ?? [],
     };
   });
 }

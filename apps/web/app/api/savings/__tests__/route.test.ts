@@ -11,6 +11,7 @@ jest.mock('@/lib/prisma', () => ({
     },
     transaction: {
       groupBy: jest.fn(),
+      findMany: jest.fn(),
     },
   },
 }));
@@ -18,6 +19,8 @@ jest.mock('@/lib/prisma', () => ({
 describe('GET /api/savings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // 목표별 최근 입금(embed) 조회 — 기본 빈 배열
+    (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   const mockSavingsGoals = [
