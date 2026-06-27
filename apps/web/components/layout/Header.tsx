@@ -132,7 +132,7 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
-        {plan && <PlanBadge plan={plan} />}
+        {plan && <span className="hidden sm:block"><PlanBadge plan={plan} /></span>}
 
         {showDatePicker && (
           <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none py-2 px-3 gap-2">
