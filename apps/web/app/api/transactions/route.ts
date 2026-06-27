@@ -41,6 +41,7 @@ export const GET = apiHandler('fetch transactions', async (request: NextRequest)
     maxAmount: searchParams.get('maxAmount') ? parseInt(searchParams.get('maxAmount')!) : undefined,
     savingsOnly: searchParams.get('savingsOnly') === 'true',
     savingsGoalId: searchParams.get('savingsGoalId') || undefined,
+    recurringExpenseId: searchParams.get('recurringExpenseId') || undefined,
     groupId: searchParams.get('groupId') || undefined,
     recurring: (searchParams.get('recurring') as 'all' | 'only' | 'none' | null) || undefined,
   });

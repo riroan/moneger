@@ -43,6 +43,7 @@ interface GetTransactionsInput {
   maxAmount?: number;
   savingsOnly?: boolean;
   savingsGoalId?: string;
+  recurringExpenseId?: string;
   groupId?: string;
   recurring?: 'all' | 'only' | 'none';
 }
@@ -234,7 +235,9 @@ function buildTransactionWhere(input: GetTransactionsInput): Prisma.TransactionW
   }
 
   // 정기 지출 필터
-  if (input.recurring === 'only') {
+  if (input.recurringExpenseId) {
+    where.recurringExpenseId = input.recurringExpenseId;
+  } else if (input.recurring === 'only') {
     where.recurringExpenseId = { not: null };
   } else if (input.recurring === 'none') {
     where.recurringExpenseId = null;

@@ -25,6 +25,7 @@ jest.mock('@/lib/prisma', () => ({
       create: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      groupBy: jest.fn(),
       count: jest.fn(),
     },
     dailyBalance: {
@@ -187,6 +188,7 @@ describe('recurring.service', () => {
     it('should return active expenses', async () => {
       (mockPrisma.recurringExpense.findMany as jest.Mock).mockResolvedValue([mockRecurring]);
       (mockPrisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.transaction.groupBy as jest.Mock).mockResolvedValue([]);
 
       const result = await getRecurringExpenses('user-1');
 

@@ -197,10 +197,37 @@ export async function getRecurringExpenses(userId: string) {
     }
   }
 
+  // 고정비별 최근 지출 내역 5건(아코디언 embed) + 전체 건수(회차 계산용)
+  const expenseIds = expenses.map((e) => e.id);
+  const recentLists = await Promise.all(
+    expenseIds.map((id) =>
+      prisma.transaction.findMany({
+        where: { recurringExpenseId: id, deletedAt: null },
+        orderBy: [{ date: 'desc' }, { id: 'desc' }],
+        take: 5,
+        select: { id: true, amount: true, date: true },
+      })
+    )
+  );
+  const recentByExpense = new Map(
+    expenseIds.map((id, i) => [
+      id,
+      recentLists[i].map((t) => ({ id: t.id, amount: t.amount, date: t.date.toISOString() })),
+    ])
+  );
+  const txCounts = await prisma.transaction.groupBy({
+    by: ['recurringExpenseId'],
+    where: { recurringExpenseId: { in: expenseIds }, deletedAt: null },
+    _count: { _all: true },
+  });
+  const txCountByExpense = new Map(txCounts.map((t) => [t.recurringExpenseId, t._count._all]));
+
   return expenses.map((e) => ({
     ...e,
     processedThisMonth: processedMap.has(e.id),
     lastProcessedDate: processedMap.get(e.id) ?? null,
+    recentTransactions: recentByExpense.get(e.id) ?? [],
+    transactionCount: txCountByExpense.get(e.id) ?? 0,
   }));
 }
 

@@ -550,13 +550,13 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                                 onClick={() => openSavingsTransactionModal(deposit)}
                                 className="flex items-center gap-2 py-1.5 px-2 rounded-[8px] hover:bg-bg-card transition-colors cursor-pointer text-left"
                               >
-                                <span className="text-[11px] text-text-muted tabular-nums shrink-0 w-[64px]">
+                                <span className="text-[12px] text-text-muted tabular-nums shrink-0 w-[64px]">
                                   {formatDateOnly(deposit.date)}
                                 </span>
-                                <span className="text-xs text-text-secondary tabular-nums flex-1">
+                                <span className="text-[13px] text-text-secondary tabular-nums flex-1">
                                   {goal.depositCount - index}회차
                                 </span>
-                                <span className="text-xs text-accent-mint tabular-nums whitespace-nowrap shrink-0">
+                                <span className="text-[13px] text-accent-mint tabular-nums whitespace-nowrap shrink-0">
                                   +₩{formatNumber(deposit.amount)}
                                 </span>
                               </button>

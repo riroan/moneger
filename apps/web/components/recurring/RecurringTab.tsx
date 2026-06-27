@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { formatNumber } from '@/utils/formatters';
+import { formatNumber, formatDateOnly } from '@/utils/formatters';
 import { FaPlus } from 'react-icons/fa';
-import { MdEventRepeat, MdEdit, MdDelete, MdHistory, MdPieChart, MdSchedule, MdCheckCircle, MdAccessTime } from 'react-icons/md';
+import { MdEventRepeat, MdEdit, MdDelete, MdHistory, MdExpandMore, MdPieChart, MdSchedule, MdCheckCircle, MdAccessTime } from 'react-icons/md';
 import { RECURRING_EXPENSE_LIMITS } from '@/lib/constants';
 
 const AddRecurringModal = dynamic(() => import('./AddRecurringModal'), { ssr: false });
@@ -23,6 +23,15 @@ interface RecurringExpense {
   lastProcessedDate: string | null;
   category: { id: string; name: string; type: string; color: string | null; icon: string | null } | null;
   history: { id: string; previousAmount: number; newAmount: number; changedAt: string }[];
+  recentTransactions: { id: string; amount: number; date: string }[];
+  transactionCount: number;
+}
+
+interface TxPage {
+  items: { id: string; amount: number; date: string }[];
+  cursor: string | null;
+  hasMore: boolean;
+  loading: boolean;
 }
 
 /**
@@ -60,6 +69,8 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<RecurringExpense | null>(null);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
+  const [moreByExpense, setMoreByExpense] = useState<Record<string, TxPage>>({});
   const [deleteTargetExpense, setDeleteTargetExpense] = useState<RecurringExpense | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -99,6 +110,43 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
     fetchData();
     onDataChange?.();
   };
+
+  const loadMoreTx = useCallback(
+    async (expenseId: string) => {
+      const prev = moreByExpense[expenseId];
+      if (prev?.loading) return;
+      const cursor = prev?.cursor ?? null;
+      setMoreByExpense((m) => ({
+        ...m,
+        [expenseId]: { items: prev?.items ?? [], cursor, hasMore: prev?.hasMore ?? true, loading: true },
+      }));
+      try {
+        const params = new URLSearchParams({ userId, recurringExpenseId: expenseId, limit: '20' });
+        if (cursor) params.set('cursor', cursor);
+        const res = await fetch(`/api/transactions?${params.toString()}`);
+        if (!res.ok) throw new Error('failed');
+        const json = await res.json();
+        const items = ((json.data ?? []) as { id: string; amount: number; date: string }[]).map(
+          (t) => ({ id: t.id, amount: t.amount, date: t.date })
+        );
+        setMoreByExpense((m) => ({
+          ...m,
+          [expenseId]: {
+            items: [...(prev?.items ?? []), ...items],
+            cursor: json.nextCursor ?? null,
+            hasMore: !!json.hasMore,
+            loading: false,
+          },
+        }));
+      } catch {
+        setMoreByExpense((m) => ({
+          ...m,
+          [expenseId]: { items: prev?.items ?? [], cursor, hasMore: false, loading: false },
+        }));
+      }
+    },
+    [moreByExpense, userId]
+  );
 
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -309,6 +357,52 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
                       ))}
                     </div>
                   )}
+
+                  {/* 지출 내역 아코디언 — 저축 입금 내역과 동일한 형식 */}
+                  {expense.transactionCount > 0 && (() => {
+                    const expanded = expandedTxId === expense.id;
+                    const more = moreByExpense[expense.id];
+                    const items = more?.items ?? expense.recentTransactions;
+                    const showLoadMore = more ? more.hasMore : expense.transactionCount > 5;
+                    return (
+                      <>
+                        <button
+                          onClick={() => setExpandedTxId(expanded ? null : expense.id)}
+                          className="mt-3 w-full flex items-center justify-center gap-1 text-xs text-text-muted hover:text-text-secondary transition-colors cursor-pointer border-t border-[var(--border)] pt-3 pb-1"
+                          aria-expanded={expanded}
+                        >
+                          지출 내역
+                          <MdExpandMore className={`text-sm transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                        </button>
+                        {expanded && (
+                          <div className="mt-1 flex flex-col gap-0.5">
+                            {items.map((tx, index) => (
+                              <div key={tx.id} className="flex items-center gap-2 py-1.5 px-2">
+                                <span className="text-[12px] text-text-muted tabular-nums shrink-0 w-[64px]">
+                                  {formatDateOnly(tx.date)}
+                                </span>
+                                <span className="text-[13px] text-text-secondary tabular-nums flex-1">
+                                  {expense.transactionCount - index}회차
+                                </span>
+                                <span className="text-[13px] text-accent-coral tabular-nums whitespace-nowrap shrink-0">
+                                  ₩{formatNumber(tx.amount)}
+                                </span>
+                              </div>
+                            ))}
+                            {showLoadMore && (
+                              <button
+                                onClick={() => loadMoreTx(expense.id)}
+                                disabled={more?.loading}
+                                className="text-xs text-text-muted hover:text-text-secondary transition-colors cursor-pointer py-1.5 disabled:opacity-50"
+                              >
+                                {more?.loading ? '불러오는 중…' : '더보기'}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
