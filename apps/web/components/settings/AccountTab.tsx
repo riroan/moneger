@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { usePlan } from '@/hooks';
+import { PlanBadge } from '@/components/common';
 
 interface AccountTabProps {
   userName: string;
@@ -10,6 +12,7 @@ interface AccountTabProps {
 }
 
 export default function AccountTab({ userName, userEmail, userId, onDeleteAccountOpen }: AccountTabProps) {
+  const { plan, isLoading: isLoadingPlan } = usePlan(userId);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -93,6 +96,17 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
             <div>
               <div className="text-sm text-text-muted mb-1.5">이메일</div>
               <div className="text-base text-text-primary font-medium">{userEmail}</div>
+            </div>
+            <div className="border-t border-[var(--border)]" />
+            <div>
+              <div className="text-sm text-text-muted mb-1.5">요금제</div>
+              {isLoadingPlan ? (
+                <div className="text-base text-text-muted font-medium">불러오는 중...</div>
+              ) : plan ? (
+                <PlanBadge plan={plan} />
+              ) : (
+                <div className="text-base text-text-muted font-medium">-</div>
+              )}
             </div>
           </div>
         </div>

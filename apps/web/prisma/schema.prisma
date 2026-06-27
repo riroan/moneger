@@ -19,6 +19,11 @@ model User {
   name                 String?
   password             String
   defaultExpenseBudget Float?
+  // 요금제 구분(결제 본체는 아직 없음). FREE 기본, PRO는 DB에서 직접 부여.
+  // planExpiresAt가 지나면 entitlements에서 FREE로 취급(만료). 결제 도입 시 이 필드만 세팅하면 됨.
+  plan                 Plan      @default(FREE)
+  planSince            DateTime?
+  planExpiresAt        DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   deletedAt            DateTime?
@@ -260,6 +265,14 @@ model MonthlyAssetSnapshot {
 enum TransactionType {
   INCOME
   EXPENSE
+}
+
+// 요금제. 결제 도입 시 티어만 추가하면 entitlements 게이트는 불변.
+// ULTIMATE는 개인(관리자) 최상위 등급으로 모든 기능을 가지며 만료되지 않는다.
+enum Plan {
+  FREE
+  PRO
+  ULTIMATE
 }
 
 enum Broker {

@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { formatYearMonth } from '@/utils/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
 import { MdAccountBalanceWallet, MdSettings, MdLogout, MdDarkMode, MdLightMode, MdBarChart } from 'react-icons/md';
+import type { Plan } from '@prisma/client';
+import { PlanBadge } from '@/components/common';
 
 interface HeaderProps {
   userName: string;
@@ -17,6 +19,7 @@ interface HeaderProps {
   onLogout: () => void;
   oldestDate?: { year: number; month: number } | null;
   showDatePicker?: boolean;
+  plan?: Plan | null;
 }
 
 export default function Header({
@@ -29,6 +32,7 @@ export default function Header({
   onLogout,
   oldestDate,
   showDatePicker = true,
+  plan,
 }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -125,6 +129,8 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
+        {plan && <PlanBadge plan={plan} />}
+
         {showDatePicker && (
           <div ref={datePickerRef} className="flex items-center bg-bg-card border border-[var(--border)] rounded-xl relative select-none py-2 px-3 gap-2">
             <button
@@ -219,7 +225,10 @@ export default function Header({
               className="absolute top-full right-0 bg-bg-card border border-[var(--border)] rounded-[12px] overflow-hidden select-none z-[300] mt-2 min-w-[180px] shadow-2xl"
             >
               <div className="border-b border-[var(--border)] py-3 px-3.5">
-                <div className="font-semibold text-text-primary text-sm">{userName || '사용자'}</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-semibold text-text-primary text-sm">{userName || '사용자'}</div>
+                  {plan && <PlanBadge plan={plan} />}
+                </div>
                 <div className="text-text-secondary text-xs mt-0.5">{userEmail}</div>
               </div>
               <div className="py-1.5">

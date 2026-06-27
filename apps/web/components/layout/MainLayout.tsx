@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useAuthStore, useAppStore, useModalStore, useCategoryStore, useTransactionStore } from '@/stores';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useTransactionHandlers } from '@/hooks/useTransactionHandlers';
+import { usePlan } from '@/hooks';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import FAB from '@/components/layout/FAB';
@@ -48,6 +49,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   // Hooks
   const { refreshData } = useDashboardData();
+  const { plan } = usePlan(userId);
 
   const { handleSubmitTransaction, handleEditTransaction, handleDeleteTransaction, handleDeleteSavingsTransaction } =
     useTransactionHandlers({
@@ -98,6 +100,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           onLogout={logout}
           oldestDate={oldestTransactionDate}
           showDatePicker={pathname === '/'}
+          plan={plan}
         />
 
         {children}

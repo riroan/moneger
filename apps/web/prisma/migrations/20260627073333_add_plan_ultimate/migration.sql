@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `User` MODIFY `plan` ENUM('FREE', 'PRO', 'ULTIMATE') NOT NULL DEFAULT 'FREE';
