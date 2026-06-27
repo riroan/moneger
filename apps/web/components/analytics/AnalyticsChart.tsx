@@ -172,13 +172,13 @@ export default function AnalyticsChart({ data, months: selectedMonths, userId }:
           <ComposedChart data={barData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis dataKey="label" tickFormatter={(label) => formatXAxisLabel(label, isMobile)} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis yAxisId="amount" tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 40 : 60} />
+            <YAxis yAxisId="amount" tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 48 : 60} />
             <Tooltip
               formatter={(value, name) => [`₩${formatNumber(Number(value) || 0)}`, String(name)]}
               contentStyle={tooltipStyle}
             />
             {monthlyTarget != null && (
-              <ReferenceLine yAxisId="amount" y={monthlyTarget} stroke={COLOR_YELLOW} strokeDasharray="4 3" strokeWidth={1.5} label={{ value: `목표 ${formatKRW(monthlyTarget)}`, position: 'insideLeft', fontSize: 11, fill: COLOR_YELLOW }} />
+              <ReferenceLine yAxisId="amount" y={monthlyTarget} stroke={COLOR_YELLOW} strokeDasharray="4 3" strokeWidth={1.5} />
             )}
             <Bar yAxisId="amount" dataKey="수입"   fill={COLOR_MINT}   radius={[4,4,0,0]} maxBarSize={28} />
             <Bar yAxisId="amount" dataKey="지출"   fill={COLOR_CORAL}  radius={[4,4,0,0]} maxBarSize={28} />
@@ -207,7 +207,7 @@ export default function AnalyticsChart({ data, months: selectedMonths, userId }:
           <ComposedChart data={dowPattern} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 40 : 60} />
+            <YAxis tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 48 : 60} />
             <Tooltip
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
@@ -241,7 +241,7 @@ export default function AnalyticsChart({ data, months: selectedMonths, userId }:
             <ComposedChart data={categoryTrends.data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="label" tickFormatter={(label) => formatXAxisLabel(label, isMobile)} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} padding={{ left: 24, right: 24 }} />
-              <YAxis tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 40 : 60} />
+              <YAxis tickFormatter={formatKRW} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={isMobile ? 48 : 60} />
               <Tooltip
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={((v: any, n: string) => [`₩${formatNumber(Number(v) || 0)}`, n]) as any}
