@@ -32,6 +32,48 @@ function errorNoStore(error: string, status = 400): NextResponse {
   return noStoreJson({ error }, status);
 }
 
+function serializeSummary(row: { text: string; generatedAt: Date; source: string }) {
+  return {
+    text: row.text,
+    generatedAt: row.generatedAt.toISOString(),
+    source: row.source as AiSummarySource,
+  };
+}
+
+export const GET = apiHandler('fetch asset AI summary', async (request: NextRequest) => {
+  const userId = request.nextUrl.searchParams.get('userId');
+  const month = request.nextUrl.searchParams.get('month');
+
+  if (!userId || typeof userId !== 'string') {
+    return errorNoStore('userId is required', 400);
+  }
+  if (!month || typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month)) {
+    return errorNoStore('month must be YYYY-MM', 400);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, planExpiresAt: true },
+  });
+  if (!user) {
+    return errorNoStore('User not found', 404);
+  }
+  if (!hasFeature(user, 'AI_SUMMARY')) {
+    return errorNoStore('feature_not_entitled', 403);
+  }
+
+  const monthKey = parseMonthKey(month);
+  if (Number.isNaN(monthKey.getTime())) {
+    return errorNoStore('invalid month', 400);
+  }
+
+  const cached = await prisma.assetAiSummary.findUnique({
+    where: { userId_month: { userId, month: monthKey } },
+  });
+
+  return successNoStore(cached ? serializeSummary(cached) : null);
+});
+
 export const POST = apiHandler('generate asset AI summary', async (request: NextRequest) => {
   const body = await request.json();
   const { userId, month, regenerate = false } = body ?? {};
@@ -67,11 +109,7 @@ export const POST = apiHandler('generate asset AI summary', async (request: Next
       where: { userId_month: { userId, month: monthKey } },
     });
     if (cached) {
-      return successNoStore({
-        text: cached.text,
-        generatedAt: cached.generatedAt.toISOString(),
-        source: cached.source as AiSummarySource,
-      });
+      return successNoStore(serializeSummary(cached));
     }
   }
 
@@ -106,9 +144,5 @@ export const POST = apiHandler('generate asset AI summary', async (request: Next
     create: { userId, month: monthKey, text, source, generatedAt },
   });
 
-  return successNoStore({
-    text: row.text,
-    generatedAt: row.generatedAt.toISOString(),
-    source: row.source as AiSummarySource,
-  });
+  return successNoStore(serializeSummary(row));
 });

@@ -394,6 +394,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [aiSummary, setAiSummary] = useState<AiSummaryResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiCacheLoading, setAiCacheLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiNoticeAccepted, setAiNoticeAccepted] = useState(false);
   const { features, isLoading: isPlanLoading } = usePlan(userId);
@@ -523,6 +524,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
     setAiSummary(null);
     setAiError(null);
     setAiLoading(false);
+    setAiCacheLoading(false);
   }, [month]);
 
   useEffect(() => {
@@ -530,9 +532,48 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
     setAiNoticeAccepted(stored === 'true');
   }, []);
 
+  useEffect(() => {
+    if (isPlanLoading || !canUseAiSummary) return;
+
+    let ignore = false;
+    const controller = new AbortController();
+
+    const fetchCachedAiSummary = async () => {
+      setAiCacheLoading(true);
+      setAiError(null);
+
+      try {
+        const params = new URLSearchParams({ userId, month });
+        const res = await fetch(`/api/assets/ai-summary?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.error || 'AI 한 줄 평을 불러오지 못했습니다');
+        if (ignore) return;
+        if (json.data) {
+          setAiSummary({ month, ...(json.data as Omit<AiSummaryResult, 'month'>) });
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (!ignore) {
+          setAiError(err instanceof Error ? err.message : 'AI 한 줄 평을 불러오지 못했습니다');
+        }
+      } finally {
+        if (!ignore) setAiCacheLoading(false);
+      }
+    };
+
+    fetchCachedAiSummary();
+
+    return () => {
+      ignore = true;
+      controller.abort();
+    };
+  }, [canUseAiSummary, isPlanLoading, month, userId]);
+
   const fetchAiSummary = useCallback(
     async (regenerate = false) => {
-      if (!canUseAiSummary || aiLoading) return;
+      if (!canUseAiSummary || aiLoading || aiCacheLoading) return;
       const requestedMonth = month;
       setAiLoading(true);
       setAiError(null);
@@ -556,7 +597,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
         setAiLoading(false);
       }
     },
-    [aiLoading, aiNoticeAccepted, canUseAiSummary, month, userId]
+    [aiCacheLoading, aiLoading, aiNoticeAccepted, canUseAiSummary, month, userId]
   );
 
   if (loading && !data) {
@@ -862,19 +903,19 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                   <button
                     className={`${ICON_BTN} gap-2`}
                     onClick={() => fetchAiSummary(true)}
-                    disabled={aiLoading}
+                    disabled={aiLoading || aiCacheLoading}
                   >
                     <MdRefresh className="text-lg" />
-                    {aiLoading ? '생성 중...' : '다시 생성'}
+                    {aiLoading ? '생성 중...' : aiCacheLoading ? '확인 중...' : '다시 생성'}
                   </button>
                 ) : (
                   <button
                     className={`${ICON_BTN} gap-2`}
                     onClick={() => fetchAiSummary(false)}
-                    disabled={aiLoading}
+                    disabled={aiLoading || aiCacheLoading}
                   >
                     <MdAutoAwesome className="text-lg" />
-                    {aiLoading ? '생성 중...' : '생성'}
+                    {aiLoading ? '생성 중...' : aiCacheLoading ? '확인 중...' : '생성'}
                   </button>
                 )}
               </>
@@ -894,6 +935,8 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
             <div className="text-sm leading-6 text-text-secondary">{aiSummary.text}</div>
           ) : aiLoading ? (
             <div className="text-sm font-semibold text-text-muted">생성 중...</div>
+          ) : aiCacheLoading ? (
+            <div className="text-sm font-semibold text-text-muted">저장된 요약 확인 중...</div>
           ) : (
             <div className="text-sm text-text-muted">
               {canUseAiSummary ? `${fullMonthLabel(current.month)} 요약을 생성할 수 있습니다` : '현재 요금제에서는 사용할 수 없습니다'}

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { POST } from '../route';
+import { GET, POST } from '../route';
 import { prisma } from '@/lib/prisma';
 import { getMonthlyAssetReport } from '@/lib/services/monthly-asset.service';
 
@@ -45,6 +45,14 @@ function makeRequest(body: Record<string, unknown>) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
+}
+
+function makeGetRequest(params: Record<string, string>) {
+  const url = new URL('http://localhost:3000/api/assets/ai-summary');
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return new NextRequest(url);
 }
 
 function makeReport() {
@@ -99,6 +107,45 @@ function makeReport() {
     },
   };
 }
+
+describe('GET /api/assets/ai-summary', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env.OPENAI_API_KEY;
+    mockUserFindUnique.mockResolvedValue({ plan: 'ULTIMATE', planExpiresAt: null });
+    mockSummaryFindUnique.mockResolvedValue(null);
+  });
+
+  it('returns cached summary without OPENAI_API_KEY', async () => {
+    mockSummaryFindUnique.mockResolvedValue({
+      text: '캐시된 요약입니다.',
+      source: 'ai',
+      generatedAt,
+    });
+
+    const response = await GET(makeGetRequest({ userId: 'user-1', month: '2026-06' }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data.text).toBe('캐시된 요약입니다.');
+    expect(data.data.source).toBe('ai');
+    expect(mockGetMonthlyAssetReport).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockSummaryUpsert).not.toHaveBeenCalled();
+  });
+
+  it('returns null when cached summary does not exist', async () => {
+    const response = await GET(makeGetRequest({ userId: 'user-1', month: '2026-06' }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data).toBeNull();
+    expect(mockGetMonthlyAssetReport).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockSummaryUpsert).not.toHaveBeenCalled();
+  });
+});
 
 describe('POST /api/assets/ai-summary', () => {
   beforeEach(() => {
