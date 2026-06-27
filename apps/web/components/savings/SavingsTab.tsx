@@ -337,8 +337,8 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                     key={goal.id}
                     className="bg-bg-secondary hover:bg-bg-card-hover rounded-[14px] transition-colors p-4"
                   >
-                    {/* 상단: 아이콘 + 이름/날짜 + 금액 */}
-                    <div className="flex items-start gap-3 mb-3 overflow-hidden">
+                    {/* 상단: 아이콘 + 이름/배지/날짜 (이름은 길면 줄임, 배지는 항상 보임) */}
+                    <div className="flex items-start gap-3 mb-2">
                       <button
                         onClick={(e) => handleTogglePrimary(e, goal.id, goal.isPrimary)}
                         className="w-11 h-11 rounded-[10px] flex items-center justify-center text-lg relative cursor-pointer transition-all hover:scale-105 bg-amber-400/15 text-amber-400 shrink-0"
@@ -355,9 +355,9 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                           )}
                         </div>
                       </button>
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm sm:text-base font-medium truncate">{goal.name}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-sm sm:text-base font-medium truncate max-w-full">{goal.name}</p>
                           {goal.isPrimary && (
                             <span className="text-xs text-amber-400 font-medium shrink-0">대표</span>
                           )}
@@ -367,17 +367,19 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-text-muted mt-0.5 whitespace-nowrap">{goal.targetDate}</p>
+                        <p className="text-xs text-text-muted mt-0.5">{goal.targetDate}</p>
                       </div>
-                      <div className="text-right shrink-0 max-w-[45%]">
-                        <p className="text-lg sm:text-2xl font-bold text-text-primary tabular-nums leading-tight truncate">
-                          <span className="mr-0.5">₩</span>{formatNumber(goal.currentAmount)}
-                        </p>
-                        <p className="text-[11px] sm:text-xs text-text-muted tabular-nums mt-0.5 truncate">
-                          / <span className="mr-px">₩</span>{formatNumber(goal.targetAmount)}
-                          <span className="text-accent-mint font-semibold ml-1">({goal.progressPercent}%)</span>
-                        </p>
-                      </div>
+                    </div>
+
+                    {/* 금액: 원금 / 목표 (진척%) — 풀폭 우측 정렬, 잘리지 않게 (좁으면 목표가 다음 줄로) */}
+                    <div className="flex items-baseline justify-end gap-x-2 gap-y-0.5 flex-wrap mb-3">
+                      <span className="text-lg sm:text-2xl font-bold text-text-primary tabular-nums leading-tight">
+                        <span className="mr-0.5">₩</span>{formatNumber(goal.currentAmount)}
+                      </span>
+                      <span className="text-[11px] sm:text-xs text-text-muted tabular-nums">
+                        / <span className="mr-px">₩</span>{formatNumber(goal.targetAmount)}
+                        <span className="text-accent-mint font-semibold ml-1">({goal.progressPercent}%)</span>
+                      </span>
                     </div>
 
                     {/* 진행률 바 (원금/목표 기준 — 비연결 목표와 의미 동일) */}
@@ -391,13 +393,13 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                     {/* 연동 목표: 원금(위 currentAmount) 대비 평가액·손익 보조줄.
                         손익 색/마크는 InvestmentsTab과 동일 컨벤션(pnl 유틸 재사용). */}
                     {isLinked && (
-                      <div className="flex items-center justify-between gap-2 mb-3 text-xs sm:text-sm tabular-nums overflow-hidden">
+                      <div className="flex flex-wrap items-baseline justify-end gap-x-3 gap-y-0.5 mb-3 text-xs sm:text-sm tabular-nums">
                         {hasValue ? (
                           <>
-                            <span className="text-text-secondary truncate">
+                            <span className="text-text-secondary whitespace-nowrap">
                               평가액 {formatCurrency(marketValue)}
                             </span>
-                            <span className={`font-medium shrink-0 whitespace-nowrap ${pnlClass(pnl)}`}>
+                            <span className={`font-medium whitespace-nowrap ${pnlClass(pnl)}`}>
                               {pnlMark(pnl)} {signedCurrency(pnl)}
                               {goal.currentAmount > 0 && (
                                 <span className="ml-1 opacity-70">{signedPercent(pnl / goal.currentAmount)}</span>
@@ -410,9 +412,9 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                       </div>
                     )}
 
-                    {/* 하단: 저축하기 + 편집/삭제 | 이번 달 상태 */}
-                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-[var(--border)] overflow-hidden">
-                      <div className="flex items-center gap-1 shrink-0">
+                    {/* 하단: 저축하기 + 편집/삭제 버튼 (한 줄) / 이번 달 상태는 아래 줄 우측 정렬 */}
+                    <div className="pt-3 border-t border-[var(--border)]">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={(e) => handleDepositClick(e, goal)}
                           className="text-xs sm:text-sm text-accent-mint rounded-[8px] hover:opacity-80 transition-colors cursor-pointer flex items-center gap-1 py-1.5 px-3 bg-emerald-400/15 whitespace-nowrap shrink-0"
@@ -435,11 +437,11 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
                         </button>
                       </div>
                       {goal.thisMonthSavings >= goal.monthlyTarget ? (
-                        <p className="text-xs sm:text-sm font-medium text-accent-mint shrink-0 whitespace-nowrap">
+                        <p className="text-right text-xs sm:text-sm font-medium text-accent-mint mt-2 tabular-nums">
                           이번 달 완료!
                         </p>
                       ) : (
-                        <p className="text-xs sm:text-sm text-text-primary shrink-0 tabular-nums whitespace-nowrap">
+                        <p className="text-right text-xs sm:text-sm text-text-primary mt-2 tabular-nums">
                           ₩{formatNumber(goal.monthlyTarget - goal.thisMonthSavings)}
                           <span className="text-text-muted"> 더 필요</span>
                         </p>
