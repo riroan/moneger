@@ -35,10 +35,12 @@ export default function GroupDropdown({ userId, selectedId, onSelect }: GroupDro
 
   useEffect(() => {
     if (!userId) return;
-    fetch(`/api/groups?userId=${userId}`)
+    const controller = new AbortController();
+    fetch(`/api/groups?userId=${userId}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => setGroups(data.data || []))
-      .catch(() => {});
+      .catch((e) => { if (e.name !== 'AbortError') throw e; });
+    return () => controller.abort();
   }, [userId]);
 
   const handleClickOutside = useCallback((e: MouseEvent) => {
