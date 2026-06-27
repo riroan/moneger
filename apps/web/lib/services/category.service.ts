@@ -19,6 +19,26 @@ interface UpdateCategoryInput {
   defaultBudget?: number | null;
 }
 
+const DEFAULT_EXPENSE_CATEGORIES = [
+  { name: '식비', icon: '🍽️', color: '#EF4444' },
+  { name: '교통비', icon: '🚗', color: '#F59E0B' },
+  { name: '쇼핑', icon: '🛍️', color: '#EC4899' },
+  { name: '문화생활', icon: '🎬', color: '#8B5CF6' },
+  { name: '의료', icon: '🏥', color: '#14B8A6' },
+  { name: '주거비', icon: '🏠', color: '#6366F1' },
+  { name: '통신비', icon: '📱', color: '#3B82F6' },
+  { name: '대출이자', icon: '💳', color: '#DC2626' },
+  { name: '저축', icon: '🏦', color: '#FBBF24' },
+  { name: '기타지출', icon: '💸', color: '#64748B' },
+] as const;
+
+const DEFAULT_INCOME_CATEGORIES = [
+  { name: '급여', icon: '💰', color: '#10B981' },
+  { name: '부수입', icon: '💵', color: '#059669' },
+  { name: '용돈', icon: '🎁', color: '#34D399' },
+  { name: '기타수입', icon: '💎', color: '#6EE7B7' },
+] as const;
+
 /**
  * 카테고리 목록 조회
  */
@@ -30,6 +50,47 @@ export async function getCategories(userId: string, type?: TransactionType) {
     where,
     orderBy: { name: 'asc' },
   });
+}
+
+export async function seedDefaultCategories(userId: string) {
+  return prisma.$transaction([
+    ...DEFAULT_EXPENSE_CATEGORIES.map((category) =>
+      prisma.category.create({
+        data: {
+          userId,
+          name: category.name,
+          type: 'EXPENSE',
+          icon: category.icon,
+          color: category.color,
+        },
+      })
+    ),
+    ...DEFAULT_INCOME_CATEGORIES.map((category) =>
+      prisma.category.create({
+        data: {
+          userId,
+          name: category.name,
+          type: 'INCOME',
+          icon: category.icon,
+          color: category.color,
+        },
+      })
+    ),
+  ]);
+}
+
+export async function getOrSeedCategories(userId: string) {
+  const categories = await getCategories(userId);
+  if (categories.length > 0) return categories;
+
+  try {
+    return await seedDefaultCategories(userId);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return getCategories(userId);
+    }
+    throw error;
+  }
 }
 
 /**

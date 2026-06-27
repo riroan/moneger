@@ -173,6 +173,10 @@ export interface MonthlyAssetReport {
   };
 }
 
+interface MonthlyAssetReportOptions {
+  detail?: 'full' | 'summary';
+}
+
 type InvestmentDailyBalanceAccumulator = {
   date: string;
   broker: string;
@@ -516,25 +520,59 @@ async function getDailyExpenseAmounts(
   return amountByDate;
 }
 
+async function getRecurringExpenseAmountsByDay(userId: string, year: number, month: number): Promise<Map<number, number>> {
+  const days = new Date(year, month, 0).getDate();
+  const monthEnd = kstMonthEndUTC(year, month);
+  const rows = await prisma.recurringExpense.findMany({
+    where: {
+      userId,
+      deletedAt: null,
+      isActive: true,
+      type: 'EXPENSE',
+      createdAt: { lte: monthEnd },
+    },
+    select: {
+      amount: true,
+      dayOfMonth: true,
+      createdAt: true,
+    },
+  });
+
+  const amountByDay = new Map<number, number>();
+  for (const row of rows) {
+    const day = Math.min(Math.max(row.dayOfMonth, 1), days);
+    const created = getKSTDateParts(row.createdAt);
+    if (created.year === year && created.month === month && created.day > day) continue;
+    amountByDay.set(day, (amountByDay.get(day) ?? 0) + row.amount);
+  }
+  return amountByDay;
+}
+
 function buildDailyExpenses(
   year: number,
   month: number,
   amountByDate: Map<string, number>,
-  budgetKrw: number
+  budgetKrw: number,
+  fixedExpenseByDay: Map<number, number>
 ): MonthlyDailyExpense[] {
   const days = new Date(year, month, 0).getDate();
+  const fixedExpenseTotal = Array.from(fixedExpenseByDay.values()).reduce((sum, amount) => sum + amount, 0);
+  const variableBudget = Math.max(budgetKrw - fixedExpenseTotal, 0);
   let cumulativeAmount = 0;
+  let fixedCumulativeAmount = 0;
   return Array.from({ length: days }, (_, index) => {
     const day = index + 1;
     const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const amount = roundWon(amountByDate.get(date) ?? 0);
     cumulativeAmount += amount;
+    fixedCumulativeAmount += fixedExpenseByDay.get(day) ?? 0;
+    const variablePace = budgetKrw > 0 ? (variableBudget / days) * day : 0;
     return {
       date,
       day,
       amount,
       cumulativeAmount: roundWon(cumulativeAmount),
-      budgetPaceKrw: budgetKrw > 0 ? roundWon((budgetKrw / days) * day) : null,
+      budgetPaceKrw: budgetKrw > 0 ? roundWon(fixedCumulativeAmount + variablePace) : null,
     };
   });
 }
@@ -682,7 +720,8 @@ export async function upsertMonthlyAssetSnapshot(
 export async function getMonthlyAssetReport(
   userId: string,
   endMonthKey: Date,
-  range = DEFAULT_RANGE
+  range = DEFAULT_RANGE,
+  options: MonthlyAssetReportOptions = {}
 ): Promise<MonthlyAssetReport> {
   const safeRange = Math.min(Math.max(range, 1), MAX_RANGE);
   const monthKeys = buildMonthWindow(endMonthKey, safeRange);
@@ -710,7 +749,10 @@ export async function getMonthlyAssetReport(
 
   const current = snapshots[snapshots.length - 1];
   const previous = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
-  const detail = await getCurrentMonthReportDetail(userId, endMonthKey, current, previous);
+  const detail =
+    options.detail === 'summary'
+      ? await getCurrentMonthReportSummary(userId, endMonthKey, current, previous)
+      : await getCurrentMonthReportDetail(userId, endMonthKey, current, previous);
 
   return {
     months: snapshots.map((snapshot) => snapshot.month),
@@ -722,6 +764,67 @@ export async function getMonthlyAssetReport(
       totalMomPercent: previous ? percentDelta(current.totalAssetKrw, previous.totalAssetKrw) : null,
     },
     report: detail,
+  };
+}
+
+async function getCurrentMonthReportSummary(
+  userId: string,
+  monthKey: Date,
+  current: MonthlyAssetSnapshotData,
+  previous: MonthlyAssetSnapshotData | null
+): Promise<MonthlyAssetReport['report']> {
+  const { year, month } = ymFromMonthKey(monthKey);
+  const { startDate, endDate } = getMonthRangeKST(year, month);
+  const previousExpense = previous?.monthlyExpenseKrw ?? 0;
+
+  const [categories, budgets, userBudgetSetting, averageExpense] = await Promise.all([
+    prisma.category.findMany({
+      where: { userId, deletedAt: null, type: 'EXPENSE' },
+      select: { id: true, defaultBudget: true },
+    }),
+    prisma.budget.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+        month: {
+          gte: startDate,
+          lt: new Date(endDate.getTime() + 1),
+        },
+      },
+      select: { categoryId: true, amount: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { defaultExpenseBudget: true },
+    }),
+    getRecentAverageMonthlyExpense(userId, monthKey, 3),
+  ]);
+
+  const totalBudget = calculateEffectiveMonthlyBudget(categories, budgets, userBudgetSetting?.defaultExpenseBudget);
+
+  return {
+    expenseBudgetKrw: roundWon(totalBudget),
+    expenseBudgetUsedPercent: totalBudget > 0 ? Math.round((current.monthlyExpenseKrw / totalBudget) * 100) : null,
+    expenseMomPercent: previous ? percentDelta(current.monthlyExpenseKrw, previousExpense) : null,
+    savingsRate: current.monthlyIncomeKrw > 0 ? Number(((current.monthlySavingsKrw / current.monthlyIncomeKrw) * 100).toFixed(1)) : null,
+    emergencyMonths: averageExpense > 0 ? Number((current.cashKrw / averageExpense).toFixed(1)) : null,
+    dailyExpenses: [],
+    recentExpenses: [],
+    expenseCategories: [],
+    topExpenseCategories: [],
+    primarySavingsGoal: null,
+    savingsGoals: [],
+    investment: {
+      totalKrw: current.investmentKrw,
+      monthlyChangeKrw: current.investmentChangeKrw,
+      unrealizedPnlKrw: current.investmentPnlKrw,
+      snapshotDate: null,
+      snapshotDateCount: 0,
+      accounts: [],
+      dailyBalances: [],
+      topPosition: null,
+      positions: [],
+    },
   };
 }
 
@@ -739,6 +842,7 @@ async function getCurrentMonthReportDetail(
     investment,
     dailyBalances,
     dailyExpenseAmounts,
+    fixedExpenseByDay,
     recentExpenseRows,
     categories,
     expenseRows,
@@ -750,6 +854,7 @@ async function getCurrentMonthReportDetail(
     getInvestmentAt(userId, kstMonthEndUTC(year, month)),
     getInvestmentDailyBalances(userId, startDate, endDate),
     getDailyExpenseAmounts(userId, startDate, endDate),
+    getRecurringExpenseAmountsByDay(userId, year, month),
     prisma.transaction.findMany({
       where: {
         userId,
@@ -833,7 +938,7 @@ async function getCurrentMonthReportDetail(
   const categoryMap = new Map(categories.map((category) => [category.id, category]));
   const budgetByCategory = new Map(budgets.map((budget) => [budget.categoryId, budget.amount]));
   const totalBudget = calculateEffectiveMonthlyBudget(categories, budgets, userBudgetSetting?.defaultExpenseBudget);
-  const dailyExpenses = buildDailyExpenses(year, month, dailyExpenseAmounts, totalBudget);
+  const dailyExpenses = buildDailyExpenses(year, month, dailyExpenseAmounts, totalBudget, fixedExpenseByDay);
   const averageExpense = await getRecentAverageMonthlyExpense(userId, monthKey, 3);
   const depositByGoal = new Map(
     savingsDepositRows

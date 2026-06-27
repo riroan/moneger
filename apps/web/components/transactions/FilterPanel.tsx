@@ -258,6 +258,9 @@ export default function FilterPanel({
     };
   }, [currentYear, currentMonth, dateRange]);
 
+  const incomeCategories = useMemo(() => categories.filter((category) => category.type === 'INCOME'), [categories]);
+  const expenseCategories = useMemo(() => categories.filter((category) => category.type === 'EXPENSE'), [categories]);
+
   return (
     <div className="lg:block">
       <div className="bg-bg-card border border-[var(--border)] rounded-[16px] sm:rounded-[20px] p-4">
@@ -514,7 +517,7 @@ export default function FilterPanel({
                   <span className="text-sm font-medium text-accent-mint flex items-center gap-2">
                     <FaMoneyBillWave className="text-sm" /> 수입
                     <span className="text-text-muted font-normal">
-                      ({categories.filter(c => c.type === 'INCOME').length})
+                      ({incomeCategories.length})
                     </span>
                   </span>
                   <span className="text-text-muted text-xs">
@@ -523,7 +526,7 @@ export default function FilterPanel({
                 </button>
                 {isIncomeCategoryOpen && (
                   <div className="flex flex-col gap-1 px-2 pb-2">
-                    {categories.filter(c => c.type === 'INCOME').map((cat) => {
+                    {incomeCategories.map((cat) => {
                       const isChecked = filterCategories.includes(cat.id);
                       const IconComponent = getIconComponent(cat.icon);
                       return (
@@ -550,7 +553,7 @@ export default function FilterPanel({
                         </label>
                       );
                     })}
-                    {categories.filter(c => c.type === 'INCOME').length === 0 && (
+                    {incomeCategories.length === 0 && (
                       <div className="text-xs text-text-muted text-center py-2">
                         수입 카테고리가 없습니다
                       </div>
@@ -571,7 +574,7 @@ export default function FilterPanel({
                   <span className="text-sm font-medium text-accent-coral flex items-center gap-2">
                     <FaCreditCard className="text-sm" /> 지출
                     <span className="text-text-muted font-normal">
-                      ({categories.filter(c => c.type === 'EXPENSE').length})
+                      ({expenseCategories.length})
                     </span>
                   </span>
                   <span className="text-text-muted text-xs">
@@ -580,7 +583,7 @@ export default function FilterPanel({
                 </button>
                 {isExpenseCategoryOpen && (
                   <div className="flex flex-col gap-1 px-2 pb-2">
-                    {categories.filter(c => c.type === 'EXPENSE').map((cat) => {
+                    {expenseCategories.map((cat) => {
                       const isChecked = filterCategories.includes(cat.id);
                       const IconComponent = getIconComponent(cat.icon);
                       return (
@@ -607,7 +610,7 @@ export default function FilterPanel({
                         </label>
                       );
                     })}
-                    {categories.filter(c => c.type === 'EXPENSE').length === 0 && (
+                    {expenseCategories.length === 0 && (
                       <div className="text-xs text-text-muted text-center py-2">
                         지출 카테고리가 없습니다
                       </div>

@@ -132,10 +132,6 @@ function priceDayChange(
   const amount = currency === 'KRW' ? formatCurrency(Math.round(abs)) : abs.toFixed(2);
   return { rate, delta: `${sign}${amount}` };
 }
-/** 1주 가격 표기. KRW는 ₩ 포맷, 그 외는 원통화 값 + 통화 코드. */
-function formatSharePrice(lastPrice: string, currency: string): string {
-  return currency === 'KRW' ? formatCurrency(Number(lastPrice)) : `${lastPrice} ${currency}`;
-}
 /** USD 포맷 */
 function formatUsd(v: number): string {
   return `$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

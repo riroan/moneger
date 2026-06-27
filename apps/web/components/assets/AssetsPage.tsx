@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { formatCurrency } from '@moneger/shared';
 import { Area, AreaChart, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
@@ -89,6 +89,35 @@ interface InvestmentBalancePoint {
   cashKrw: number;
   positionsValueKrw: number;
   totalEquityKrw: number;
+}
+
+interface BrokerStat {
+  broker: string;
+  count: number;
+  totalKrw: number;
+  cashKrw: number;
+  positionsValueKrw: number;
+  pnlKrw: number;
+}
+
+interface InvestmentDerivedData {
+  investmentPositions: InvestmentPosition[];
+  investmentAccounts: InvestmentAccount[];
+  brokerStats: BrokerStat[];
+  activeInvestmentBroker: string;
+  visibleInvestmentAccounts: InvestmentAccount[];
+  visibleInvestmentPositions: InvestmentPosition[];
+  visibleInvestmentTotalKrw: number;
+  visibleInvestmentCashKrw: number;
+  visibleInvestmentPnlKrw: number;
+  totalInvestmentEquityKrw: number;
+  totalInvestmentCashKrw: number;
+  investmentCashRatio: number | null;
+  visibleInvestmentWeight: number | null;
+  investmentBalanceChartData: InvestmentBalancePoint[];
+  firstInvestmentBalance: number | null;
+  lastInvestmentBalance: number | null;
+  investmentBalanceDelta: number | null;
 }
 
 interface DailyExpense {
@@ -203,6 +232,26 @@ const tooltipStyle = {
   borderRadius: '10px',
   color: 'var(--text-primary)',
   fontSize: '12px',
+};
+
+const EMPTY_INVESTMENT_DERIVED: InvestmentDerivedData = {
+  investmentPositions: [],
+  investmentAccounts: [],
+  brokerStats: [],
+  activeInvestmentBroker: 'ALL',
+  visibleInvestmentAccounts: [],
+  visibleInvestmentPositions: [],
+  visibleInvestmentTotalKrw: 0,
+  visibleInvestmentCashKrw: 0,
+  visibleInvestmentPnlKrw: 0,
+  totalInvestmentEquityKrw: 0,
+  totalInvestmentCashKrw: 0,
+  investmentCashRatio: null,
+  visibleInvestmentWeight: null,
+  investmentBalanceChartData: [],
+  firstInvestmentBalance: null,
+  lastInvestmentBalance: null,
+  investmentBalanceDelta: null,
 };
 
 function money(value: number): string {
@@ -349,6 +398,107 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
   const [aiNoticeAccepted, setAiNoticeAccepted] = useState(false);
   const { features, isLoading: isPlanLoading } = usePlan(userId);
   const canUseAiSummary = features.includes('AI_SUMMARY');
+  const investmentDerived = useMemo<InvestmentDerivedData>(() => {
+    const investment = data?.report.investment;
+    if (!investment) return EMPTY_INVESTMENT_DERIVED;
+
+    const investmentPositions = investment.positions;
+    const investmentAccounts = investment.accounts;
+    const brokerStatsByBroker = investmentAccounts.reduce((map, account) => {
+      const currentStat = map.get(account.broker) ?? {
+        broker: account.broker,
+        count: 0,
+        totalKrw: 0,
+        cashKrw: 0,
+        positionsValueKrw: 0,
+        pnlKrw: 0,
+      };
+      currentStat.totalKrw += account.totalEquityKrw;
+      currentStat.cashKrw += account.cashKrw;
+      currentStat.positionsValueKrw += account.positionsValueKrw;
+      map.set(account.broker, currentStat);
+      return map;
+    }, new Map<string, BrokerStat>());
+
+    for (const position of investmentPositions) {
+      const currentStat = brokerStatsByBroker.get(position.broker);
+      if (!currentStat) continue;
+      currentStat.count += 1;
+      currentStat.pnlKrw += position.unrealizedPnlKrw;
+    }
+
+    const brokerStats = Array.from(brokerStatsByBroker.values()).sort((a, b) => b.totalKrw - a.totalKrw);
+    const activeInvestmentBroker =
+      selectedInvestmentBroker === 'ALL' || brokerStats.some((stat) => stat.broker === selectedInvestmentBroker)
+        ? selectedInvestmentBroker
+        : 'ALL';
+    const visibleInvestmentAccounts =
+      activeInvestmentBroker === 'ALL'
+        ? investmentAccounts
+        : investmentAccounts.filter((account) => account.broker === activeInvestmentBroker);
+    const visibleInvestmentPositions =
+      activeInvestmentBroker === 'ALL'
+        ? investmentPositions
+        : investmentPositions.filter((position) => position.broker === activeInvestmentBroker);
+    const visibleInvestmentTotalKrw = visibleInvestmentAccounts.reduce((sum, account) => sum + account.totalEquityKrw, 0);
+    const visibleInvestmentCashKrw = visibleInvestmentAccounts.reduce((sum, account) => sum + account.cashKrw, 0);
+    const visibleInvestmentPnlKrw = visibleInvestmentPositions.reduce((sum, position) => sum + position.unrealizedPnlKrw, 0);
+    const totalInvestmentEquityKrw = brokerStats.reduce((sum, stat) => sum + stat.totalKrw, 0);
+    const totalInvestmentCashKrw = brokerStats.reduce((sum, stat) => sum + stat.cashKrw, 0);
+    const investmentCashRatio =
+      totalInvestmentEquityKrw > 0 ? (totalInvestmentCashKrw / totalInvestmentEquityKrw) * 100 : null;
+    const visibleInvestmentWeight =
+      totalInvestmentEquityKrw > 0 ? (visibleInvestmentTotalKrw / totalInvestmentEquityKrw) * 100 : null;
+    const investmentDailyBalances = investment.dailyBalances ?? [];
+    const visibleInvestmentDailyRows =
+      activeInvestmentBroker === 'ALL'
+        ? investmentDailyBalances
+        : investmentDailyBalances.filter((row) => row.broker === activeInvestmentBroker);
+    const investmentBalanceByDate = visibleInvestmentDailyRows.reduce((map, row) => {
+      const currentPoint = map.get(row.date) ?? {
+        date: row.date,
+        cashKrw: 0,
+        positionsValueKrw: 0,
+        totalEquityKrw: 0,
+      };
+      currentPoint.cashKrw += row.cashKrw;
+      currentPoint.positionsValueKrw += row.positionsValueKrw;
+      currentPoint.totalEquityKrw += row.totalEquityKrw;
+      map.set(row.date, currentPoint);
+      return map;
+    }, new Map<string, InvestmentBalancePoint>());
+    const investmentBalanceChartData = Array.from(investmentBalanceByDate.values()).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+    const firstInvestmentBalance =
+      investmentBalanceChartData.length > 0 ? investmentBalanceChartData[0].totalEquityKrw : null;
+    const lastInvestmentBalance =
+      investmentBalanceChartData.length > 0
+        ? investmentBalanceChartData[investmentBalanceChartData.length - 1].totalEquityKrw
+        : null;
+    const investmentBalanceDelta =
+      firstInvestmentBalance == null || lastInvestmentBalance == null ? null : lastInvestmentBalance - firstInvestmentBalance;
+
+    return {
+      investmentPositions,
+      investmentAccounts,
+      brokerStats,
+      activeInvestmentBroker,
+      visibleInvestmentAccounts,
+      visibleInvestmentPositions,
+      visibleInvestmentTotalKrw,
+      visibleInvestmentCashKrw,
+      visibleInvestmentPnlKrw,
+      totalInvestmentEquityKrw,
+      totalInvestmentCashKrw,
+      investmentCashRatio,
+      visibleInvestmentWeight,
+      investmentBalanceChartData,
+      firstInvestmentBalance,
+      lastInvestmentBalance,
+      investmentBalanceDelta,
+    };
+  }, [data?.report.investment, selectedInvestmentBroker]);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -507,80 +657,21 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
     if (!strongest || Math.abs(item.value) > Math.abs(strongest.value)) return item;
     return strongest;
   }, null);
-  const investmentPositions = data.report.investment.positions;
-  const investmentAccounts = data.report.investment.accounts;
-  const brokerStatsByBroker = investmentAccounts.reduce((map, account) => {
-    const currentStat = map.get(account.broker) ?? {
-      broker: account.broker,
-      count: 0,
-      totalKrw: 0,
-      cashKrw: 0,
-      positionsValueKrw: 0,
-      pnlKrw: 0,
-    };
-    currentStat.totalKrw += account.totalEquityKrw;
-    currentStat.cashKrw += account.cashKrw;
-    currentStat.positionsValueKrw += account.positionsValueKrw;
-    map.set(account.broker, currentStat);
-    return map;
-  }, new Map<string, { broker: string; count: number; totalKrw: number; cashKrw: number; positionsValueKrw: number; pnlKrw: number }>());
-  for (const position of investmentPositions) {
-    const currentStat = brokerStatsByBroker.get(position.broker);
-    if (!currentStat) continue;
-    currentStat.count += 1;
-    currentStat.pnlKrw += position.unrealizedPnlKrw;
-  }
-  const brokerStats = Array.from(brokerStatsByBroker.values()).sort((a, b) => b.totalKrw - a.totalKrw);
-  const activeInvestmentBroker =
-    selectedInvestmentBroker === 'ALL' || brokerStats.some((stat) => stat.broker === selectedInvestmentBroker)
-      ? selectedInvestmentBroker
-      : 'ALL';
-  const visibleInvestmentAccounts =
-    activeInvestmentBroker === 'ALL'
-      ? investmentAccounts
-      : investmentAccounts.filter((account) => account.broker === activeInvestmentBroker);
-  const visibleInvestmentPositions =
-    activeInvestmentBroker === 'ALL'
-      ? investmentPositions
-      : investmentPositions.filter((position) => position.broker === activeInvestmentBroker);
-  const visibleInvestmentTotalKrw = visibleInvestmentAccounts.reduce((sum, account) => sum + account.totalEquityKrw, 0);
-  const visibleInvestmentCashKrw = visibleInvestmentAccounts.reduce((sum, account) => sum + account.cashKrw, 0);
-  const visibleInvestmentPnlKrw = visibleInvestmentPositions.reduce((sum, position) => sum + position.unrealizedPnlKrw, 0);
-  const totalInvestmentEquityKrw = brokerStats.reduce((sum, stat) => sum + stat.totalKrw, 0);
-  const totalInvestmentCashKrw = brokerStats.reduce((sum, stat) => sum + stat.cashKrw, 0);
-  const investmentCashRatio =
-    totalInvestmentEquityKrw > 0 ? (totalInvestmentCashKrw / totalInvestmentEquityKrw) * 100 : null;
-  const visibleInvestmentWeight =
-    totalInvestmentEquityKrw > 0 ? (visibleInvestmentTotalKrw / totalInvestmentEquityKrw) * 100 : null;
-  const investmentDailyBalances = data.report.investment.dailyBalances ?? [];
-  const visibleInvestmentDailyRows =
-    activeInvestmentBroker === 'ALL'
-      ? investmentDailyBalances
-      : investmentDailyBalances.filter((row) => row.broker === activeInvestmentBroker);
-  const investmentBalanceByDate = visibleInvestmentDailyRows.reduce((map, row) => {
-    const currentPoint = map.get(row.date) ?? {
-      date: row.date,
-      cashKrw: 0,
-      positionsValueKrw: 0,
-      totalEquityKrw: 0,
-    };
-    currentPoint.cashKrw += row.cashKrw;
-    currentPoint.positionsValueKrw += row.positionsValueKrw;
-    currentPoint.totalEquityKrw += row.totalEquityKrw;
-    map.set(row.date, currentPoint);
-    return map;
-  }, new Map<string, InvestmentBalancePoint>());
-  const investmentBalanceChartData = Array.from(investmentBalanceByDate.values()).sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
-  const firstInvestmentBalance =
-    investmentBalanceChartData.length > 0 ? investmentBalanceChartData[0].totalEquityKrw : null;
-  const lastInvestmentBalance =
-    investmentBalanceChartData.length > 0
-      ? investmentBalanceChartData[investmentBalanceChartData.length - 1].totalEquityKrw
-      : null;
-  const investmentBalanceDelta =
-    firstInvestmentBalance == null || lastInvestmentBalance == null ? null : lastInvestmentBalance - firstInvestmentBalance;
+  const {
+    brokerStats,
+    activeInvestmentBroker,
+    visibleInvestmentPositions,
+    visibleInvestmentTotalKrw,
+    visibleInvestmentCashKrw,
+    visibleInvestmentPnlKrw,
+    totalInvestmentEquityKrw,
+    totalInvestmentCashKrw,
+    investmentCashRatio,
+    visibleInvestmentWeight,
+    investmentBalanceChartData,
+    lastInvestmentBalance,
+    investmentBalanceDelta,
+  } = investmentDerived;
   const totalDaysInSelectedMonth = daysInMonth(current.month);
   const elapsedDays = elapsedDaysInMonth(current.month);
   const remainingDays = Math.max(totalDaysInSelectedMonth - elapsedDays, 0);
@@ -1092,7 +1183,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                 <div>
                   <div className="text-sm font-bold text-text-primary">일별 누적 소비</div>
                   <div className="mt-1 text-xs font-semibold text-text-muted">
-                    {elapsedDays}/{totalDaysInSelectedMonth}일 기준 · 예산 페이스 비교
+                    {elapsedDays}/{totalDaysInSelectedMonth}일 기준 · 고정비 반영 페이스 비교
                   </div>
                 </div>
                 <div className="text-right">
@@ -1526,10 +1617,10 @@ function ExpenseCumulativeChart({ data, hasBudget }: { data: DailyExpense[]; has
           />
           <Tooltip
             contentStyle={tooltipStyle}
-            formatter={(value, name) => [
-              money(Number(value ?? 0)),
-              name === 'pace' ? '예산 페이스' : '누적 소비',
-            ]}
+	            formatter={(value, name) => [
+	              money(Number(value ?? 0)),
+	              name === 'pace' ? '고정비 반영 페이스' : '누적 소비',
+	            ]}
           />
           <Area
             type="monotone"
@@ -1543,7 +1634,7 @@ function ExpenseCumulativeChart({ data, hasBudget }: { data: DailyExpense[]; has
           />
           {hasBudget && (
             <Line
-              type="monotone"
+              type="linear"
               dataKey="pace"
               name="pace"
               stroke="#fbbf24"

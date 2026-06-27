@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   MdLock,
@@ -109,6 +109,14 @@ const LandingPage = () => {
     { name: '문화생활', amount: 30000, percent: 15, color: '#22d3ee', icon: <MdMovie size={18} /> },
     { name: '식비', amount: 20000, percent: 10, color: '#4ade80', icon: <MdRestaurant size={18} /> },
   ];
+  const categoryTotal = categories.reduce((total, category) => total + category.amount, 0);
+  let categoryOffset = 0;
+  const categorySegments = categories.map((category) => {
+    const chartPercent = categoryTotal > 0 ? (category.amount / categoryTotal) * 100 : 0;
+    const segment = { ...category, chartPercent, chartOffset: categoryOffset };
+    categoryOffset += chartPercent;
+    return segment;
+  });
 
   const recentHistory = [
     { name: '적금', date: '2026.1.25 10:00', amount: -200000 },
@@ -623,10 +631,7 @@ const LandingPage = () => {
                 <div style={{ position: 'relative', width: '144px', height: '144px' }}>
                   <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
                     <circle cx="50" cy="50" r="38" fill="transparent" stroke={theme.chartBg} strokeWidth="12"/>
-                    {categories.map((cat, idx) => {
-                      const total = categories.reduce((a, b) => a + b.amount, 0);
-                      const percent = (cat.amount / total) * 100;
-                      const offset = categories.slice(0, idx).reduce((a, b) => a + (b.amount / total) * 100, 0);
+                    {categorySegments.map((cat, idx) => {
                       return (
                         <circle
                           key={idx}
@@ -636,8 +641,8 @@ const LandingPage = () => {
                           fill="transparent"
                           stroke={cat.color}
                           strokeWidth="12"
-                          strokeDasharray={`${percent * 2.39} 239`}
-                          strokeDashoffset={`${-offset * 2.39}`}
+                          strokeDasharray={`${cat.chartPercent * 2.39} 239`}
+                          strokeDashoffset={`${-cat.chartOffset * 2.39}`}
                         />
                       );
                     })}

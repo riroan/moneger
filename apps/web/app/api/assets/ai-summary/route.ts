@@ -15,7 +15,7 @@ import { parseMonthKey } from '@/lib/utils/asset-month';
 
 export const maxDuration = 15;
 
-const REPORT_RANGE_MONTHS = 6;
+const REPORT_RANGE_MONTHS = 2;
 
 function noStoreJson<T>(body: T, status = 200): NextResponse {
   return NextResponse.json(body, {
@@ -75,7 +75,7 @@ export const POST = apiHandler('generate asset AI summary', async (request: Next
     }
   }
 
-  const report = await getMonthlyAssetReport(userId, monthKey, REPORT_RANGE_MONTHS);
+  const report = await getMonthlyAssetReport(userId, monthKey, REPORT_RANGE_MONTHS, { detail: 'summary' });
   const facts = buildAiFacts(report);
   const messages = buildMessages(facts);
   let text = templateSummary(facts);

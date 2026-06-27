@@ -1,62 +1,74 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAuthStore, useAppStore, useTransactionStore, useCategoryStore } from '@/stores';
 
 export function useDashboardData() {
   const userId = useAuthStore((state) => state.userId);
   const currentDate = useAppStore((state) => state.currentDate);
-  const fetchCategories = useCategoryStore((state) => state.fetchCategories);
+  const setCategories = useCategoryStore((state) => state.setCategories);
+  const bootstrapSummaryKeyRef = useRef<string | null>(null);
 
   // Initial data loading
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      bootstrapSummaryKeyRef.current = null;
+      return;
+    }
 
     const store = useTransactionStore.getState();
     store.setIsLoadingTransactions(true);
     store.setIsLoadingTodaySummary(true);
+    store.setIsLoadingSummary(true);
+
+    const initialDate = useAppStore.getState().currentDate;
+    const year = initialDate.getFullYear();
+    const month = initialDate.getMonth() + 1;
+    const summaryKey = `${userId}:${year}-${month}`;
+    bootstrapSummaryKeyRef.current = summaryKey;
+    let cancelled = false;
 
     const fetchInitialData = async () => {
       try {
-        const [, oldestDateRes, recentRes, todayRes] = await Promise.all([
-          fetchCategories(userId),
-          fetch(`/api/transactions/oldest-date?userId=${userId}`),
-          fetch(`/api/transactions/recent?userId=${userId}&limit=10`),
-          fetch(`/api/transactions/today?userId=${userId}`),
-        ]);
-
-        const [oldestDateData, recentData, todayData] = await Promise.all([
-          oldestDateRes.ok ? oldestDateRes.json() : null,
-          recentRes.ok ? recentRes.json() : null,
-          todayRes.ok ? todayRes.json() : null,
-        ]);
+        const response = await fetch(`/api/dashboard/bootstrap?userId=${userId}&year=${year}&month=${month}&recentLimit=10`);
+        const bootstrapData = response.ok ? await response.json() : null;
+        if (cancelled) return;
+        if (!bootstrapData?.success) {
+          bootstrapSummaryKeyRef.current = null;
+          return;
+        }
 
         const s = useTransactionStore.getState();
-        if (oldestDateData?.success && oldestDateData.data.year && oldestDateData.data.month) {
+        setCategories(bootstrapData.data.categories);
+
+        if (bootstrapData.data.oldestTransactionDate?.year && bootstrapData.data.oldestTransactionDate?.month) {
           s.setOldestTransactionDate({
-            year: oldestDateData.data.year,
-            month: oldestDateData.data.month,
+            year: bootstrapData.data.oldestTransactionDate.year,
+            month: bootstrapData.data.oldestTransactionDate.month,
           });
         }
 
-        if (recentData?.success) {
-          s.setRecentTransactions(recentData.data);
-        }
-
-        if (todayData?.success) {
-          s.setTodaySummary(todayData.data);
-        }
+        s.setRecentTransactions(bootstrapData.data.recentTransactions);
+        s.setTodaySummary(bootstrapData.data.todaySummary);
+        s.setSummary(bootstrapData.data.summary);
+        s.setLastMonthBalance(bootstrapData.data.lastMonthBalance || 0);
       } catch (error) {
+        bootstrapSummaryKeyRef.current = null;
         console.error('Failed to fetch initial data:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
+        if (cancelled) return;
         const s = useTransactionStore.getState();
         s.setIsLoadingTransactions(false);
         s.setIsLoadingTodaySummary(false);
+        s.setIsLoadingSummary(false);
       }
     };
 
     fetchInitialData();
-  }, [userId, fetchCategories]);
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, setCategories]);
 
   // Summary data loading (when month changes)
   useEffect(() => {
@@ -68,6 +80,9 @@ export function useDashboardData() {
       try {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth() + 1;
+        const summaryKey = `${userId}:${year}-${month}`;
+        if (bootstrapSummaryKeyRef.current === summaryKey) return;
+
         const lastMonth = new Date(currentDate);
         lastMonth.setMonth(lastMonth.getMonth() - 1);
 

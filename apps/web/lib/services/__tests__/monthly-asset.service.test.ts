@@ -16,6 +16,7 @@ jest.mock('@/lib/prisma', () => ({
     budget: { findMany: jest.fn() },
     user: { findUnique: jest.fn() },
     monthlyAssetSnapshot: { findMany: jest.fn() },
+    recurringExpense: { findMany: jest.fn() },
   },
 }));
 
@@ -51,6 +52,7 @@ describe('getMonthlyAssetReport', () => {
     (prisma.category.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: null });
+    (prisma.recurringExpense.findMany as jest.Mock).mockResolvedValue([]);
     // /savings 총 저축액과 동일: 목표들의 currentAmount 합
     (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([
       { id: 'g1', name: '목표', currentAmount: 33000, targetAmount: 100000, targetYear: 2030, targetMonth: 1, isPrimary: true, brokerageAccounts: [] },
@@ -116,6 +118,22 @@ describe('getMonthlyAssetReport', () => {
       '문화',
     ]);
   });
+
+  it('소비 예산 페이스는 예정 고정비를 해당 결제일에 반영한다', async () => {
+    const endMonthKey = new Date(Date.UTC(2026, 5, 1));
+    (prisma.monthlyAssetSnapshot.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: 300000 });
+    (prisma.recurringExpense.findMany as jest.Mock).mockResolvedValue([
+      { amount: 90000, dayOfMonth: 10, createdAt: new Date('2026-01-01T00:00:00.000Z') },
+      { amount: 30000, dayOfMonth: 31, createdAt: new Date('2026-01-01T00:00:00.000Z') },
+    ]);
+
+    const report = await getMonthlyAssetReport('user-1', endMonthKey, 1);
+
+    expect(report.report.dailyExpenses[0].budgetPaceKrw).toBe(6000);
+    expect(report.report.dailyExpenses[9].budgetPaceKrw).toBe(150000);
+    expect(report.report.dailyExpenses[29].budgetPaceKrw).toBe(300000);
+  });
 });
 
 // 투자 이중계상 제거: 저축 목표 ↔ 증권 계좌 링크
@@ -155,6 +173,7 @@ describe('investment dedup (savingsGoal ↔ brokerage link)', () => {
     (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: null });
     (prisma.monthlyAssetSnapshot.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.recurringExpense.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   it('연결 목표 + 유효 스냅샷: savingsKrw에서 제외, 평가액은 investmentKrw로 1회만 카운트', async () => {
