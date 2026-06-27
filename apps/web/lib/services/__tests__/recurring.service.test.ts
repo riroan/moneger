@@ -253,8 +253,13 @@ describe('recurring.service', () => {
   });
 
   describe('processRecurringExpenses', () => {
+    const entitledRecurring = {
+      ...mockRecurring,
+      user: { plan: 'PRO' as const, planExpiresAt: null },
+    };
+
     it('should skip already processed expenses (idempotency)', async () => {
-      (mockPrisma.recurringExpense.findMany as jest.Mock).mockResolvedValue([mockRecurring]);
+      (mockPrisma.recurringExpense.findMany as jest.Mock).mockResolvedValue([entitledRecurring]);
       (mockPrisma.transaction.findFirst as jest.Mock).mockResolvedValue({ id: 'tx-existing' });
       (mockPrisma.recurringExpense.update as jest.Mock).mockResolvedValue(mockRecurring);
 
@@ -276,10 +281,33 @@ describe('recurring.service', () => {
       expect(result.failed).toBe(0);
     });
 
+    it('should process only users entitled to RECURRING', async () => {
+      (mockPrisma.recurringExpense.findMany as jest.Mock).mockResolvedValue([
+        { ...mockRecurring, id: 'free-rec', user: { plan: 'FREE', planExpiresAt: null } },
+        {
+          ...mockRecurring,
+          id: 'expired-pro-rec',
+          user: { plan: 'PRO', planExpiresAt: new Date(Date.now() - 1000) },
+        },
+        { ...mockRecurring, id: 'pro-rec', user: { plan: 'PRO', planExpiresAt: null } },
+        { ...mockRecurring, id: 'ultimate-rec', user: { plan: 'ULTIMATE', planExpiresAt: null } },
+      ]);
+      (mockPrisma.transaction.findFirst as jest.Mock).mockResolvedValue({ id: 'tx-existing' });
+      (mockPrisma.recurringExpense.update as jest.Mock).mockResolvedValue(mockRecurring);
+
+      const result = await processRecurringExpenses();
+
+      expect(result.total).toBe(2);
+      expect(result.processed).toBe(2);
+      expect(mockPrisma.transaction.findFirst).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.recurringExpense.update).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.transaction.create).not.toHaveBeenCalled();
+    });
+
     it('should handle per-item errors gracefully', async () => {
       (mockPrisma.recurringExpense.findMany as jest.Mock).mockResolvedValue([
-        mockRecurring,
-        { ...mockRecurring, id: 'rec-2' },
+        entitledRecurring,
+        { ...entitledRecurring, id: 'rec-2' },
       ]);
       (mockPrisma.transaction.findFirst as jest.Mock)
         .mockResolvedValueOnce(null) // first: no existing

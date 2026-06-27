@@ -4,6 +4,7 @@ import { createTransaction } from './transaction.service';
 import { toKSTDateForDB } from '@/lib/date-utils';
 import { logger } from '@/lib/logger';
 import { CATEGORY_SELECT } from '@/lib/prisma-selects';
+import { hasFeature } from '@/lib/entitlements';
 
 interface CreateRecurringExpenseInput {
   userId: string;
@@ -332,13 +333,20 @@ export async function processRecurringExpenses() {
       deletedAt: null,
       nextDueDate: { lte: today },
     },
+    include: {
+      user: {
+        select: { plan: true, planExpiresAt: true },
+      },
+    },
   });
+
+  const eligibleExpenses = dueExpenses.filter((expense) => hasFeature(expense.user, 'RECURRING'));
 
   let processed = 0;
   let failed = 0;
   const errors: { id: string; error: string }[] = [];
 
-  for (const expense of dueExpenses) {
+  for (const expense of eligibleExpenses) {
     try {
       // 멱등성 체크: 이번 월에 이미 이 recurringExpenseId로 생성된 거래가 있는지
       const kstOffset = 9 * 60 * 60 * 1000;
@@ -398,10 +406,11 @@ export async function processRecurringExpenses() {
   }
 
   logger.info(`Recurring expenses processed`, {
-    total: dueExpenses.length,
+    total: eligibleExpenses.length,
+    skippedNotEntitled: dueExpenses.length - eligibleExpenses.length,
     processed,
     failed,
   });
 
-  return { total: dueExpenses.length, processed, failed, errors };
+  return { total: eligibleExpenses.length, processed, failed, errors };
 }
