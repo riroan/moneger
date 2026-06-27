@@ -93,7 +93,7 @@ export default function SavingsTrendChart({ userId }: SavingsTrendChartProps) {
   return (
     <div className="w-full h-[280px] sm:h-[320px]">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+        <ComposedChart data={chartData} margin={{ top: 5, right: 2, left: 2, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
           <XAxis
             dataKey="label"
@@ -103,6 +103,7 @@ export default function SavingsTrendChart({ userId }: SavingsTrendChartProps) {
           />
           <YAxis
             yAxisId="left"
+            width={44}
             tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
             axisLine={false}
             tickLine={false}
@@ -111,6 +112,7 @@ export default function SavingsTrendChart({ userId }: SavingsTrendChartProps) {
           <YAxis
             yAxisId="right"
             orientation="right"
+            width={44}
             tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
             axisLine={false}
             tickLine={false}
