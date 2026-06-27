@@ -229,3 +229,26 @@ input[type="number"]:focus::-webkit-outer-spin-button {
 .recharts-surface:focus {
   outline: none !important;
 }
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spin-border {
+  to { --angle: 360deg; }
+}
+
+.animate-spin-border {
+  animation: spin-border 3s linear infinite;
+}
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(251,191,36,0.5); }
+  50%       { box-shadow: 0 0 16px 4px rgba(251,191,36,0.85), 0 0 32px 8px rgba(251,191,36,0.3); }
+}
+
+.animate-pulse-gold {
+  animation: pulse-gold 2s ease-in-out infinite;
+}

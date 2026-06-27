@@ -216,12 +216,26 @@ export default function Header({
         )}
 
         <div ref={profileMenuRef} className="relative">
-          <button
-            onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-            className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold text-sm sm:text-base cursor-pointer transition-transform hover:scale-105"
+          <div
+            className={`rounded-lg sm:rounded-xl ${
+              plan === 'ULTIMATE'
+                ? 'p-[3px] animate-spin-border'
+                : plan === 'PRO'
+                ? 'p-[3px] bg-gradient-to-br from-accent-mint to-accent-blue'
+                : ''
+            }`}
+            style={plan === 'ULTIMATE' ? {
+              background: 'conic-gradient(from var(--angle), #0a0a0a, #3a2d0a, #fbbf24, #1a1400, #0a0a0a, #b8860b, #fde68a, #0a0a0a)',
+              boxShadow: '0 0 8px 1px rgba(180,140,30,0.25)',
+            } : undefined}
           >
-            {userName ? userName.charAt(0) : (userEmail ? userEmail.charAt(0) : '?')}
-          </button>
+            <button
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-[6px] sm:rounded-[10px] bg-gradient-to-br from-accent-purple to-accent-coral flex items-center justify-center font-semibold text-sm sm:text-base cursor-pointer transition-transform hover:scale-105"
+            >
+              {userName ? userName.charAt(0) : (userEmail ? userEmail.charAt(0) : '?')}
+            </button>
+          </div>
 
           {isProfileMenuOpen && (
             <div
