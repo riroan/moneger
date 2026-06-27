@@ -21,9 +21,14 @@ export const SAVINGS_GOAL = {
   YEARS_RANGE: 21, // 현재 연도 + 20년
 } as const;
 
+// 고정비
+export const RECURRING_EXPENSE_LIMITS = {
+  MAX_COUNT: 20,
+} as const;
+
 // 카테고리
 export const CATEGORY_LIMITS = {
-  MAX_PER_TYPE: 20,
+  MAX_PER_TYPE: 30,
 } as const;
 
 // Z-Index 계층

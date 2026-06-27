@@ -9,6 +9,7 @@ jest.mock('@/lib/prisma', () => ({
       findMany: jest.fn(),
       create: jest.fn(),
       findFirst: jest.fn(),
+      count: jest.fn(),
     },
   },
 }));
@@ -115,6 +116,7 @@ describe('GET /api/categories', () => {
 describe('POST /api/categories', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.category.count as jest.Mock).mockResolvedValue(0);
   });
 
   it('새 카테고리를 성공적으로 생성해야 함', async () => {
@@ -185,6 +187,27 @@ describe('POST /api/categories', () => {
 
     expect(response.status).toBe(409);
     expect(data.error).toBe('이미 존재하는 카테고리입니다');
+  });
+
+  it('타입별 카테고리 개수가 30개면 400 에러를 반환해야 함', async () => {
+    (prisma.category.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.category.count as jest.Mock).mockResolvedValue(30);
+
+    const request = new NextRequest('http://localhost:3000/api/categories', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: 'user-1',
+        name: '추가 카테고리',
+        type: 'EXPENSE',
+      }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('지출 카테고리는 최대 30개까지만 추가할 수 있습니다');
+    expect(prisma.category.create).not.toHaveBeenCalled();
   });
 
   it('필수 필드가 없으면 400 에러를 반환해야 함', async () => {

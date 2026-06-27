@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useOutsideClick, useBodyScrollLock, usePlan } from '@/hooks';
 import type { Category, Budget } from '@/types';
+import { CATEGORY_LIMITS } from '@/lib/constants';
 import {
   MdAccountBalanceWallet,
   MdBarChart,
@@ -198,10 +199,10 @@ export default function SettingsPage() {
       : null;
 
     if (categoryModalMode === 'add') {
-      // 카테고리 개수 제한 (최대 20개)
+      // 카테고리 개수 제한
       const currentTypeCategories = categories.filter(c => c.type === data.type);
-      if (currentTypeCategories.length >= 20) {
-        throw new Error(`${data.type === 'INCOME' ? '수입' : '지출'} 카테고리는 최대 20개까지만 추가할 수 있습니다`);
+      if (currentTypeCategories.length >= CATEGORY_LIMITS.MAX_PER_TYPE) {
+        throw new Error(`${data.type === 'INCOME' ? '수입' : '지출'} 카테고리는 최대 ${CATEGORY_LIMITS.MAX_PER_TYPE}개까지만 추가할 수 있습니다`);
       }
 
       const response = await fetch('/api/categories', {

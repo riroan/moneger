@@ -3,6 +3,7 @@ import {
   getCategories,
   findCategory,
   findDuplicateCategory,
+  countActiveCategoriesByType,
   createCategory,
   updateCategory,
   deleteCategory,
@@ -16,6 +17,7 @@ jest.mock('@/lib/prisma', () => ({
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      count: jest.fn(),
     },
   },
 }));
@@ -116,6 +118,19 @@ describe('category.service', () => {
       expect(prisma.category.findFirst).toHaveBeenCalledWith({
         where: { userId: 'user-1', name: '식비', type: 'EXPENSE', deletedAt: null, id: { not: 'cat-1' } },
       });
+    });
+  });
+
+  describe('countActiveCategoriesByType', () => {
+    it('타입별 활성 카테고리 개수를 조회해야 함', async () => {
+      (prisma.category.count as jest.Mock).mockResolvedValue(30);
+
+      const result = await countActiveCategoriesByType('user-1', 'EXPENSE');
+
+      expect(prisma.category.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1', type: 'EXPENSE', deletedAt: null },
+      });
+      expect(result).toBe(30);
     });
   });
 

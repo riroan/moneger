@@ -52,6 +52,12 @@ export async function getCategories(userId: string, type?: TransactionType) {
   });
 }
 
+export async function countActiveCategoriesByType(userId: string, type: TransactionType) {
+  return prisma.category.count({
+    where: { userId, type, deletedAt: null },
+  });
+}
+
 export async function seedDefaultCategories(userId: string) {
   return prisma.$transaction([
     ...DEFAULT_EXPENSE_CATEGORIES.map((category) =>

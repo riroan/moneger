@@ -8,6 +8,7 @@ import {
   apiHandler,
 } from '@/lib/api-utils';
 import { requireFeature } from '@/lib/entitlements-server';
+import { RECURRING_EXPENSE_LIMITS } from '@/lib/constants';
 import {
   createRecurringExpense,
   getRecurringExpenses,
@@ -47,10 +48,10 @@ export const POST = apiHandler('create recurring expense', async (request: NextR
     return errorResponse('dayOfMonth must be between 1 and 31', 400);
   }
 
-  // 최대 10개 제한
+  // 최대 개수 제한
   const existing = await getRecurringExpenses(userId);
-  if (existing.length >= 10) {
-    return errorResponse('정기 지출은 최대 10개까지 등록할 수 있습니다', 400);
+  if (existing.length >= RECURRING_EXPENSE_LIMITS.MAX_COUNT) {
+    return errorResponse(`정기 지출은 최대 ${RECURRING_EXPENSE_LIMITS.MAX_COUNT}개까지 등록할 수 있습니다`, 400);
   }
 
   const result = await createRecurringExpense({

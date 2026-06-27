@@ -3,6 +3,7 @@
 import type { Category } from '@/types';
 import { FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 import { getIconComponent } from './constants';
+import { CATEGORY_LIMITS } from '@/lib/constants';
 
 interface CategoryTabProps {
   categories: Category[];
@@ -30,7 +31,7 @@ export default function CategoryTab({ categories, isLoading, onAddCategory, onEd
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-sm sm:text-lg font-semibold flex items-center gap-1 sm:gap-2">
               <FaMoneyBillWave className="text-sm sm:text-base text-accent-mint" /> 수입
-              <span className="text-xs sm:text-sm text-text-muted font-normal">({incomeCategories.length}/20)</span>
+              <span className="text-xs sm:text-sm text-text-muted font-normal">({incomeCategories.length}/{CATEGORY_LIMITS.MAX_PER_TYPE})</span>
             </h2>
             <button
               onClick={() => onAddCategory('INCOME')}
@@ -76,7 +77,7 @@ export default function CategoryTab({ categories, isLoading, onAddCategory, onEd
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-sm sm:text-lg font-semibold flex items-center gap-1 sm:gap-2">
               <FaCreditCard className="text-sm sm:text-base text-accent-coral" /> 지출
-              <span className="text-xs sm:text-sm text-text-muted font-normal">({expenseCategories.length}/20)</span>
+              <span className="text-xs sm:text-sm text-text-muted font-normal">({expenseCategories.length}/{CATEGORY_LIMITS.MAX_PER_TYPE})</span>
             </h2>
             <button
               onClick={() => onAddCategory('EXPENSE')}

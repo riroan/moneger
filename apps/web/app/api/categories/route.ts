@@ -14,7 +14,9 @@ import {
   findSoftDeletedCategory,
   restoreCategory,
   createCategory,
+  countActiveCategoriesByType,
 } from '@/lib/services/category.service';
+import { CATEGORY_LIMITS } from '@/lib/constants';
 
 // GET /api/categories - 카테고리 목록 조회
 export const GET = apiHandler('fetch categories', async (request: NextRequest) => {
@@ -53,6 +55,11 @@ export const POST = apiHandler('create category', async (request: NextRequest) =
   const existingCategory = await findDuplicateCategory(userId, name, type);
   if (existingCategory) {
     return errorResponse('이미 존재하는 카테고리입니다', 409);
+  }
+
+  const activeCount = await countActiveCategoriesByType(userId, type);
+  if (activeCount >= CATEGORY_LIMITS.MAX_PER_TYPE) {
+    return errorResponse(`${type === 'INCOME' ? '수입' : '지출'} 카테고리는 최대 ${CATEGORY_LIMITS.MAX_PER_TYPE}개까지만 추가할 수 있습니다`, 400);
   }
 
   // 소프트 삭제된 카테고리가 있으면 복구

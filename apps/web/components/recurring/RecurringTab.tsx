@@ -6,6 +6,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber } from '@/utils/formatters';
 import { FaPlus } from 'react-icons/fa';
 import { MdEventRepeat, MdEdit, MdDelete, MdHistory, MdPieChart, MdSchedule, MdCheckCircle, MdAccessTime } from 'react-icons/md';
+import { RECURRING_EXPENSE_LIMITS } from '@/lib/constants';
 
 const AddRecurringModal = dynamic(() => import('./AddRecurringModal'), { ssr: false });
 const EditRecurringModal = dynamic(() => import('./EditRecurringModal'), { ssr: false });
@@ -166,7 +167,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
               <MdEventRepeat className="text-lg sm:text-xl text-accent-coral" /> 고정비
-              <span className="text-xs sm:text-sm text-text-muted font-normal">({expenses.length}/10)</span>
+              <span className="text-xs sm:text-sm text-text-muted font-normal">({expenses.length}/{RECURRING_EXPENSE_LIMITS.MAX_COUNT})</span>
             </h2>
             <button
               onClick={() => setIsAddModalOpen(true)}
