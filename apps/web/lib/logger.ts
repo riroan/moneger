@@ -26,7 +26,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 // 환경에 따른 최소 로그 레벨 설정
 const getMinLogLevel = (): LogLevel => {
   if (process.env.NODE_ENV === 'production') {
-    return 'warn';
+    return 'info';
   }
   return 'debug';
 };
