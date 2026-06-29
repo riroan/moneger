@@ -7,12 +7,22 @@ export function useDashboardData() {
   const userId = useAuthStore((state) => state.userId);
   const currentDate = useAppStore((state) => state.currentDate);
   const setCategories = useCategoryStore((state) => state.setCategories);
-  const bootstrapSummaryKeyRef = useRef<string | null>(null);
+  const summaryDataKeyRef = useRef<string | null>(null);
+  const summaryInFlightKeyRef = useRef<string | null>(null);
+
+  const getSummaryKey = useCallback((date: Date) => {
+    return `${useAuthStore.getState().userId}:${date.getFullYear()}-${date.getMonth() + 1}`;
+  }, []);
+
+  const isActiveSummaryKey = useCallback((summaryKey: string) => {
+    return getSummaryKey(useAppStore.getState().currentDate) === summaryKey;
+  }, [getSummaryKey]);
 
   // Initial data loading
   useEffect(() => {
     if (!userId) {
-      bootstrapSummaryKeyRef.current = null;
+      summaryDataKeyRef.current = null;
+      summaryInFlightKeyRef.current = null;
       return;
     }
 
@@ -25,7 +35,7 @@ export function useDashboardData() {
     const year = initialDate.getFullYear();
     const month = initialDate.getMonth() + 1;
     const summaryKey = `${userId}:${year}-${month}`;
-    bootstrapSummaryKeyRef.current = summaryKey;
+    summaryInFlightKeyRef.current = summaryKey;
     let cancelled = false;
 
     const fetchInitialData = async () => {
@@ -34,7 +44,6 @@ export function useDashboardData() {
         const bootstrapData = response.ok ? await response.json() : null;
         if (cancelled) return;
         if (!bootstrapData?.success) {
-          bootstrapSummaryKeyRef.current = null;
           return;
         }
 
@@ -50,17 +59,26 @@ export function useDashboardData() {
 
         s.setRecentTransactions(bootstrapData.data.recentTransactions);
         s.setTodaySummary(bootstrapData.data.todaySummary);
-        s.setSummary(bootstrapData.data.summary);
-        s.setLastMonthBalance(bootstrapData.data.lastMonthBalance || 0);
+
+        if (isActiveSummaryKey(summaryKey)) {
+          s.setSummary(bootstrapData.data.summary);
+          s.setLastMonthBalance(bootstrapData.data.lastMonthBalance || 0);
+          summaryDataKeyRef.current = summaryKey;
+        }
       } catch (error) {
-        bootstrapSummaryKeyRef.current = null;
         console.error('Failed to fetch initial data:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
         if (cancelled) return;
+        const shouldClearSummaryLoading = summaryInFlightKeyRef.current === summaryKey;
+        if (summaryInFlightKeyRef.current === summaryKey) {
+          summaryInFlightKeyRef.current = null;
+        }
         const s = useTransactionStore.getState();
         s.setIsLoadingTransactions(false);
         s.setIsLoadingTodaySummary(false);
-        s.setIsLoadingSummary(false);
+        if (shouldClearSummaryLoading) {
+          s.setIsLoadingSummary(false);
+        }
       }
     };
 
@@ -68,21 +86,22 @@ export function useDashboardData() {
     return () => {
       cancelled = true;
     };
-  }, [userId, setCategories]);
+  }, [userId, setCategories, isActiveSummaryKey]);
 
   // Summary data loading (when month changes)
   useEffect(() => {
     if (!userId) return;
 
-    useTransactionStore.getState().setIsLoadingSummary(true);
-
     const fetchSummary = async () => {
-      try {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
-        const summaryKey = `${userId}:${year}-${month}`;
-        if (bootstrapSummaryKeyRef.current === summaryKey) return;
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+      const summaryKey = `${userId}:${year}-${month}`;
+      if (summaryDataKeyRef.current === summaryKey || summaryInFlightKeyRef.current === summaryKey) return;
 
+      summaryInFlightKeyRef.current = summaryKey;
+      useTransactionStore.getState().setIsLoadingSummary(true);
+
+      try {
         const lastMonth = new Date(currentDate);
         lastMonth.setMonth(lastMonth.getMonth() - 1);
 
@@ -97,22 +116,26 @@ export function useDashboardData() {
         ]);
 
         const s = useTransactionStore.getState();
-        if (currentData?.success) {
+        if (currentData?.success && isActiveSummaryKey(summaryKey)) {
           s.setSummary(currentData.data);
+          summaryDataKeyRef.current = summaryKey;
         }
 
-        if (lastData?.success) {
+        if (lastData?.success && isActiveSummaryKey(summaryKey)) {
           s.setLastMonthBalance(lastData.data.summary.balance || 0);
         }
       } catch (error) {
         console.error('Failed to fetch summary:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
-        useTransactionStore.getState().setIsLoadingSummary(false);
+        if (summaryInFlightKeyRef.current === summaryKey) {
+          summaryInFlightKeyRef.current = null;
+          useTransactionStore.getState().setIsLoadingSummary(false);
+        }
       }
     };
 
     fetchSummary();
-  }, [userId, currentDate]);
+  }, [userId, currentDate, isActiveSummaryKey]);
 
   // Refresh data function
   const refreshData = useCallback(async () => {
