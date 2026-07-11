@@ -930,53 +930,21 @@ function PositionPrice({ position, displayCurrency }: { position: Position; disp
 function PositionCard({ position, displayCurrency }: { position: Position; displayCurrency: 'KRW' | 'USD' }) {
   const pnl = displayPnl(position, displayCurrency);
   const pnlRate = position.unrealizedPnl == null ? null : pnlPercent(Number(position.unrealizedPnl), position.marketValueKrw);
-  const dc = priceDayChange(position.lastPrice, position.prevClose, position.currency, displayCurrency, position.fxRateToKrw);
 
   return (
     <div className="rounded-[12px] border border-[var(--border)] bg-bg-card px-3 py-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="break-words text-sm font-medium leading-5 text-text-primary">{position.name}</div>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-text-muted">
-            <span>{position.symbol}</span>
-            {position.market && <span>{position.market}</span>}
-            <span className="rounded-full bg-bg-secondary px-2 py-0.5">{position.currency}</span>
-          </div>
-        </div>
-        <div className={`shrink-0 text-right text-sm tabular-nums ${pnlClass(pnl)}`}>
-          <PositionPnl pnl={pnl} pnlRate={pnlRate} hasValue={position.unrealizedPnl != null} displayCurrency={displayCurrency} />
+        <div className="truncate font-bold text-text-primary">{position.symbol}</div>
+        <div className="shrink-0 text-right font-bold tabular-nums text-text-primary">
+          {displayMarketValue(position, displayCurrency)}
         </div>
       </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-3">
-        <PositionMetric label="수량" value={position.quantity} />
-        <div className="min-w-0">
-          <div className="text-[11px] text-text-muted">현재가</div>
-          <div className="mt-0.5 break-words text-sm tabular-nums text-text-primary">
-            {displayLastPrice(position, displayCurrency) ?? '-'}
-          </div>
-          {dc && (
-            <div className={`mt-0.5 text-[11px] tabular-nums ${pnlClass(dc.rate)}`}>
-              {pnlMark(dc.rate)} {dc.delta} ({signedPercent(dc.rate)})
-            </div>
-          )}
+      <div className="mt-1 flex items-center justify-between gap-3 text-xs">
+        <div className="tabular-nums text-text-muted">{position.quantity}주</div>
+        <div className={`shrink-0 text-right tabular-nums font-semibold ${pnlClass(pnl)}`}>
+          {position.unrealizedPnl == null ? '-' : `${formatPnlValue(pnl, displayCurrency)}${pnlRate ? ` (${pnlRate})` : ''}`}
         </div>
-        <PositionMetric
-          label="평가액"
-          value={displayMarketValue(position, displayCurrency)}
-          subValue={displayCurrency === 'KRW' && position.currency !== 'KRW' ? `${position.marketValue} ${position.currency}` : undefined}
-        />
       </div>
-    </div>
-  );
-}
-
-function PositionMetric({ label, value, subValue }: { label: string; value: string; subValue?: string }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-[11px] text-text-muted">{label}</div>
-      <div className="mt-0.5 break-words text-sm tabular-nums text-text-primary">{value}</div>
-      {subValue && <div className="mt-0.5 break-words text-[11px] tabular-nums text-text-muted">{subValue}</div>}
     </div>
   );
 }
