@@ -370,6 +370,21 @@ function signedAmountClass(value: number | null | undefined) {
   return value > 0 ? 'text-accent-mint' : 'text-accent-coral';
 }
 
+function groupPositionsByBroker(positions: InvestmentPosition[]) {
+  const groups: { broker: string; positions: InvestmentPosition[] }[] = [];
+  const indexByBroker = new Map<string, number>();
+  for (const position of positions) {
+    const existingIndex = indexByBroker.get(position.broker);
+    if (existingIndex == null) {
+      indexByBroker.set(position.broker, groups.length);
+      groups.push({ broker: position.broker, positions: [position] });
+    } else {
+      groups[existingIndex].positions.push(position);
+    }
+  }
+  return groups;
+}
+
 type CheckTone = 'good' | 'warn' | 'bad' | 'neutral';
 
 function checkToneClass(tone: CheckTone) {
@@ -1554,62 +1569,92 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
                   월말 기준 보유 종목이 없습니다
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-bg-card">
-                  <table className="w-full min-w-[860px] border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-[var(--border)] text-xs font-semibold text-text-muted">
-                        <th className="px-4 py-3">종목</th>
-                        <th className="px-4 py-3">계좌</th>
-                        <th className="px-4 py-3 text-right">수량</th>
-                        <th className="px-4 py-3 text-right">현재가</th>
-                        <th className="px-4 py-3 text-right">비중</th>
-                        <th className="px-4 py-3 text-right">평가금액</th>
-                        <th className="px-4 py-3 text-right">평가손익</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleInvestmentPositions.map((position) => {
-                        const weight =
-                          visibleInvestmentTotalKrw > 0
-                            ? (position.marketValueKrw / visibleInvestmentTotalKrw) * 100
-                            : null;
-                        return (
-                          <tr key={`${position.accountId}-${position.symbol}`} className="border-b border-[var(--border)] last:border-b-0">
-                            <td className="px-4 py-3">
-                              <div className="font-bold text-text-primary">{position.symbol}</div>
-                              <div className="mt-0.5 max-w-[220px] truncate text-xs text-text-muted">
-                                {position.name}
-                                {position.market ? ` · ${position.market}` : ''}
+                <>
+                  <div className="flex flex-col gap-4 md:hidden">
+                    {groupPositionsByBroker(visibleInvestmentPositions).map((group) => (
+                      <div key={group.broker}>
+                        <div className="mb-2 text-xs font-bold text-text-muted">{group.broker}</div>
+                        <div className="flex flex-col gap-2">
+                          {group.positions.map((position) => (
+                            <div
+                              key={`${position.accountId}-${position.symbol}`}
+                              className="rounded-xl border border-[var(--border)] bg-bg-card px-3 py-3"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="font-bold text-text-primary">{position.symbol}</div>
+                                <div className="shrink-0 text-right font-bold tabular-nums text-text-primary">
+                                  {money(position.marketValueKrw)}
+                                </div>
                               </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="font-semibold text-text-secondary">{position.accountName}</div>
-                              <div className="mt-0.5 text-xs text-text-muted">
-                                {position.broker} · {position.snapshotDate}
+                              <div className="mt-1 flex items-center justify-between gap-3 text-xs">
+                                <div className="tabular-nums text-text-muted">{quantity(position.quantity)}주</div>
+                                <div className={`shrink-0 text-right tabular-nums font-semibold ${signedAmountClass(position.unrealizedPnlKrw)}`}>
+                                  {signedMoney(position.unrealizedPnlKrw)} ({percent(position.pnlRate == null ? null : position.pnlRate * 100)})
+                                </div>
                               </div>
-                            </td>
-                            <td className="px-4 py-3 text-right tabular-nums font-semibold text-text-secondary">
-                              {quantity(position.quantity)}
-                            </td>
-                            <td className="px-4 py-3 text-right tabular-nums font-semibold text-text-secondary">
-                              {position.lastPrice == null ? '-' : `${position.lastPrice.toLocaleString('ko-KR')} ${position.currency}`}
-                            </td>
-                            <td className="px-4 py-3 text-right tabular-nums font-bold text-text-primary">
-                              {weight == null ? '-' : `${weight.toFixed(1)}%`}
-                            </td>
-                            <td className="px-4 py-3 text-right tabular-nums font-bold text-text-primary">
-                              {money(position.marketValueKrw)}
-                            </td>
-                            <td className={`px-4 py-3 text-right tabular-nums font-bold ${signedAmountClass(position.unrealizedPnlKrw)}`}>
-                              <div>{signedMoney(position.unrealizedPnlKrw)}</div>
-                              <div className="mt-0.5 text-xs">{percent(position.pnlRate == null ? null : position.pnlRate * 100)}</div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto rounded-xl border border-[var(--border)] bg-bg-card md:block">
+                    <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] text-xs font-semibold text-text-muted">
+                          <th className="px-4 py-3">종목</th>
+                          <th className="px-4 py-3">계좌</th>
+                          <th className="px-4 py-3 text-right">수량</th>
+                          <th className="px-4 py-3 text-right">현재가</th>
+                          <th className="px-4 py-3 text-right">비중</th>
+                          <th className="px-4 py-3 text-right">평가금액</th>
+                          <th className="px-4 py-3 text-right">평가손익</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleInvestmentPositions.map((position) => {
+                          const weight =
+                            visibleInvestmentTotalKrw > 0
+                              ? (position.marketValueKrw / visibleInvestmentTotalKrw) * 100
+                              : null;
+                          return (
+                            <tr key={`${position.accountId}-${position.symbol}`} className="border-b border-[var(--border)] last:border-b-0">
+                              <td className="px-4 py-3">
+                                <div className="font-bold text-text-primary">{position.symbol}</div>
+                                <div className="mt-0.5 max-w-[220px] truncate text-xs text-text-muted">
+                                  {position.name}
+                                  {position.market ? ` · ${position.market}` : ''}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="font-semibold text-text-secondary">{position.accountName}</div>
+                                <div className="mt-0.5 text-xs text-text-muted">
+                                  {position.broker} · {position.snapshotDate}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums font-semibold text-text-secondary">
+                                {quantity(position.quantity)}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums font-semibold text-text-secondary">
+                                {position.lastPrice == null ? '-' : `${position.lastPrice.toLocaleString('ko-KR')} ${position.currency}`}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums font-bold text-text-primary">
+                                {weight == null ? '-' : `${weight.toFixed(1)}%`}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums font-bold text-text-primary">
+                                {money(position.marketValueKrw)}
+                              </td>
+                              <td className={`px-4 py-3 text-right tabular-nums font-bold ${signedAmountClass(position.unrealizedPnlKrw)}`}>
+                                <div>{signedMoney(position.unrealizedPnlKrw)}</div>
+                                <div className="mt-0.5 text-xs">{percent(position.pnlRate == null ? null : position.pnlRate * 100)}</div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           </section>
