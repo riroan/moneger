@@ -728,7 +728,7 @@ function ConnectionCard({
           </button>
           <button
             type="button"
-            className={ACTION_BTN}
+            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg bg-bg-secondary px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-card-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
             disabled={isSyncing}
             onClick={() => onSync(connection.id)}
           >
