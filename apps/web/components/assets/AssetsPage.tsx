@@ -720,7 +720,6 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
     visibleInvestmentTotalKrw,
     visibleInvestmentCashKrw,
     visibleInvestmentPnlKrw,
-    totalInvestmentEquityKrw,
     totalInvestmentCashKrw,
     investmentCashRatio,
     visibleInvestmentWeight,
@@ -1431,16 +1430,8 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="flex items-center gap-2 text-lg font-bold text-text-primary">
                 <MdShowChart style={{ color: COLORS.investment }} />
-                투자 변동
+                투자 분석
               </h3>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-xl bg-bg-primary px-3 py-1.5 text-xs font-bold text-text-muted">
-                  기준 {data.report.investment.snapshotDate ?? '-'}
-                </span>
-                <span className="rounded-xl bg-bg-primary px-3 py-1.5 text-xs font-bold text-text-muted">
-                  월말 보유 {visibleInvestmentPositions.length}개
-                </span>
-              </div>
             </div>
             {data.report.investment.snapshotDateCount > 1 && (
               <div className="mt-3 rounded-xl border border-[var(--border)] bg-bg-primary px-3 py-2 text-xs font-semibold text-text-muted">
@@ -1449,48 +1440,37 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
             )}
 
             {brokerStats.length > 0 && (
-              <div className="mt-5 overflow-x-auto">
-                <div className="flex min-w-max gap-2">
-                  <button
-                    type="button"
-                    aria-pressed={activeInvestmentBroker === 'ALL'}
-                    className={`min-h-11 rounded-xl border px-4 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 cursor-pointer ${
-                      activeInvestmentBroker === 'ALL'
-                        ? 'border-accent-blue/60 bg-accent-blue/15 text-text-primary'
-                        : 'border-[var(--border)] bg-bg-primary text-text-muted hover:bg-bg-card-hover hover:text-text-primary'
-                    }`}
-                    onClick={() => setSelectedInvestmentBroker('ALL')}
-                  >
-                    <div className="text-sm font-bold">전체</div>
-                    <div className="mt-0.5 text-xs tabular-nums">{money(totalInvestmentEquityKrw)}</div>
-                  </button>
-                  {brokerStats.map((stat) => {
-                    const brokerWeight =
-                      totalInvestmentEquityKrw > 0 ? (stat.totalKrw / totalInvestmentEquityKrw) * 100 : null;
-                    const active = activeInvestmentBroker === stat.broker;
-                    return (
-                      <button
-                        key={stat.broker}
-                        type="button"
-                        aria-pressed={active}
-                        className={`min-h-11 rounded-xl border px-4 py-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 cursor-pointer ${
-                          active
-                            ? 'border-accent-blue/60 bg-accent-blue/15 text-text-primary'
-                            : 'border-[var(--border)] bg-bg-primary text-text-muted hover:bg-bg-card-hover hover:text-text-primary'
-                        }`}
-                        onClick={() => setSelectedInvestmentBroker(stat.broker)}
-                      >
-                        <div className="flex items-center gap-2 text-sm font-bold">
-                          {stat.broker}
-                          <span className="rounded-md bg-bg-card px-1.5 py-0.5 text-[10px] text-text-muted">{stat.count}</span>
-                        </div>
-                        <div className="mt-0.5 text-xs tabular-nums">
-                          {money(stat.totalKrw)} · {brokerWeight == null ? '-' : `${brokerWeight.toFixed(1)}%`}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  aria-pressed={activeInvestmentBroker === 'ALL'}
+                  className={`min-h-11 rounded-xl border px-4 py-2 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 cursor-pointer ${
+                    activeInvestmentBroker === 'ALL'
+                      ? 'border-accent-blue/60 bg-accent-blue/15 text-text-primary'
+                      : 'border-[var(--border)] bg-bg-primary text-text-muted hover:bg-bg-card-hover hover:text-text-primary'
+                  }`}
+                  onClick={() => setSelectedInvestmentBroker('ALL')}
+                >
+                  전체
+                </button>
+                {brokerStats.map((stat) => {
+                  const active = activeInvestmentBroker === stat.broker;
+                  return (
+                    <button
+                      key={stat.broker}
+                      type="button"
+                      aria-pressed={active}
+                      className={`min-h-11 rounded-xl border px-4 py-2 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/70 cursor-pointer ${
+                        active
+                          ? 'border-accent-blue/60 bg-accent-blue/15 text-text-primary'
+                          : 'border-[var(--border)] bg-bg-primary text-text-muted hover:bg-bg-card-hover hover:text-text-primary'
+                      }`}
+                      onClick={() => setSelectedInvestmentBroker(stat.broker)}
+                    >
+                      {stat.broker}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
