@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { PUT, PATCH, DELETE } from '../[id]/route';
 import * as savingsService from '@/lib/services/savings.service';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 jest.mock('@/lib/entitlements-server', () => ({
   requireFeature: jest.fn(async () => null),
@@ -17,6 +20,7 @@ jest.mock('@/lib/services/savings.service', () => ({
 describe('PUT /api/savings/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockParams = Promise.resolve({ id: 'savings-1' });
@@ -39,7 +43,6 @@ describe('PUT /api/savings/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'PUT',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '수정된 목표',
         targetAmount: 3000000,
       }),
@@ -62,7 +65,6 @@ describe('PUT /api/savings/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'PUT',
       body: JSON.stringify({
-        userId: 'user-1',
         isPrimary: true,
       }),
     });
@@ -82,7 +84,6 @@ describe('PUT /api/savings/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/invalid-id', {
       method: 'PUT',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '수정',
       }),
     });
@@ -94,7 +95,9 @@ describe('PUT /api/savings/[id]', () => {
     expect(data.error).toBe('Savings goal not found');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'PUT',
       body: JSON.stringify({ name: '수정' }),
@@ -103,14 +106,15 @@ describe('PUT /api/savings/[id]', () => {
     const response = await PUT(request, { params: mockParams });
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 });
 
 describe('PATCH /api/savings/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockParams = Promise.resolve({ id: 'savings-1' });
@@ -124,7 +128,6 @@ describe('PATCH /api/savings/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         isPrimary: true,
       }),
     });
@@ -146,7 +149,6 @@ describe('PATCH /api/savings/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         isPrimary: false,
       }),
     });
@@ -164,7 +166,6 @@ describe('PATCH /api/savings/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/invalid-id', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         isPrimary: true,
       }),
     });
@@ -173,11 +174,27 @@ describe('PATCH /api/savings/[id]', () => {
 
     expect(response.status).toBe(404);
   });
+
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
+    const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
+      method: 'PATCH',
+      body: JSON.stringify({ isPrimary: true }),
+    });
+
+    const response = await PATCH(request, { params: mockParams });
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+  });
 });
 
 describe('DELETE /api/savings/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockParams = Promise.resolve({ id: 'savings-1' });
@@ -189,7 +206,6 @@ describe('DELETE /api/savings/[id]', () => {
     (savingsService.deleteSavingsGoal as jest.Mock).mockResolvedValue({ ...existingGoal, deletedAt: new Date() });
 
     const url = new URL('http://localhost:3000/api/savings/savings-1');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url, { method: 'DELETE' });
 
@@ -205,7 +221,6 @@ describe('DELETE /api/savings/[id]', () => {
     (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(null);
 
     const url = new URL('http://localhost:3000/api/savings/invalid-id');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url, { method: 'DELETE' });
 
@@ -216,7 +231,9 @@ describe('DELETE /api/savings/[id]', () => {
     expect(data.error).toBe('Savings goal not found');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1', {
       method: 'DELETE',
     });
@@ -224,15 +241,14 @@ describe('DELETE /api/savings/[id]', () => {
     const response = await DELETE(request, { params: mockParams });
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
     (savingsService.findSavingsGoal as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/savings/savings-1');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url, { method: 'DELETE' });
 

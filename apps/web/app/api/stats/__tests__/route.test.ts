@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { GET } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -15,6 +18,10 @@ jest.mock('@/lib/prisma', () => ({
     },
     budget: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
+    user: {
+      findUnique: jest.fn(),
     },
   },
 }));
@@ -22,6 +29,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('GET /api/stats', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('통계 데이터를 성공적으로 반환해야 함', async () => {
@@ -48,9 +56,10 @@ describe('GET /api/stats', () => {
     ]);
 
     (prisma.budget.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: null });
 
     const url = new URL('http://localhost:3000/api/stats');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
 
@@ -86,9 +95,10 @@ describe('GET /api/stats', () => {
     (prisma.category.findMany as jest.Mock).mockResolvedValue([]);
 
     (prisma.budget.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.budget.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: null });
 
     const url = new URL('http://localhost:3000/api/stats');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
 
@@ -104,7 +114,9 @@ describe('GET /api/stats', () => {
     expect(data.data.summary.transactionCount).toBe(0);
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const url = new URL('http://localhost:3000/api/stats');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
@@ -113,13 +125,12 @@ describe('GET /api/stats', () => {
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('year가 없으면 400 에러를 반환해야 함', async () => {
     const url = new URL('http://localhost:3000/api/stats');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('month', '1');
 
     const request = new NextRequest(url);
@@ -132,7 +143,6 @@ describe('GET /api/stats', () => {
 
   it('month가 없으면 400 에러를 반환해야 함', async () => {
     const url = new URL('http://localhost:3000/api/stats');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('year', '2024');
 
     const request = new NextRequest(url);
@@ -147,7 +157,6 @@ describe('GET /api/stats', () => {
     (prisma.transaction.aggregate as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/stats');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
 

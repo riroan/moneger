@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../[id]/deposit/route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 jest.mock('@/lib/entitlements-server', () => ({
   requireFeature: jest.fn(async () => null),
@@ -28,6 +31,7 @@ jest.mock('@/lib/services/daily-balance.service', () => ({
 describe('POST /api/savings/[id]/deposit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockParams = Promise.resolve({ id: 'savings-1' });
@@ -58,7 +62,6 @@ describe('POST /api/savings/[id]/deposit', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1/deposit', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 100000,
       }),
     });
@@ -72,11 +75,27 @@ describe('POST /api/savings/[id]/deposit', () => {
     expect(data.data.transaction).toBeDefined();
   });
 
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
+    const request = new NextRequest('http://localhost:3000/api/savings/savings-1/deposit', {
+      method: 'POST',
+      body: JSON.stringify({
+        amount: 100000,
+      }),
+    });
+
+    const response = await POST(request, { params: mockParams });
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+  });
+
   it('금액이 0 이하면 400 에러를 반환해야 함', async () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1/deposit', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 0,
       }),
     });
@@ -91,9 +110,7 @@ describe('POST /api/savings/[id]/deposit', () => {
   it('금액이 없으면 400 에러를 반환해야 함', async () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1/deposit', {
       method: 'POST',
-      body: JSON.stringify({
-        userId: 'user-1',
-      }),
+      body: JSON.stringify({}),
     });
 
     const response = await POST(request, { params: mockParams });
@@ -107,7 +124,6 @@ describe('POST /api/savings/[id]/deposit', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1/deposit', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: -50000,
       }),
     });
@@ -125,7 +141,6 @@ describe('POST /api/savings/[id]/deposit', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/invalid-id/deposit', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 100000,
       }),
     });
@@ -137,21 +152,6 @@ describe('POST /api/savings/[id]/deposit', () => {
     expect(data.error).toBe('Savings goal not found');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
-    const request = new NextRequest('http://localhost:3000/api/savings/savings-1/deposit', {
-      method: 'POST',
-      body: JSON.stringify({
-        amount: 100000,
-      }),
-    });
-
-    const response = await POST(request, { params: mockParams });
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
-  });
-
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
     (savingsService.findSavingsGoal as jest.Mock).mockResolvedValue(mockSavingsGoal);
     (prisma.$transaction as jest.Mock).mockRejectedValue(new Error('Database error'));
@@ -159,7 +159,6 @@ describe('POST /api/savings/[id]/deposit', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1/deposit', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 100000,
       }),
     });
@@ -186,7 +185,6 @@ describe('POST /api/savings/[id]/deposit', () => {
     const request = new NextRequest('http://localhost:3000/api/savings/savings-1/deposit', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 100000,
       }),
     });

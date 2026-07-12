@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { GET } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 jest.mock('@/lib/entitlements-server', () => ({
   requireFeature: jest.fn(async () => null),
@@ -18,6 +21,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('GET /api/savings/summary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockSavingsGoals = [
@@ -39,7 +43,6 @@ describe('GET /api/savings/summary', () => {
     (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue(mockSavingsGoals);
 
     const url = new URL('http://localhost:3000/api/savings/summary');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -59,7 +62,6 @@ describe('GET /api/savings/summary', () => {
     (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue([]);
 
     const url = new URL('http://localhost:3000/api/savings/summary');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -80,7 +82,6 @@ describe('GET /api/savings/summary', () => {
     ]);
 
     const url = new URL('http://localhost:3000/api/savings/summary');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -89,21 +90,22 @@ describe('GET /api/savings/summary', () => {
     expect(data.data.progressPercent).toBe(0);
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/savings/summary');
 
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
     (prisma.savingsGoal.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/savings/summary');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -117,7 +119,6 @@ describe('GET /api/savings/summary', () => {
     (prisma.savingsGoal.findMany as jest.Mock).mockResolvedValue(mockSavingsGoals);
 
     const url = new URL('http://localhost:3000/api/savings/summary');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     await GET(request);

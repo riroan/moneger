@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { GET, POST } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 jest.mock('@/lib/entitlements-server', () => ({
   requireFeature: jest.fn(async () => null),
@@ -23,6 +26,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('GET /api/savings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
     // 목표별 최근 입금(embed) 조회 — 기본 빈 배열
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
   });
@@ -64,7 +68,6 @@ describe('GET /api/savings', () => {
     );
 
     const url = new URL('http://localhost:3000/api/savings');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -91,7 +94,6 @@ describe('GET /api/savings', () => {
     );
 
     const url = new URL('http://localhost:3000/api/savings');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -100,21 +102,22 @@ describe('GET /api/savings', () => {
     expect(data.data[0].thisMonthSavings).toBe(200000);
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/savings');
 
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
     (prisma.savingsGoal.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/savings');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -128,6 +131,7 @@ describe('GET /api/savings', () => {
 describe('POST /api/savings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('저축 목표를 생성해야 함', async () => {
@@ -147,7 +151,6 @@ describe('POST /api/savings', () => {
     const request = new NextRequest('http://localhost:3000/api/savings', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '새 목표',
         icon: '🎯',
         targetAmount: 1000000,
@@ -171,7 +174,6 @@ describe('POST /api/savings', () => {
     const request = new NextRequest('http://localhost:3000/api/savings', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '새 목표',
         // icon, targetAmount, targetYear, targetMonth 누락
       }),
@@ -184,7 +186,9 @@ describe('POST /api/savings', () => {
     expect(data.error).toBe('Missing required fields');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/savings', {
       method: 'POST',
       body: JSON.stringify({
@@ -199,8 +203,8 @@ describe('POST /api/savings', () => {
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('currentAmount를 지정하여 생성할 수 있음', async () => {
@@ -214,7 +218,6 @@ describe('POST /api/savings', () => {
     const request = new NextRequest('http://localhost:3000/api/savings', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '새 목표',
         icon: '🎯',
         targetAmount: 1000000,
@@ -236,7 +239,6 @@ describe('POST /api/savings', () => {
     const request = new NextRequest('http://localhost:3000/api/savings', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '새 목표',
         icon: '🎯',
         targetAmount: 1000000,
