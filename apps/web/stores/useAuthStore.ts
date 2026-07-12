@@ -9,8 +9,8 @@ interface AuthState {
 
 interface AuthActions {
   setAuth: (auth: Partial<AuthState>) => void;
-  initAuth: () => boolean;
-  logout: () => void;
+  fetchSession: () => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -23,39 +23,29 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   setAuth: (auth) => set((state) => ({ ...state, ...auth })),
 
-  initAuth: () => {
-    if (typeof window === 'undefined') return false;
-
-    const storedUserId = localStorage.getItem('userId');
-    const storedUserName = localStorage.getItem('userName');
-    const storedUserEmail = localStorage.getItem('userEmail');
-
-    if (!storedUserId) {
-      set({ isLoading: false });
+  fetchSession: async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (!res.ok) {
+        set({ userId: null, userName: '', userEmail: '', isLoading: false });
+        return false;
+      }
+      const { data } = await res.json();
+      set({
+        userId: data.user.id,
+        userName: data.user.name || '',
+        userEmail: data.user.email,
+        isLoading: false,
+      });
+      return true;
+    } catch {
+      set({ userId: null, userName: '', userEmail: '', isLoading: false });
       return false;
     }
-
-    set({
-      userId: storedUserId,
-      userName: storedUserName || '',
-      userEmail: storedUserEmail || '',
-      isLoading: false,
-    });
-    return true;
   },
 
-  logout: () => {
-    if (typeof window === 'undefined') return;
-
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
-
-    set({
-      userId: null,
-      userName: '',
-      userEmail: '',
-      isLoading: false,
-    });
+  logout: async () => {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    set({ userId: null, userName: '', userEmail: '', isLoading: false });
   },
 }));

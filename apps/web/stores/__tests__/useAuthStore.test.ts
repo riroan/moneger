@@ -9,8 +9,11 @@ describe('useAuthStore', () => {
       userEmail: '',
       isLoading: true,
     });
-    // Clear localStorage
-    localStorage.clear();
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('setAuth', () => {
@@ -39,20 +42,28 @@ describe('useAuthStore', () => {
     });
   });
 
-  describe('initAuth', () => {
-    it('should return false when no userId in localStorage', () => {
-      const result = useAuthStore.getState().initAuth();
+  describe('fetchSession', () => {
+    it('should return false when no valid session exists', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false });
+
+      const result = await useAuthStore.getState().fetchSession();
 
       expect(result).toBe(false);
+      expect(global.fetch).toHaveBeenCalledWith('/api/auth/me');
       expect(useAuthStore.getState().isLoading).toBe(false);
+      expect(useAuthStore.getState().userId).toBeNull();
     });
 
-    it('should initialize auth from localStorage', () => {
-      localStorage.setItem('userId', 'user-1');
-      localStorage.setItem('userName', '테스트');
-      localStorage.setItem('userEmail', 'test@example.com');
+    it('should populate auth state from a valid session', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { user: { id: 'user-1', name: '테스트', email: 'test@example.com' } },
+        }),
+      });
 
-      const result = useAuthStore.getState().initAuth();
+      const result = await useAuthStore.getState().fetchSession();
 
       expect(result).toBe(true);
       const state = useAuthStore.getState();
@@ -62,25 +73,38 @@ describe('useAuthStore', () => {
       expect(state.isLoading).toBe(false);
     });
 
-    it('should handle missing userName and userEmail', () => {
-      localStorage.setItem('userId', 'user-1');
+    it('should handle missing name gracefully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { user: { id: 'user-1', name: null, email: 'test@example.com' } },
+        }),
+      });
 
-      const result = useAuthStore.getState().initAuth();
+      const result = await useAuthStore.getState().fetchSession();
 
       expect(result).toBe(true);
       const state = useAuthStore.getState();
       expect(state.userId).toBe('user-1');
       expect(state.userName).toBe('');
-      expect(state.userEmail).toBe('');
+    });
+
+    it('should clear auth state when the request throws', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('network error'));
+
+      const result = await useAuthStore.getState().fetchSession();
+
+      expect(result).toBe(false);
+      const state = useAuthStore.getState();
+      expect(state.userId).toBeNull();
+      expect(state.isLoading).toBe(false);
     });
   });
 
   describe('logout', () => {
-    it('should clear auth state and localStorage', () => {
-      // Set initial auth state
-      localStorage.setItem('userId', 'user-1');
-      localStorage.setItem('userName', '테스트');
-      localStorage.setItem('userEmail', 'test@example.com');
+    it('should call the logout endpoint and clear auth state', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true });
       useAuthStore.setState({
         userId: 'user-1',
         userName: '테스트',
@@ -88,19 +112,29 @@ describe('useAuthStore', () => {
         isLoading: false,
       });
 
-      useAuthStore.getState().logout();
+      await useAuthStore.getState().logout();
 
-      // Check state is cleared
+      expect(global.fetch).toHaveBeenCalledWith('/api/auth/logout', { method: 'POST' });
       const state = useAuthStore.getState();
       expect(state.userId).toBeNull();
       expect(state.userName).toBe('');
       expect(state.userEmail).toBe('');
       expect(state.isLoading).toBe(false);
+    });
 
-      // Check localStorage is cleared
-      expect(localStorage.getItem('userId')).toBeNull();
-      expect(localStorage.getItem('userName')).toBeNull();
-      expect(localStorage.getItem('userEmail')).toBeNull();
+    it('should clear auth state even when the request fails', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('network error'));
+      useAuthStore.setState({
+        userId: 'user-1',
+        userName: '테스트',
+        userEmail: 'test@example.com',
+        isLoading: false,
+      });
+
+      await useAuthStore.getState().logout();
+
+      const state = useAuthStore.getState();
+      expect(state.userId).toBeNull();
     });
   });
 });

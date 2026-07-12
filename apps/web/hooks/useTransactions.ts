@@ -55,7 +55,7 @@ export function useTransactions({
     setIsLoading(true);
 
     try {
-      const params = new URLSearchParams({ userId, limit: '20' });
+      const params = new URLSearchParams({ limit: '20' });
 
       if (cursor && !reset) {
         params.append('cursor', cursor);

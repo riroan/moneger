@@ -43,7 +43,7 @@ export default function SavingsTrendChart({ userId }: SavingsTrendChartProps) {
   const fetchTrend = useCallback(async () => {
     try {
       setError(false);
-      const response = await fetch(`/api/savings/trend?userId=${userId}`);
+      const response = await fetch(`/api/savings/trend`);
       if (response.ok) {
         const result = await response.json();
         setData(result.data || []);

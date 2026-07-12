@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEscapeKey } from '@/hooks';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 interface DeleteAccountModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface DeleteAccountModalProps {
 
 export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAccountModalProps) {
   const router = useRouter();
+  const { setAuth } = useAuthStore();
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -36,7 +38,6 @@ export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAc
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
           password: deletePassword,
         }),
       });
@@ -47,9 +48,7 @@ export default function DeleteAccountModal({ isOpen, userId, onClose }: DeleteAc
         throw new Error(data.error || '계정 삭제에 실패했습니다');
       }
 
-      localStorage.removeItem('userId');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('userEmail');
+      setAuth({ userId: null, userName: '', userEmail: '' });
       router.push('/login');
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : '계정 삭제에 실패했습니다');

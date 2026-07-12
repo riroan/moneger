@@ -24,7 +24,7 @@ async function fetchPlan(userId: string): Promise<FetchedPlan> {
   const inflight = inflightPlanRequests.get(userId);
   if (inflight) return inflight;
 
-  const request = fetch(`/api/user/entitlements?userId=${userId}`)
+  const request = fetch(`/api/user/entitlements`)
     .then((res) => res.json())
     .then((data) => {
       const fetched: FetchedPlan = data.success

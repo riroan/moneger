@@ -27,7 +27,7 @@ export default function MainLayout({ children, requiredFeature }: MainLayoutProp
   const pathname = usePathname();
 
   // Auth store
-  const { userId, userName, userEmail, isLoading: isAuthLoading, initAuth, logout } = useAuthStore();
+  const { userId, userName, userEmail, isLoading: isAuthLoading, fetchSession, logout } = useAuthStore();
 
   // App store
   const { currentDate, goToPreviousMonth, goToNextMonth, goToMonth, setIsMobile } = useAppStore();
@@ -65,8 +65,8 @@ export default function MainLayout({ children, requiredFeature }: MainLayoutProp
 
   // Initialize auth on mount
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    fetchSession();
+  }, [fetchSession]);
 
   // Check mobile on mount and resize
   useEffect(() => {

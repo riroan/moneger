@@ -9,12 +9,12 @@ import GroupsTab from '@/components/groups/GroupsTab';
 
 export default function GroupsPage() {
   const router = useRouter();
-  const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
+  const { userId, isLoading: isAuthLoading, fetchSession } = useAuthStore();
   const { refreshData } = useDashboardData();
 
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    fetchSession();
+  }, [fetchSession]);
 
   useEffect(() => {
     if (!isAuthLoading && !userId) {

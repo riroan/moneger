@@ -74,7 +74,7 @@ export default function InvestmentsSummaryCard({ userId }: Props) {
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-    fetch(`/api/brokerage/overview?userId=${userId}`)
+    fetch(`/api/brokerage/overview`)
       .then((r) => r.json())
       .then((j) => {
         if (!cancelled && j?.success) setData(j.data as Overview);

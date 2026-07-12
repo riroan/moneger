@@ -71,7 +71,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
 
   const fetchGroups = useCallback(async () => {
     try {
-      const response = await fetch(`/api/groups?userId=${userId}`);
+      const response = await fetch(`/api/groups`);
       if (response.ok) {
         const data = await response.json();
         setGroups(data.data || []);
@@ -92,8 +92,8 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
     setIsDetailLoading(true);
     try {
       const [groupRes, txRes] = await Promise.all([
-        fetch(`/api/groups/${groupId}?userId=${userId}`),
-        fetch(`/api/transactions?userId=${userId}&groupId=${groupId}&limit=100`),
+        fetch(`/api/groups/${groupId}`),
+        fetch(`/api/transactions?groupId=${groupId}&limit=100`),
       ]);
 
       if (groupRes.ok) {
@@ -150,7 +150,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
       const response = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, ...groupData }),
+        body: JSON.stringify(groupData),
       });
 
       if (response.ok) {
@@ -167,7 +167,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
       const response = await fetch(`/api/groups/${groupData.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, ...groupData }),
+        body: JSON.stringify(groupData),
       });
 
       if (response.ok) {
@@ -184,7 +184,7 @@ export default function GroupsTab({ userId, onDataChange }: GroupsTabProps) {
 
   const handleDeleteGroup = async (id: string) => {
     try {
-      const response = await fetch(`/api/groups/${id}?userId=${userId}`, {
+      const response = await fetch(`/api/groups/${id}`, {
         method: 'DELETE',
       });
 

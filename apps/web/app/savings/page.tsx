@@ -9,12 +9,12 @@ import SavingsTab from '@/components/savings/SavingsTab';
 
 export default function SavingsPage() {
   const router = useRouter();
-  const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
+  const { userId, isLoading: isAuthLoading, fetchSession } = useAuthStore();
   const { refreshData } = useDashboardData();
 
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    fetchSession();
+  }, [fetchSession]);
 
   useEffect(() => {
     if (!isAuthLoading && !userId) {

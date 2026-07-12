@@ -105,7 +105,7 @@ export default function EditSavingsGoalModal({ isOpen, goal, userId, onClose, on
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(`/api/brokerage/overview?userId=${userId}`);
+        const response = await fetch(`/api/brokerage/overview`);
         if (!response.ok) return;
         const data = await response.json();
         const list: BrokerageAccountOption[] = (data.data?.connections ?? []).flatMap(

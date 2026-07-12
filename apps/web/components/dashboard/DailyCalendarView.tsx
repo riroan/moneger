@@ -122,7 +122,7 @@ function DailyCalendarView({
     let cancelled = false;
     setIsLoadingTransactions(true);
 
-    fetch(`/api/transactions?userId=${userId}&year=${year}&month=${month}&limit=100`)
+    fetch(`/api/transactions?year=${year}&month=${month}&limit=100`)
       .then((res) => res.json())
       .then((res) => {
         if (!cancelled && res.data) {

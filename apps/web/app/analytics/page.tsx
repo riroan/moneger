@@ -8,11 +8,11 @@ import AnalyticsTab from '@/components/analytics/AnalyticsTab';
 
 export default function AnalyticsPage() {
   const router = useRouter();
-  const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
+  const { userId, isLoading: isAuthLoading, fetchSession } = useAuthStore();
 
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    fetchSession();
+  }, [fetchSession]);
 
   useEffect(() => {
     if (!isAuthLoading && !userId) {

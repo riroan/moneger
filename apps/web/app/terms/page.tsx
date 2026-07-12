@@ -11,12 +11,12 @@ import Footer from '@/components/layout/Footer';
 
 export default function TermsPage() {
   const router = useRouter();
-  const { userId, userName, userEmail, initAuth } = useAuthStore();
+  const { userId, userName, userEmail, fetchSession } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    fetchSession();
+  }, [fetchSession]);
 
   return (
     <>

@@ -59,7 +59,7 @@ export default function EditRecurringModal({ isOpen, userId, expense, onClose, o
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch(`/api/categories?userId=${userId}`);
+      const res = await fetch(`/api/categories`);
       const json = await res.json();
       if (json.data) setCategories(json.data);
     } catch { /* ignore */ }
@@ -111,7 +111,6 @@ export default function EditRecurringModal({ isOpen, userId, expense, onClose, o
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId,
           amount: parsedAmount,
           description: description.trim(),
           categoryId: categoryId || null,

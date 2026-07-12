@@ -80,8 +80,8 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
   const fetchData = useCallback(async () => {
     try {
       const [expensesRes, summaryRes] = await Promise.all([
-        fetch(`/api/recurring?userId=${userId}`),
-        fetch(`/api/recurring/summary?userId=${userId}`),
+        fetch(`/api/recurring`),
+        fetch(`/api/recurring/summary`),
       ]);
       const expensesJson = await expensesRes.json();
       const summaryJson = await summaryRes.json();
@@ -99,7 +99,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
   }, [fetchData]);
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/recurring/${id}?userId=${userId}`, { method: 'DELETE' });
+    await fetch(`/api/recurring/${id}`, { method: 'DELETE' });
     fetchData();
     onDataChange?.();
   };
@@ -108,7 +108,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
     await fetch(`/api/recurring/${expense.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, isActive: !expense.isActive }),
+      body: JSON.stringify({ isActive: !expense.isActive }),
     });
     fetchData();
     onDataChange?.();
@@ -124,7 +124,7 @@ export default function RecurringTab({ userId, onDataChange }: RecurringTabProps
         [expenseId]: { items: prev?.items ?? [], cursor, hasMore: prev?.hasMore ?? true, loading: true },
       }));
       try {
-        const params = new URLSearchParams({ userId, recurringExpenseId: expenseId, limit: '20' });
+        const params = new URLSearchParams({ recurringExpenseId: expenseId, limit: '20' });
         if (cursor) params.set('cursor', cursor);
         const res = await fetch(`/api/transactions?${params.toString()}`);
         if (!res.ok) throw new Error('failed');

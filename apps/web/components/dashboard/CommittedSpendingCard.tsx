@@ -40,7 +40,7 @@ function CommittedSpendingCard({ onManage }: CommittedSpendingCardProps) {
   const fetchSummary = useCallback(async () => {
     if (!userId) return;
     try {
-      const res = await fetch(`/api/recurring/summary?userId=${userId}`);
+      const res = await fetch(`/api/recurring/summary`);
       const json = await res.json();
       if (json.success) {
         setData(json.data);

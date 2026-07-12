@@ -33,7 +33,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
       const response = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, ...data }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -60,7 +60,7 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
       const response = await fetch(`/api/transactions/${editingTransaction.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, ...data }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -86,8 +86,6 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
     try {
       const response = await fetch(`/api/transactions/${editingTransaction.id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
       });
 
       if (!response.ok) {
@@ -114,8 +112,6 @@ export function useTransactionHandlers(options: UseTransactionHandlersOptions = 
     try {
       const response = await fetch(`/api/transactions/${editingTransaction.id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
       });
 
       if (!response.ok) {

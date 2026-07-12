@@ -221,7 +221,7 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
   const fetchOverview = useCallback(async () => {
     setError(null);
     try {
-      const res = await fetch(`/api/brokerage/overview?userId=${userId}`);
+      const res = await fetch(`/api/brokerage/overview`);
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || '불러오기 실패');
       setData(json.data as Overview);
@@ -243,8 +243,6 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
       try {
         const res = await fetch(`/api/brokerage/connections/${connectionId}/sync`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ userId }),
         });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
@@ -266,8 +264,6 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
     try {
       const res = await fetch('/api/brokerage/sync', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ userId }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -286,7 +282,7 @@ export default function InvestmentsTab({ userId }: InvestmentsTabProps) {
       if (!confirm('이 증권사 연결을 삭제할까요? 자격증명은 즉시 삭제되고 과거 스냅샷은 보존됩니다.')) {
         return;
       }
-      await fetch(`/api/brokerage/connections/${connectionId}?userId=${userId}`, { method: 'DELETE' });
+      await fetch(`/api/brokerage/connections/${connectionId}`, { method: 'DELETE' });
       await fetchOverview();
     },
     [userId, fetchOverview]
@@ -1152,7 +1148,7 @@ function AddConnectionForm({
       const res = await fetch('/api/brokerage/connections/test', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ userId, broker, credentials }),
+        body: JSON.stringify({ broker, credentials }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || '연결 테스트 실패');
@@ -1171,7 +1167,7 @@ function AddConnectionForm({
       const res = await fetch('/api/brokerage/connections', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ userId, broker, label: label || null, credentials }),
+        body: JSON.stringify({ broker, label: label || null, credentials }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || '저장 실패');

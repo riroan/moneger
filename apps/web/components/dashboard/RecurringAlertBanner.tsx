@@ -20,7 +20,7 @@ function RecurringAlertBanner() {
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-    fetch(`/api/recurring/summary?userId=${userId}`)
+    fetch(`/api/recurring/summary`)
       .then((res) => res.json())
       .then((json) => {
         if (cancelled) return;

@@ -40,7 +40,7 @@ export function useDashboardData() {
 
     const fetchInitialData = async () => {
       try {
-        const response = await fetch(`/api/dashboard/bootstrap?userId=${userId}&year=${year}&month=${month}&recentLimit=10`);
+        const response = await fetch(`/api/dashboard/bootstrap?year=${year}&month=${month}&recentLimit=10`);
         const bootstrapData = response.ok ? await response.json() : null;
         if (cancelled) return;
         if (!bootstrapData?.success) {
@@ -106,8 +106,8 @@ export function useDashboardData() {
         lastMonth.setMonth(lastMonth.getMonth() - 1);
 
         const [currentRes, lastRes] = await Promise.all([
-          fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`),
-          fetch(`/api/transactions/summary?userId=${userId}&year=${lastMonth.getFullYear()}&month=${lastMonth.getMonth() + 1}`),
+          fetch(`/api/transactions/summary?year=${year}&month=${month}`),
+          fetch(`/api/transactions/summary?year=${lastMonth.getFullYear()}&month=${lastMonth.getMonth() + 1}`),
         ]);
 
         const [currentData, lastData] = await Promise.all([
@@ -146,9 +146,9 @@ export function useDashboardData() {
 
     try {
       const [recentRes, summaryRes, todayRes] = await Promise.all([
-        fetch(`/api/transactions/recent?userId=${userId}&limit=10`),
-        fetch(`/api/transactions/summary?userId=${userId}&year=${year}&month=${month}`),
-        fetch(`/api/transactions/today?userId=${userId}`),
+        fetch(`/api/transactions/recent?limit=10`),
+        fetch(`/api/transactions/summary?year=${year}&month=${month}`),
+        fetch(`/api/transactions/today`),
       ]);
 
       // Skip parsing failed responses; an HTML error page would throw inside .json()

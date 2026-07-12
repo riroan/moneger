@@ -38,7 +38,7 @@ interface GroupDetail {
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
+  const { userId, isLoading: isAuthLoading, fetchSession } = useAuthStore();
   const { openEditModal, openSavingsTransactionModal, transactionVersion } = useModalStore();
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [transactions, setTransactions] = useState<TransactionWithCategory[]>([]);
@@ -47,15 +47,15 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    fetchSession();
+  }, [fetchSession]);
 
   const fetchGroupDetail = useCallback(async () => {
     if (!userId) return;
     try {
       const [groupRes, txRes] = await Promise.all([
-        fetch(`/api/groups/${id}?userId=${userId}`),
-        fetch(`/api/transactions?userId=${userId}&groupId=${id}&limit=100`),
+        fetch(`/api/groups/${id}`),
+        fetch(`/api/transactions?groupId=${id}&limit=100`),
       ]);
 
       if (groupRes.ok) {
@@ -101,7 +101,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     const response = await fetch(`/api/groups/${groupData.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, ...groupData }),
+      body: JSON.stringify(groupData),
     });
     if (response.ok) {
       await fetchGroupDetail();
@@ -110,7 +110,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleDeleteGroup = async (groupId: string) => {
     if (!userId) return;
-    const response = await fetch(`/api/groups/${groupId}?userId=${userId}`, {
+    const response = await fetch(`/api/groups/${groupId}`, {
       method: 'DELETE',
     });
     if (response.ok) {

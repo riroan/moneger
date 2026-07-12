@@ -8,11 +8,11 @@ import InvestmentsTab from '@/components/investments/InvestmentsTab';
 
 export default function InvestmentsPage() {
   const router = useRouter();
-  const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
+  const { userId, isLoading: isAuthLoading, fetchSession } = useAuthStore();
 
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    fetchSession();
+  }, [fetchSession]);
 
   useEffect(() => {
     if (!isAuthLoading && !userId) {

@@ -34,7 +34,7 @@ function GroupsCard({ userId, onViewAll }: GroupsCardProps) {
 
   useEffect(() => {
     if (!userId) return;
-    fetch(`/api/groups?userId=${userId}`)
+    fetch(`/api/groups`)
       .then((res) => res.json())
       .then((data) => setGroups((data.data || []).slice(0, 3)))
       .catch(() => {});

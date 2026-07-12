@@ -82,7 +82,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
 
   const fetchSavingsGoals = useCallback(async () => {
     try {
-      const response = await fetch(`/api/savings?userId=${userId}`);
+      const response = await fetch(`/api/savings`);
       if (response.ok) {
         const data = await response.json();
         setSavingsGoals(data.data || []);
@@ -97,7 +97,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
   // 증권 연동 평가액을 목표별로 집계. /api/brokerage/overview를 단일 소스로 재사용.
   const fetchGoalValuations = useCallback(async () => {
     try {
-      const response = await fetch(`/api/brokerage/overview?userId=${userId}`);
+      const response = await fetch(`/api/brokerage/overview`);
       if (!response.ok) return;
       const data = await response.json();
       const accounts: Array<{ savingsGoalId: string | null; totalEquityKrw: string | null }> =
@@ -160,7 +160,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         [goalId]: { items: prev?.items ?? [], cursor, hasMore: prev?.hasMore ?? true, loading: true },
       }));
       try {
-        const params = new URLSearchParams({ userId, savingsGoalId: goalId, limit: '20' });
+        const params = new URLSearchParams({ savingsGoalId: goalId, limit: '20' });
         if (cursor) params.set('cursor', cursor);
         const res = await fetch(`/api/transactions?${params.toString()}`);
         if (!res.ok) throw new Error('failed');
@@ -206,7 +206,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
       const response = await fetch('/api/savings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, ...goalData }),
+        body: JSON.stringify(goalData),
       });
 
       if (response.ok) {
@@ -231,7 +231,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
       const response = await fetch(`/api/savings/${goalData.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, ...goalData }),
+        body: JSON.stringify(goalData),
       });
 
       if (response.ok) {
@@ -245,7 +245,7 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
 
   const handleDeleteGoal = async (id: string) => {
     try {
-      const response = await fetch(`/api/savings/${id}?userId=${userId}`, {
+      const response = await fetch(`/api/savings/${id}`, {
         method: 'DELETE',
       });
 
@@ -275,7 +275,6 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId,
           amount,
         }),
       });
@@ -297,7 +296,6 @@ export default function SavingsTab({ userId, onDataChange }: SavingsTabProps) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId,
           isPrimary: !currentIsPrimary,
         }),
       });

@@ -9,12 +9,12 @@ import type { TransactionWithCategory } from '@/types';
 
 export default function TransactionsPage() {
   const router = useRouter();
-  const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
+  const { userId, isLoading: isAuthLoading, fetchSession } = useAuthStore();
   const { openEditModal, openSavingsTransactionModal } = useModalStore();
 
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    fetchSession();
+  }, [fetchSession]);
 
   useEffect(() => {
     if (!isAuthLoading && !userId) {

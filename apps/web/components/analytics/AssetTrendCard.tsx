@@ -25,7 +25,7 @@ export default function AssetTrendCard({ userId, months }: { userId: string; mon
     setLoading(true);
     setError(null);
 
-    fetch(`/api/assets/monthly-report?userId=${userId}&month=${currentMonthKey()}&range=${months}`)
+    fetch(`/api/assets/monthly-report?month=${currentMonthKey()}&range=${months}`)
       .then((res) => res.json())
       .then((res) => {
         if (cancelled) return;

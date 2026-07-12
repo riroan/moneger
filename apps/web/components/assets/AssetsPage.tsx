@@ -520,7 +520,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/assets/monthly-report?userId=${userId}&month=${month}&range=${REPORT_RANGE_MONTHS}`);
+      const res = await fetch(`/api/assets/monthly-report?month=${month}&range=${REPORT_RANGE_MONTHS}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error || '자산 리포트를 불러오지 못했습니다');
       setData(json.data as AssetReport);
@@ -558,7 +558,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
       setAiError(null);
 
       try {
-        const params = new URLSearchParams({ userId, month });
+        const params = new URLSearchParams({ month });
         const res = await fetch(`/api/assets/ai-summary?${params.toString()}`, {
           signal: controller.signal,
         });
@@ -601,7 +601,7 @@ export default function AssetsPage({ userId }: AssetsPageProps) {
         const res = await fetch('/api/assets/ai-summary', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ userId, month: requestedMonth, regenerate }),
+          body: JSON.stringify({ month: requestedMonth, regenerate }),
         });
         const json = await res.json();
         if (!res.ok || !json.success) throw new Error(json.error || 'AI 한 줄 평을 불러오지 못했습니다');

@@ -4,20 +4,23 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { fetchSession, setAuth } = useAuthStore();
   const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   // 로그인 상태면 메인 페이지로 리다이렉트
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (userId) {
-      router.replace('/');
-    } else {
-      setIsAuthChecked(true);
-    }
-  }, [router]);
+    fetchSession().then((ok) => {
+      if (ok) {
+        router.replace('/');
+      } else {
+        setIsAuthChecked(true);
+      }
+    });
+  }, [fetchSession, router]);
 
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
@@ -208,10 +211,12 @@ export default function LoginPage() {
         // 3초 후 성공 메시지 제거
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
-        // 로그인 성공 - userId를 localStorage에 저장하고 메인 페이지로 이동
-        localStorage.setItem('userId', data.data.user.id);
-        localStorage.setItem('userName', data.data.user.name || '');
-        localStorage.setItem('userEmail', data.data.user.email);
+        // 로그인 성공 - 세션 쿠키는 서버가 설정, 클라이언트 상태만 갱신 후 메인 페이지로 이동
+        setAuth({
+          userId: data.data.user.id,
+          userName: data.data.user.name || '',
+          userEmail: data.data.user.email,
+        });
         router.push('/');
       }
     } catch (err) {

@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useOutsideClick, useBodyScrollLock, usePlan } from '@/hooks';
+import { useAuthStore } from '@/stores/useAuthStore';
 import type { Category, Budget } from '@/types';
 import { CATEGORY_LIMITS } from '@/lib/constants';
 import {
@@ -34,11 +35,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
-  const [userId, setUserId] = useState<string | null>(null);
+  const { userId, userName, userEmail, isLoading, fetchSession, logout } = useAuthStore();
   const { features } = usePlan(userId);
-  const [userName, setUserName] = useState<string>('');
-  const [userEmail, setUserEmail] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<SettingTab>('account');
 
   // 카테고리 관리
@@ -75,20 +73,10 @@ export default function SettingsPage() {
 
   // 인증 확인
   useEffect(() => {
-    const storedUserId = localStorage.getItem('userId');
-    const storedUserName = localStorage.getItem('userName');
-    const storedUserEmail = localStorage.getItem('userEmail');
-
-    if (!storedUserId) {
-      router.push('/login');
-      return;
-    }
-
-    setUserId(storedUserId);
-    setUserName(storedUserName || '');
-    setUserEmail(storedUserEmail || '');
-    setIsLoading(false);
-  }, [router]);
+    fetchSession().then((ok) => {
+      if (!ok) router.push('/login');
+    });
+  }, [fetchSession, router]);
 
   // 카테고리 목록 및 가장 오래된 거래 날짜 가져오기
   useEffect(() => {
@@ -98,8 +86,8 @@ export default function SettingsPage() {
       setIsLoadingCategories(true);
       try {
         const [categoriesRes, oldestDateRes] = await Promise.all([
-          fetch(`/api/categories?userId=${userId}`),
-          fetch(`/api/transactions/oldest-date?userId=${userId}`),
+          fetch(`/api/categories`),
+          fetch(`/api/transactions/oldest-date`),
         ]);
 
         const [categoriesData, oldestDateData] = await Promise.all([
@@ -134,8 +122,8 @@ export default function SettingsPage() {
         const year = budgetDate.getFullYear();
         const month = budgetDate.getMonth() + 1;
         const [budgetResponse, defaultBudgetResponse] = await Promise.all([
-          fetch(`/api/budgets?userId=${userId}&year=${year}&month=${month}`),
-          fetch(`/api/budgets?userId=${userId}&scope=default`),
+          fetch(`/api/budgets?year=${year}&month=${month}`),
+          fetch(`/api/budgets?scope=default`),
         ]);
         const [data, defaultData] = await Promise.all([
           budgetResponse.json(),
@@ -168,10 +156,8 @@ export default function SettingsPage() {
     isDefaultBudgetModalOpen
   );
 
-  const handleLogout = () => {
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
 
@@ -209,7 +195,6 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId,
           name: data.name,
           type: data.type,
           icon: data.icon,
@@ -227,7 +212,6 @@ export default function SettingsPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId,
           name: data.name,
           icon: data.icon,
           color: data.color,
@@ -242,7 +226,7 @@ export default function SettingsPage() {
     }
 
     // 카테고리 목록 새로고침
-    const categoriesResponse = await fetch(`/api/categories?userId=${userId}`);
+    const categoriesResponse = await fetch(`/api/categories`);
     const categoriesData = await categoriesResponse.json();
     if (categoriesData.success) {
       setCategories(categoriesData.data);
@@ -251,7 +235,7 @@ export default function SettingsPage() {
     // 예산 목록도 새로고침 (기본 예산이 설정된 경우 반영)
     const budgetYear = budgetDate.getFullYear();
     const budgetMonth = budgetDate.getMonth() + 1;
-    const budgetsResponse = await fetch(`/api/budgets?userId=${userId}&year=${budgetYear}&month=${budgetMonth}`);
+    const budgetsResponse = await fetch(`/api/budgets?year=${budgetYear}&month=${budgetMonth}`);
     const budgetsData = await budgetsResponse.json();
     if (budgetsData.success) {
       setBudgets(budgetsData.data);
@@ -267,8 +251,6 @@ export default function SettingsPage() {
     try {
       const response = await fetch(`/api/categories/${editingCategory.id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
       });
 
       const data = await response.json();
@@ -282,7 +264,7 @@ export default function SettingsPage() {
       setEditingCategory(null);
 
       // 카테고리 목록 새로고침
-      const categoriesResponse = await fetch(`/api/categories?userId=${userId}`);
+      const categoriesResponse = await fetch(`/api/categories`);
       const categoriesData = await categoriesResponse.json();
       if (categoriesData.success) {
         setCategories(categoriesData.data);
@@ -309,7 +291,6 @@ export default function SettingsPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId,
         categoryId: editingBudgetCategory.id,
         amount,
         year: budgetDate.getFullYear(),
@@ -335,7 +316,7 @@ export default function SettingsPage() {
     if (!userId || !editingBudgetCategory) return;
 
     const response = await fetch(
-      `/api/budgets?userId=${userId}&categoryId=${editingBudgetCategory.id}&year=${budgetDate.getFullYear()}&month=${budgetDate.getMonth() + 1}`,
+      `/api/budgets?categoryId=${editingBudgetCategory.id}&year=${budgetDate.getFullYear()}&month=${budgetDate.getMonth() + 1}`,
       { method: 'DELETE' }
     );
 
@@ -354,7 +335,6 @@ export default function SettingsPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId,
         categoryId: null,
         amount,
         year: budgetDate.getFullYear(),
@@ -380,7 +360,7 @@ export default function SettingsPage() {
     if (!userId) return;
 
     const response = await fetch(
-      `/api/budgets?userId=${userId}&scope=total&year=${budgetDate.getFullYear()}&month=${budgetDate.getMonth() + 1}`,
+      `/api/budgets?scope=total&year=${budgetDate.getFullYear()}&month=${budgetDate.getMonth() + 1}`,
       { method: 'DELETE' }
     );
 
@@ -399,7 +379,6 @@ export default function SettingsPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId,
         scope: 'default',
         amount,
       }),
@@ -416,7 +395,7 @@ export default function SettingsPage() {
   const handleDeleteDefaultBudget = async () => {
     if (!userId) return;
 
-    const response = await fetch(`/api/budgets?userId=${userId}&scope=default`, {
+    const response = await fetch(`/api/budgets?scope=default`, {
       method: 'DELETE',
     });
 

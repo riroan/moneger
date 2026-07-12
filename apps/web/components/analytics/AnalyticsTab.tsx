@@ -20,7 +20,7 @@ export default function AnalyticsTab() {
     setIsLoading(true);
     setError(null);
 
-    fetch(`/api/analytics?userId=${userId}&months=${months}`)
+    fetch(`/api/analytics?months=${months}`)
       .then((res) => res.json())
       .then((res) => {
         if (!cancelled) {

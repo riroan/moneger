@@ -90,7 +90,7 @@ export default function DashboardTab({
     const showLoading = chartViewMode === 'calendar';
     if (showLoading) setIsLoadingCalendar(true);
 
-    fetch(`/api/daily-balance?userId=${userId}&year=${year}&month=${month}`)
+    fetch(`/api/daily-balance?year=${year}&month=${month}`)
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled && data.data) {

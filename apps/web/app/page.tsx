@@ -11,12 +11,12 @@ import type { TransactionWithCategory } from '@/types';
 
 export default function Home() {
   const router = useRouter();
-  const { userId, isLoading: isAuthLoading, initAuth } = useAuthStore();
+  const { userId, isLoading: isAuthLoading, fetchSession } = useAuthStore();
   const { openEditModal, openSavingsTransactionModal } = useModalStore();
 
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    fetchSession();
+  }, [fetchSession]);
 
   const handleTransactionClick = (tx: TransactionWithCategory) => {
     if (tx.savingsGoalId) {

@@ -51,7 +51,6 @@ export default function AccountTab({ userName, userEmail, userId, onDeleteAccoun
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
           currentPassword,
           newPassword,
         }),

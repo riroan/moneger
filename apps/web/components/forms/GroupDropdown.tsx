@@ -36,7 +36,7 @@ export default function GroupDropdown({ userId, selectedId, onSelect }: GroupDro
   useEffect(() => {
     if (!userId) return;
     const controller = new AbortController();
-    fetch(`/api/groups?userId=${userId}`, { signal: controller.signal })
+    fetch(`/api/groups`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => setGroups(data.data || []))
       .catch((e) => { if (e.name !== 'AbortError') throw e; });
