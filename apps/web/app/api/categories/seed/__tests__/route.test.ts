@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -16,6 +19,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('POST /api/categories/seed', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('기본 카테고리를 성공적으로 생성해야 함', async () => {
@@ -45,7 +49,6 @@ describe('POST /api/categories/seed', () => {
 
     const request = new NextRequest('http://localhost:3000/api/categories/seed', {
       method: 'POST',
-      body: JSON.stringify({ userId: 'user-1' }),
     });
 
     const response = await POST(request);
@@ -57,17 +60,18 @@ describe('POST /api/categories/seed', () => {
     expect(data.count).toBe(14); // 10 expense + 4 income
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/categories/seed', {
       method: 'POST',
-      body: JSON.stringify({}),
     });
 
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('이미 카테고리가 존재하면 409 에러를 반환해야 함', async () => {
@@ -77,7 +81,6 @@ describe('POST /api/categories/seed', () => {
 
     const request = new NextRequest('http://localhost:3000/api/categories/seed', {
       method: 'POST',
-      body: JSON.stringify({ userId: 'user-1' }),
     });
 
     const response = await POST(request);
@@ -92,7 +95,6 @@ describe('POST /api/categories/seed', () => {
 
     const request = new NextRequest('http://localhost:3000/api/categories/seed', {
       method: 'POST',
-      body: JSON.stringify({ userId: 'user-1' }),
     });
 
     const response = await POST(request);

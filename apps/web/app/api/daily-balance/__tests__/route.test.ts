@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { GET, POST } from '../route';
 import * as dailyBalanceService from '@/lib/services/daily-balance.service';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Mock daily-balance service
 jest.mock('@/lib/services/daily-balance.service', () => ({
@@ -12,6 +15,7 @@ jest.mock('@/lib/services/daily-balance.service', () => ({
 describe('POST /api/daily-balance', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('일별 잔액을 성공적으로 저장해야 함', async () => {
@@ -29,7 +33,6 @@ describe('POST /api/daily-balance', () => {
     const request = new NextRequest('http://localhost:3000/api/daily-balance', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         date: '2024-01-15',
         balance: 100000,
         income: 150000,
@@ -45,7 +48,9 @@ describe('POST /api/daily-balance', () => {
     expect(data.message).toBe('일별 잔액이 저장되었습니다');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/daily-balance', {
       method: 'POST',
       body: JSON.stringify({
@@ -57,15 +62,14 @@ describe('POST /api/daily-balance', () => {
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('date가 없으면 400 에러를 반환해야 함', async () => {
     const request = new NextRequest('http://localhost:3000/api/daily-balance', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         balance: 100000,
       }),
     });
@@ -83,7 +87,6 @@ describe('POST /api/daily-balance', () => {
     const request = new NextRequest('http://localhost:3000/api/daily-balance', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         date: '2024-01-15',
         balance: 100000,
       }),
@@ -100,6 +103,7 @@ describe('POST /api/daily-balance', () => {
 describe('GET /api/daily-balance', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('일별 잔액 목록을 성공적으로 반환해야 함', async () => {
@@ -111,7 +115,6 @@ describe('GET /api/daily-balance', () => {
     (dailyBalanceService.getRecentDailyBalances as jest.Mock).mockResolvedValue(mockBalances);
 
     const url = new URL('http://localhost:3000/api/daily-balance');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('days', '5');
 
     const request = new NextRequest(url);
@@ -123,7 +126,9 @@ describe('GET /api/daily-balance', () => {
     expect(data.data).toHaveLength(2);
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const url = new URL('http://localhost:3000/api/daily-balance');
     url.searchParams.set('days', '5');
 
@@ -131,15 +136,14 @@ describe('GET /api/daily-balance', () => {
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
     (dailyBalanceService.getRecentDailyBalances as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/daily-balance');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);

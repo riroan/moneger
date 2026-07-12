@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { PATCH, DELETE } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -15,6 +18,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('PATCH /api/categories/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('카테고리를 성공적으로 수정해야 함', async () => {
@@ -41,7 +45,6 @@ describe('PATCH /api/categories/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '외식비',
         color: '#F59E0B',
       }),
@@ -55,7 +58,9 @@ describe('PATCH /api/categories/[id]', () => {
     expect(data.data.name).toBe('외식비');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
       method: 'PATCH',
       body: JSON.stringify({ name: '외식비' }),
@@ -64,8 +69,8 @@ describe('PATCH /api/categories/[id]', () => {
     const response = await PATCH(request, { params: Promise.resolve({ id: 'cat-1' }) });
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('존재하지 않는 카테고리면 404 에러를 반환해야 함', async () => {
@@ -74,7 +79,6 @@ describe('PATCH /api/categories/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/categories/cat-999', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '외식비',
       }),
     });
@@ -99,7 +103,6 @@ describe('PATCH /api/categories/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         type: 'INVALID_TYPE',
       }),
     });
@@ -133,7 +136,6 @@ describe('PATCH /api/categories/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '외식비',
         type: 'EXPENSE',
       }),
@@ -152,7 +154,6 @@ describe('PATCH /api/categories/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '외식비',
       }),
     });
@@ -168,6 +169,7 @@ describe('PATCH /api/categories/[id]', () => {
 describe('DELETE /api/categories/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('카테고리를 성공적으로 삭제해야 함', async () => {
@@ -186,7 +188,6 @@ describe('DELETE /api/categories/[id]', () => {
 
     const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
       method: 'DELETE',
-      body: JSON.stringify({ userId: 'user-1' }),
     });
     const response = await DELETE(request, { params: Promise.resolve({ id: 'cat-1' }) });
     const data = await response.json();
@@ -196,17 +197,18 @@ describe('DELETE /api/categories/[id]', () => {
     expect(data.message).toBe('Category deleted successfully');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
       method: 'DELETE',
-      body: JSON.stringify({}),
     });
 
     const response = await DELETE(request, { params: Promise.resolve({ id: 'cat-1' }) });
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('존재하지 않는 카테고리면 404 에러를 반환해야 함', async () => {
@@ -214,7 +216,6 @@ describe('DELETE /api/categories/[id]', () => {
 
     const request = new NextRequest('http://localhost:3000/api/categories/cat-999', {
       method: 'DELETE',
-      body: JSON.stringify({ userId: 'user-1' }),
     });
     const response = await DELETE(request, { params: Promise.resolve({ id: 'cat-999' }) });
     const data = await response.json();
@@ -228,7 +229,6 @@ describe('DELETE /api/categories/[id]', () => {
 
     const request = new NextRequest('http://localhost:3000/api/categories/cat-1', {
       method: 'DELETE',
-      body: JSON.stringify({ userId: 'user-1' }),
     });
     const response = await DELETE(request, { params: Promise.resolve({ id: 'cat-1' }) });
     const data = await response.json();

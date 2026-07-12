@@ -3,6 +3,9 @@ import { GET } from '../route';
 import { getOrSeedCategories } from '@/lib/services/category.service';
 import { getTransactionSummary } from '@/lib/services/summary.service';
 import { getOldestTransactionDate, getRecentTransactions, getTodaySummary } from '@/lib/services/transaction.service';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 jest.mock('@/lib/services/category.service', () => ({
   getOrSeedCategories: jest.fn(),
@@ -47,6 +50,7 @@ function makeSummary(balance: number) {
 describe('GET /api/dashboard/bootstrap', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
     mockGetOrSeedCategories.mockResolvedValue([{ id: 'cat-1', name: '식비' }]);
     mockGetOldestTransactionDate.mockResolvedValue(new Date('2026-01-15T00:00:00.000Z'));
     mockGetRecentTransactions.mockResolvedValue([{ id: 'tx-1' }]);
@@ -57,7 +61,7 @@ describe('GET /api/dashboard/bootstrap', () => {
   });
 
   it('returns dashboard bootstrap data in one response', async () => {
-    const response = await GET(makeRequest('http://localhost:3000/api/dashboard/bootstrap?userId=user-1&year=2026&month=6'));
+    const response = await GET(makeRequest('http://localhost:3000/api/dashboard/bootstrap?year=2026&month=6'));
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -76,8 +80,19 @@ describe('GET /api/dashboard/bootstrap', () => {
     expect(mockGetTransactionSummary).toHaveBeenNthCalledWith(2, 'user-1', 2026, 5);
   });
 
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
+    const response = await GET(makeRequest('http://localhost:3000/api/dashboard/bootstrap?year=2026&month=6'));
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+    expect(mockGetOrSeedCategories).not.toHaveBeenCalled();
+  });
+
   it('validates required query params', async () => {
-    const response = await GET(makeRequest('http://localhost:3000/api/dashboard/bootstrap?userId=user-1'));
+    const response = await GET(makeRequest('http://localhost:3000/api/dashboard/bootstrap'));
 
     expect(response.status).toBe(400);
     expect(mockGetOrSeedCategories).not.toHaveBeenCalled();

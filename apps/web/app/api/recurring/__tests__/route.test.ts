@@ -5,6 +5,9 @@ import {
   createRecurringExpense,
   getRecurringExpenses,
 } from '@/lib/services/recurring.service';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 jest.mock('@/lib/entitlements-server', () => ({
   requireFeature: jest.fn(),
@@ -18,8 +21,29 @@ jest.mock('@/lib/services/recurring.service', () => ({
 describe('POST /api/recurring', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
     (requireFeature as jest.Mock).mockResolvedValue(null);
     (getRecurringExpenses as jest.Mock).mockResolvedValue([]);
+  });
+
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
+    const request = new NextRequest('http://localhost:3000/api/recurring', {
+      method: 'POST',
+      body: JSON.stringify({
+        amount: 10000,
+        description: '관리비',
+        dayOfMonth: 25,
+      }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+    expect(createRecurringExpense).not.toHaveBeenCalled();
   });
 
   it('고정비가 20개면 400 에러를 반환해야 함', async () => {
@@ -30,7 +54,6 @@ describe('POST /api/recurring', () => {
     const request = new NextRequest('http://localhost:3000/api/recurring', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 10000,
         description: '관리비',
         dayOfMonth: 25,
@@ -55,7 +78,6 @@ describe('POST /api/recurring', () => {
     const request = new NextRequest('http://localhost:3000/api/recurring', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 10000,
         description: '관리비',
         dayOfMonth: 25,
