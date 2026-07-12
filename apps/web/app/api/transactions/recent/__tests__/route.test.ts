@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { GET } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -15,6 +18,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('GET /api/transactions/recent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('최근 거래를 성공적으로 반환해야 함', async () => {
@@ -63,7 +67,6 @@ describe('GET /api/transactions/recent', () => {
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue(mockTransactions);
 
     const url = new URL('http://localhost:3000/api/transactions/recent');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -96,14 +99,16 @@ describe('GET /api/transactions/recent', () => {
     });
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const url = new URL('http://localhost:3000/api/transactions/recent');
     const request = new NextRequest(url);
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('limit 파라미터를 지정할 수 있어야 함', async () => {
@@ -111,7 +116,6 @@ describe('GET /api/transactions/recent', () => {
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
 
     const url = new URL('http://localhost:3000/api/transactions/recent');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('limit', '5');
 
     const request = new NextRequest(url);
@@ -129,7 +133,6 @@ describe('GET /api/transactions/recent', () => {
     (prisma.transaction.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/transactions/recent');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -152,7 +155,6 @@ describe('GET /api/transactions/recent', () => {
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue(mockTransactions);
 
     const url = new URL('http://localhost:3000/api/transactions/recent');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('type', 'EXPENSE');
 
     const request = new NextRequest(url);
@@ -173,7 +175,6 @@ describe('GET /api/transactions/recent', () => {
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
 
     const url = new URL('http://localhost:3000/api/transactions/recent');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('limit', '200');
 
     const request = new NextRequest(url);

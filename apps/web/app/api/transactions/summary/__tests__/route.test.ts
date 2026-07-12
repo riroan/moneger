@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { GET } from '../route';
 import * as summaryService from '@/lib/services/summary.service';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Mock summary service
 jest.mock('@/lib/services/summary.service', () => ({
@@ -10,6 +13,7 @@ jest.mock('@/lib/services/summary.service', () => ({
 describe('GET /api/transactions/summary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('월별 거래 요약을 성공적으로 반환해야 함', async () => {
@@ -39,7 +43,6 @@ describe('GET /api/transactions/summary', () => {
     (summaryService.getTransactionSummary as jest.Mock).mockResolvedValue(mockSummary);
 
     const url = new URL('http://localhost:3000/api/transactions/summary');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
 
@@ -82,7 +85,6 @@ describe('GET /api/transactions/summary', () => {
     (summaryService.getTransactionSummary as jest.Mock).mockResolvedValue(mockSummary);
 
     const url = new URL('http://localhost:3000/api/transactions/summary');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
 
@@ -100,7 +102,9 @@ describe('GET /api/transactions/summary', () => {
     expect(data.data.categories[2].total).toBe(10000);
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const url = new URL('http://localhost:3000/api/transactions/summary');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
@@ -109,13 +113,12 @@ describe('GET /api/transactions/summary', () => {
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('year나 month가 없으면 400 에러를 반환해야 함', async () => {
     const url = new URL('http://localhost:3000/api/transactions/summary');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -131,7 +134,6 @@ describe('GET /api/transactions/summary', () => {
     );
 
     const url = new URL('http://localhost:3000/api/transactions/summary');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
 

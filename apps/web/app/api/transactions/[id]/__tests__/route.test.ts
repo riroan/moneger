@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { PATCH, DELETE } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -23,6 +26,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('PATCH /api/transactions/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockTransaction = {
@@ -57,7 +61,6 @@ describe('PATCH /api/transactions/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 60000,
         description: '저녁',
       }),
@@ -71,7 +74,9 @@ describe('PATCH /api/transactions/[id]', () => {
     expect(data.message).toBe('Transaction updated successfully');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-1', {
       method: 'PATCH',
       body: JSON.stringify({ amount: 60000 }),
@@ -80,8 +85,8 @@ describe('PATCH /api/transactions/[id]', () => {
     const response = await PATCH(request, { params: Promise.resolve({ id: 'tx-1' }) });
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('존재하지 않는 거래면 404 에러를 반환해야 함', async () => {
@@ -90,7 +95,6 @@ describe('PATCH /api/transactions/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-999', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 60000,
       }),
     });
@@ -108,7 +112,6 @@ describe('PATCH /api/transactions/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         type: 'INVALID_TYPE',
       }),
     });
@@ -126,7 +129,6 @@ describe('PATCH /api/transactions/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: -1000,
       }),
     });
@@ -145,7 +147,6 @@ describe('PATCH /api/transactions/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         categoryId: 'invalid-cat',
       }),
     });
@@ -163,7 +164,6 @@ describe('PATCH /api/transactions/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-1', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 60000,
       }),
     });
@@ -179,6 +179,7 @@ describe('PATCH /api/transactions/[id]', () => {
 describe('DELETE /api/transactions/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockTransaction = {
@@ -207,7 +208,6 @@ describe('DELETE /api/transactions/[id]', () => {
 
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-1', {
       method: 'DELETE',
-      body: JSON.stringify({ userId: 'user-1' }),
     });
 
     const response = await DELETE(request, { params: Promise.resolve({ id: 'tx-1' }) });
@@ -218,17 +218,18 @@ describe('DELETE /api/transactions/[id]', () => {
     expect(data.message).toBe('Transaction deleted successfully');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-1', {
       method: 'DELETE',
-      body: JSON.stringify({}),
     });
 
     const response = await DELETE(request, { params: Promise.resolve({ id: 'tx-1' }) });
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('존재하지 않는 거래면 404 에러를 반환해야 함', async () => {
@@ -236,7 +237,6 @@ describe('DELETE /api/transactions/[id]', () => {
 
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-999', {
       method: 'DELETE',
-      body: JSON.stringify({ userId: 'user-1' }),
     });
 
     const response = await DELETE(request, { params: Promise.resolve({ id: 'tx-999' }) });
@@ -251,7 +251,6 @@ describe('DELETE /api/transactions/[id]', () => {
 
     const request = new NextRequest('http://localhost:3000/api/transactions/tx-1', {
       method: 'DELETE',
-      body: JSON.stringify({ userId: 'user-1' }),
     });
 
     const response = await DELETE(request, { params: Promise.resolve({ id: 'tx-1' }) });
