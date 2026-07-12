@@ -9,6 +9,7 @@ jest.mock('../../lib/storage', () => ({
     setUserName: jest.fn(),
     getUserEmail: jest.fn(),
     setUserEmail: jest.fn(),
+    setAccessToken: jest.fn(),
     clearUserData: jest.fn(),
   },
 }));
@@ -18,6 +19,7 @@ jest.mock('../../lib/api', () => ({
   authApi: {
     login: jest.fn(),
     signup: jest.fn(),
+    logout: jest.fn(),
   },
 }));
 
@@ -103,11 +105,13 @@ describe('authStore', () => {
             name: 'Test User',
             email: 'test@example.com',
           },
+          accessToken: 'token-abc',
         },
       });
       (storage.setUserId as jest.Mock).mockResolvedValue(undefined);
       (storage.setUserName as jest.Mock).mockResolvedValue(undefined);
       (storage.setUserEmail as jest.Mock).mockResolvedValue(undefined);
+      (storage.setAccessToken as jest.Mock).mockResolvedValue(undefined);
 
       const result = await useAuthStore.getState().login('test@example.com', 'password');
 
@@ -154,7 +158,7 @@ describe('authStore', () => {
         loadingDuringRequest = useAuthStore.getState().isLoading;
         return {
           success: true,
-          data: { user: { id: '1', name: 'Test', email: 'test@example.com' } },
+          data: { user: { id: '1', name: 'Test', email: 'test@example.com' }, accessToken: 'token-abc' },
         };
       });
 
@@ -210,9 +214,11 @@ describe('authStore', () => {
         userEmail: 'test@example.com',
       });
       (storage.clearUserData as jest.Mock).mockResolvedValue(undefined);
+      (authApi.logout as jest.Mock).mockResolvedValue({ success: true });
 
       await useAuthStore.getState().logout();
 
+      expect(authApi.logout).toHaveBeenCalled();
       expect(storage.clearUserData).toHaveBeenCalled();
 
       const state = useAuthStore.getState();

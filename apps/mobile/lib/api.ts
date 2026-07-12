@@ -1,17 +1,24 @@
 import { API_BASE_URL, API_ENDPOINTS } from '../constants/Api';
 import type { ApiResponse, TransactionType } from '@moneger/shared';
+import { storage } from './storage';
 
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   try {
+    const token = await storage.getAccessToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> | undefined),
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
       ...options,
+      headers,
     });
 
     const data = await response.json();
@@ -38,7 +45,7 @@ async function request<T>(
 // Auth API
 export const authApi = {
   login: (email: string, password: string) =>
-    request<{ user: { id: string; name: string; email: string } }>(
+    request<{ user: { id: string; name: string; email: string }; accessToken: string }>(
       API_ENDPOINTS.LOGIN,
       {
         method: 'POST',
@@ -55,16 +62,21 @@ export const authApi = {
       }
     ),
 
-  changePassword: (userId: string, currentPassword: string, newPassword: string) =>
+  changePassword: (currentPassword: string, newPassword: string) =>
     request(API_ENDPOINTS.PASSWORD, {
       method: 'PATCH',
-      body: JSON.stringify({ userId, currentPassword, newPassword }),
+      body: JSON.stringify({ currentPassword, newPassword }),
     }),
 
-  deleteAccount: (userId: string, password: string) =>
+  deleteAccount: (password: string) =>
     request(API_ENDPOINTS.DELETE_ACCOUNT, {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    }),
+
+  logout: () =>
+    request(API_ENDPOINTS.LOGOUT, {
       method: 'POST',
-      body: JSON.stringify({ userId, password }),
     }),
 };
 

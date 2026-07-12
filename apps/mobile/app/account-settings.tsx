@@ -113,7 +113,7 @@ export default function AccountSettingsScreen() {
 
     setIsChangingPassword(true);
     try {
-      const res = await authApi.changePassword(userId, currentPassword, newPassword);
+      const res = await authApi.changePassword(currentPassword, newPassword);
       if (res.success) {
         showToast('비밀번호가 변경되었습니다', 'success');
         setCurrentPassword('');
@@ -137,7 +137,7 @@ export default function AccountSettingsScreen() {
 
     setIsDeletingAccount(true);
     try {
-      const res = await authApi.deleteAccount(userId, deletePassword);
+      const res = await authApi.deleteAccount(deletePassword);
       if (res.success) {
         showToast('계정이 삭제되었습니다', 'success');
         await logout();

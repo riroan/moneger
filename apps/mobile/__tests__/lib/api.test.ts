@@ -13,6 +13,13 @@ import {
 // Mock fetch globally
 global.fetch = jest.fn();
 
+// Mock secure token storage (request() reads the access token on every call)
+jest.mock('../../lib/storage', () => ({
+  storage: {
+    getAccessToken: jest.fn().mockResolvedValue(null),
+  },
+}));
+
 // Mock API constants
 jest.mock('../../constants/Api', () => ({
   API_BASE_URL: 'http://localhost:3000',
@@ -21,6 +28,7 @@ jest.mock('../../constants/Api', () => ({
     SIGNUP: '/api/auth/signup',
     PASSWORD: '/api/auth/password',
     DELETE_ACCOUNT: '/api/auth/delete',
+    LOGOUT: '/api/auth/logout',
     TRANSACTIONS: '/api/transactions',
     TRANSACTIONS_RECENT: '/api/transactions/recent',
     TRANSACTIONS_SUMMARY: '/api/transactions/summary',
@@ -114,7 +122,7 @@ describe('API', () => {
           json: async () => ({ data: {} }),
         });
 
-        await authApi.changePassword('user-1', 'oldPass', 'newPass');
+        await authApi.changePassword('oldPass', 'newPass');
 
         expect(global.fetch).toHaveBeenCalledWith(
           'http://localhost:3000/api/auth/password',
@@ -126,18 +134,18 @@ describe('API', () => {
     });
 
     describe('deleteAccount', () => {
-      it('should make POST request to delete account', async () => {
+      it('should make DELETE request to delete account', async () => {
         (global.fetch as jest.Mock).mockResolvedValueOnce({
           ok: true,
           json: async () => ({ data: {} }),
         });
 
-        await authApi.deleteAccount('user-1', 'password');
+        await authApi.deleteAccount('password');
 
         expect(global.fetch).toHaveBeenCalledWith(
           'http://localhost:3000/api/auth/delete',
           expect.objectContaining({
-            method: 'POST',
+            method: 'DELETE',
           })
         );
       });

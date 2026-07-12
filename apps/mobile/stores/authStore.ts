@@ -53,12 +53,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return { success: false, error: response.error || '로그인에 실패했습니다' };
       }
 
-      const { user } = response.data;
+      const { user, accessToken } = response.data;
 
       await Promise.all([
         storage.setUserId(user.id),
         storage.setUserName(user.name || ''),
         storage.setUserEmail(user.email),
+        storage.setAccessToken(accessToken),
       ]);
 
       set({
@@ -94,6 +95,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    await authApi.logout().catch(() => {});
     await storage.clearUserData();
     set({
       userId: null,

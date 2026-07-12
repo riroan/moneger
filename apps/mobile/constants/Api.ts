@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
   SIGNUP: '/api/auth/signup',
   PASSWORD: '/api/auth/password',
   DELETE_ACCOUNT: '/api/auth/delete',
+  LOGOUT: '/api/auth/logout',
 
   // Transactions
   TRANSACTIONS: '/api/transactions',

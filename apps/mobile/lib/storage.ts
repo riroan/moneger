@@ -1,10 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 const STORAGE_KEYS = {
   USER_ID: 'userId',
   USER_NAME: 'userName',
   USER_EMAIL: 'userEmail',
   THEME: 'theme',
+};
+
+const SECURE_KEYS = {
+  ACCESS_TOKEN: 'accessToken',
 };
 
 export const storage = {
@@ -28,6 +33,14 @@ export const storage = {
     await AsyncStorage.setItem(STORAGE_KEYS.USER_EMAIL, userEmail);
   },
 
+  // Session token (암호화 저장 — Authorization: Bearer 헤더로 매 요청 전송)
+  async getAccessToken(): Promise<string | null> {
+    return SecureStore.getItemAsync(SECURE_KEYS.ACCESS_TOKEN);
+  },
+  async setAccessToken(token: string): Promise<void> {
+    await SecureStore.setItemAsync(SECURE_KEYS.ACCESS_TOKEN, token);
+  },
+
   // Theme
   async getTheme(): Promise<'dark' | 'light' | null> {
     const theme = await AsyncStorage.getItem(STORAGE_KEYS.THEME);
@@ -39,10 +52,13 @@ export const storage = {
 
   // Clear all user data (logout)
   async clearUserData(): Promise<void> {
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.USER_ID,
-      STORAGE_KEYS.USER_NAME,
-      STORAGE_KEYS.USER_EMAIL,
+    await Promise.all([
+      AsyncStorage.multiRemove([
+        STORAGE_KEYS.USER_ID,
+        STORAGE_KEYS.USER_NAME,
+        STORAGE_KEYS.USER_EMAIL,
+      ]),
+      SecureStore.deleteItemAsync(SECURE_KEYS.ACCESS_TOKEN),
     ]);
   },
 };
