@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { GET, POST } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -17,6 +20,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('GET /api/categories', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('사용자의 카테고리 목록을 성공적으로 반환해야 함', async () => {
@@ -42,7 +46,6 @@ describe('GET /api/categories', () => {
     (prisma.category.findMany as jest.Mock).mockResolvedValue(mockCategories);
 
     const url = new URL('http://localhost:3000/api/categories');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -62,14 +65,16 @@ describe('GET /api/categories', () => {
     });
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const url = new URL('http://localhost:3000/api/categories');
     const request = new NextRequest(url);
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('type 파라미터로 필터링할 수 있어야 함', async () => {
@@ -79,7 +84,6 @@ describe('GET /api/categories', () => {
     (prisma.category.findMany as jest.Mock).mockResolvedValue(mockCategories);
 
     const url = new URL('http://localhost:3000/api/categories');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('type', 'EXPENSE');
 
     const request = new NextRequest(url);
@@ -102,7 +106,6 @@ describe('GET /api/categories', () => {
     (prisma.category.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/categories');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -116,6 +119,7 @@ describe('GET /api/categories', () => {
 describe('POST /api/categories', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
     (prisma.category.count as jest.Mock).mockResolvedValue(0);
   });
 
@@ -139,7 +143,6 @@ describe('POST /api/categories', () => {
     const request = new NextRequest('http://localhost:3000/api/categories', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '카페',
         type: 'EXPENSE',
         color: '#8B5CF6',
@@ -176,7 +179,6 @@ describe('POST /api/categories', () => {
     const request = new NextRequest('http://localhost:3000/api/categories', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '식비',
         type: 'EXPENSE',
       }),
@@ -196,7 +198,6 @@ describe('POST /api/categories', () => {
     const request = new NextRequest('http://localhost:3000/api/categories', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '추가 카테고리',
         type: 'EXPENSE',
       }),
@@ -214,7 +215,6 @@ describe('POST /api/categories', () => {
     const request = new NextRequest('http://localhost:3000/api/categories', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         // name과 type이 없음
       }),
     });
@@ -226,7 +226,9 @@ describe('POST /api/categories', () => {
     expect(data.error).toBe('name is required');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/categories', {
       method: 'POST',
       body: JSON.stringify({
@@ -238,15 +240,14 @@ describe('POST /api/categories', () => {
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('잘못된 type이면 400 에러를 반환해야 함', async () => {
     const request = new NextRequest('http://localhost:3000/api/categories', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '카페',
         type: 'INVALID',
       }),
@@ -265,7 +266,6 @@ describe('POST /api/categories', () => {
     const request = new NextRequest('http://localhost:3000/api/categories', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         name: '카페',
         type: 'EXPENSE',
       }),

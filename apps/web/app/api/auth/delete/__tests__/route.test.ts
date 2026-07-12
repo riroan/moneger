@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server';
 import { DELETE } from '../route';
 import { prisma } from '@/lib/prisma';
 import * as authService from '@/lib/services/auth.service';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -21,6 +24,7 @@ jest.mock('@/lib/services/auth.service', () => ({
 describe('DELETE /api/auth/delete', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockUser = {
@@ -42,7 +46,6 @@ describe('DELETE /api/auth/delete', () => {
     const request = new NextRequest('http://localhost:3000/api/auth/delete', {
       method: 'DELETE',
       body: JSON.stringify({
-        userId: 'user-1',
         password: 'password123',
       }),
     });
@@ -55,10 +58,27 @@ describe('DELETE /api/auth/delete', () => {
     expect(data.data.message).toBe('계정이 삭제되었습니다');
   });
 
-  it('userId나 password가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/auth/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ userId: 'user-1' }),
+      body: JSON.stringify({
+        password: 'password123',
+      }),
+    });
+
+    const response = await DELETE(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+  });
+
+  it('password가 없으면 400 에러를 반환해야 함', async () => {
+    const request = new NextRequest('http://localhost:3000/api/auth/delete', {
+      method: 'DELETE',
+      body: JSON.stringify({}),
     });
 
     const response = await DELETE(request);
@@ -74,7 +94,6 @@ describe('DELETE /api/auth/delete', () => {
     const request = new NextRequest('http://localhost:3000/api/auth/delete', {
       method: 'DELETE',
       body: JSON.stringify({
-        userId: 'user-999',
         password: 'password123',
       }),
     });
@@ -93,7 +112,6 @@ describe('DELETE /api/auth/delete', () => {
     const request = new NextRequest('http://localhost:3000/api/auth/delete', {
       method: 'DELETE',
       body: JSON.stringify({
-        userId: 'user-1',
         password: 'wrongpassword',
       }),
     });
@@ -111,7 +129,6 @@ describe('DELETE /api/auth/delete', () => {
     const request = new NextRequest('http://localhost:3000/api/auth/delete', {
       method: 'DELETE',
       body: JSON.stringify({
-        userId: 'user-1',
         password: 'password123',
       }),
     });

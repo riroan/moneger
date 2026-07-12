@@ -12,6 +12,9 @@ jest.mock('@/lib/services/auth.service', () => ({
   }),
 }));
 
+// Mock session issuance (login creates a Session row via prisma)
+jest.mock('@/lib/session');
+
 describe('POST /api/auth/login', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -50,6 +53,8 @@ describe('POST /api/auth/login', () => {
       name: '테스트',
     });
     expect(data.data.user.password).toBeUndefined();
+    expect(data.data.accessToken).toBe('mock-token');
+    expect(response.cookies.get('moneger_session')?.value).toBe('mock-token');
   });
 
   it('존재하지 않는 이메일로 로그인 시 401 에러를 반환해야 함', async () => {

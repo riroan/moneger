@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '../route';
 import { prisma } from '@/lib/prisma';
 import { getMonthlyAssetReport } from '@/lib/services/monthly-asset.service';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 const mockCreate = jest.fn();
 
@@ -111,6 +114,7 @@ function makeReport() {
 describe('GET /api/assets/ai-summary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
     delete process.env.OPENAI_API_KEY;
     mockUserFindUnique.mockResolvedValue({ plan: 'ULTIMATE', planExpiresAt: null });
     mockSummaryFindUnique.mockResolvedValue(null);
@@ -123,7 +127,7 @@ describe('GET /api/assets/ai-summary', () => {
       generatedAt,
     });
 
-    const response = await GET(makeGetRequest({ userId: 'user-1', month: '2026-06' }));
+    const response = await GET(makeGetRequest({ month: '2026-06' }));
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -135,7 +139,7 @@ describe('GET /api/assets/ai-summary', () => {
   });
 
   it('returns null when cached summary does not exist', async () => {
-    const response = await GET(makeGetRequest({ userId: 'user-1', month: '2026-06' }));
+    const response = await GET(makeGetRequest({ month: '2026-06' }));
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -145,11 +149,22 @@ describe('GET /api/assets/ai-summary', () => {
     expect(mockCreate).not.toHaveBeenCalled();
     expect(mockSummaryUpsert).not.toHaveBeenCalled();
   });
+
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
+    const response = await GET(makeGetRequest({ month: '2026-06' }));
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+  });
 });
 
 describe('POST /api/assets/ai-summary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
     process.env.OPENAI_API_KEY = 'test-key';
     mockUserFindUnique.mockResolvedValue({ plan: 'ULTIMATE', planExpiresAt: null });
     mockSummaryFindUnique.mockResolvedValue(null);
@@ -172,7 +187,7 @@ describe('POST /api/assets/ai-summary', () => {
   it('returns 403 when user is not entitled', async () => {
     mockUserFindUnique.mockResolvedValue({ plan: 'PRO', planExpiresAt: null });
 
-    const response = await POST(makeRequest({ userId: 'user-1', month: '2026-06' }));
+    const response = await POST(makeRequest({ month: '2026-06' }));
 
     expect(response.status).toBe(403);
     expect(mockGetMonthlyAssetReport).not.toHaveBeenCalled();
@@ -182,7 +197,7 @@ describe('POST /api/assets/ai-summary', () => {
   it('returns 503 when OPENAI_API_KEY is missing', async () => {
     delete process.env.OPENAI_API_KEY;
 
-    const response = await POST(makeRequest({ userId: 'user-1', month: '2026-06' }));
+    const response = await POST(makeRequest({ month: '2026-06' }));
     const data = await response.json();
 
     expect(response.status).toBe(503);
@@ -197,7 +212,7 @@ describe('POST /api/assets/ai-summary', () => {
       generatedAt,
     });
 
-    const response = await POST(makeRequest({ userId: 'user-1', month: '2026-06' }));
+    const response = await POST(makeRequest({ month: '2026-06' }));
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -213,7 +228,7 @@ describe('POST /api/assets/ai-summary', () => {
       generatedAt,
     });
 
-    const response = await POST(makeRequest({ userId: 'user-1', month: '2026-06', regenerate: true }));
+    const response = await POST(makeRequest({ month: '2026-06', regenerate: true }));
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -225,7 +240,7 @@ describe('POST /api/assets/ai-summary', () => {
   });
 
   it('calls OpenAI and stores sanitized AI output', async () => {
-    const response = await POST(makeRequest({ userId: 'user-1', month: '2026-06' }));
+    const response = await POST(makeRequest({ month: '2026-06' }));
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -243,7 +258,7 @@ describe('POST /api/assets/ai-summary', () => {
   it('falls back to template when OpenAI fails', async () => {
     mockCreate.mockRejectedValue(new Error('timeout'));
 
-    const response = await POST(makeRequest({ userId: 'user-1', month: '2026-06', regenerate: true }));
+    const response = await POST(makeRequest({ month: '2026-06', regenerate: true }));
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -254,11 +269,21 @@ describe('POST /api/assets/ai-summary', () => {
   it('falls back to template when OpenAI output is prescriptive', async () => {
     mockCreate.mockResolvedValue({ choices: [{ message: { content: '지금은 매수하세요.' } }] });
 
-    const response = await POST(makeRequest({ userId: 'user-1', month: '2026-06', regenerate: true }));
+    const response = await POST(makeRequest({ month: '2026-06', regenerate: true }));
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.data.source).toBe('template');
     expect(data.data.text).not.toContain('매수하세요');
+  });
+
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
+    const response = await POST(makeRequest({ month: '2026-06' }));
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 });

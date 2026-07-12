@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server';
 import { PATCH } from '../route';
 import { prisma } from '@/lib/prisma';
 import * as authService from '@/lib/services/auth.service';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -22,6 +25,7 @@ jest.mock('@/lib/services/auth.service', () => ({
 describe('PATCH /api/auth/password', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockUser = {
@@ -44,7 +48,6 @@ describe('PATCH /api/auth/password', () => {
     const request = new NextRequest('http://localhost:3000/api/auth/password', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
       }),
@@ -58,11 +61,28 @@ describe('PATCH /api/auth/password', () => {
     expect(data.message).toBe('비밀번호가 변경되었습니다');
   });
 
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
+    const request = new NextRequest('http://localhost:3000/api/auth/password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'oldPassword123',
+        newPassword: 'newPassword123',
+      }),
+    });
+
+    const response = await PATCH(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+  });
+
   it('필수 필드가 없으면 400 에러를 반환해야 함', async () => {
     const request = new NextRequest('http://localhost:3000/api/auth/password', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         currentPassword: 'oldPassword123',
         // newPassword 누락
       }),
@@ -79,7 +99,6 @@ describe('PATCH /api/auth/password', () => {
     const request = new NextRequest('http://localhost:3000/api/auth/password', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         currentPassword: 'oldPassword123',
         newPassword: '12345', // 5자
       }),
@@ -98,7 +117,6 @@ describe('PATCH /api/auth/password', () => {
     const request = new NextRequest('http://localhost:3000/api/auth/password', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-999',
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
       }),
@@ -118,7 +136,6 @@ describe('PATCH /api/auth/password', () => {
     const request = new NextRequest('http://localhost:3000/api/auth/password', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         currentPassword: 'wrongPassword',
         newPassword: 'newPassword123',
       }),
@@ -137,7 +154,6 @@ describe('PATCH /api/auth/password', () => {
     const request = new NextRequest('http://localhost:3000/api/auth/password', {
       method: 'PATCH',
       body: JSON.stringify({
-        userId: 'user-1',
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
       }),

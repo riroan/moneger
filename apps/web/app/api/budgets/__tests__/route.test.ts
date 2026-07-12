@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { GET, POST, DELETE } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -26,6 +29,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('GET /api/budgets', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('월별 예산 목록을 성공적으로 반환해야 함', async () => {
@@ -44,7 +48,6 @@ describe('GET /api/budgets', () => {
     (prisma.category.findMany as jest.Mock).mockResolvedValue([]);
 
     const url = new URL('http://localhost:3000/api/budgets');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
 
@@ -67,7 +70,6 @@ describe('GET /api/budgets', () => {
     (prisma.budget.findMany as jest.Mock).mockResolvedValue(mockBudgets);
 
     const url = new URL('http://localhost:3000/api/budgets');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -82,7 +84,6 @@ describe('GET /api/budgets', () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({ defaultExpenseBudget: 1800000 });
 
     const url = new URL('http://localhost:3000/api/budgets');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('scope', 'default');
 
     const request = new NextRequest(url);
@@ -94,22 +95,23 @@ describe('GET /api/budgets', () => {
     expect(data.data.amount).toBe(1800000);
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const url = new URL('http://localhost:3000/api/budgets');
 
     const request = new NextRequest(url);
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
     (prisma.budget.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/budgets');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -123,6 +125,7 @@ describe('GET /api/budgets', () => {
 describe('POST /api/budgets', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('예산을 성공적으로 생성해야 함', async () => {
@@ -141,7 +144,6 @@ describe('POST /api/budgets', () => {
     const request = new NextRequest('http://localhost:3000/api/budgets', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         categoryId: 'cat-1',
         amount: 200000,
         year: 2024,
@@ -174,7 +176,6 @@ describe('POST /api/budgets', () => {
     const request = new NextRequest('http://localhost:3000/api/budgets', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         categoryId: 'cat-1',
         amount: 250000,
         year: 2024,
@@ -207,7 +208,6 @@ describe('POST /api/budgets', () => {
     const request = new NextRequest('http://localhost:3000/api/budgets', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         categoryId: null,
         amount: 2000000,
         year: 2024,
@@ -230,7 +230,6 @@ describe('POST /api/budgets', () => {
     const request = new NextRequest('http://localhost:3000/api/budgets', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         scope: 'default',
         amount: 1800000,
       }),
@@ -244,7 +243,9 @@ describe('POST /api/budgets', () => {
     expect(data.data.amount).toBe(1800000);
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/budgets', {
       method: 'POST',
       body: JSON.stringify({
@@ -258,15 +259,14 @@ describe('POST /api/budgets', () => {
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('categoryId가 없으면 400 에러를 반환해야 함', async () => {
     const request = new NextRequest('http://localhost:3000/api/budgets', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 200000,
         year: 2024,
         month: 1,
@@ -284,7 +284,6 @@ describe('POST /api/budgets', () => {
     const request = new NextRequest('http://localhost:3000/api/budgets', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         categoryId: 'cat-1',
         amount: -100,
         year: 2024,
@@ -303,7 +302,6 @@ describe('POST /api/budgets', () => {
     const request = new NextRequest('http://localhost:3000/api/budgets', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         categoryId: 'cat-1',
         amount: 200000,
       }),
@@ -322,7 +320,6 @@ describe('POST /api/budgets', () => {
     const request = new NextRequest('http://localhost:3000/api/budgets', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         categoryId: 'cat-1',
         amount: 200000,
         year: 2024,
@@ -341,13 +338,13 @@ describe('POST /api/budgets', () => {
 describe('DELETE /api/budgets', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('예산을 성공적으로 삭제해야 함', async () => {
     (prisma.budget.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
 
     const url = new URL('http://localhost:3000/api/budgets');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('categoryId', 'cat-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
@@ -361,7 +358,9 @@ describe('DELETE /api/budgets', () => {
     expect(data.message).toBe('Budget deleted successfully');
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const url = new URL('http://localhost:3000/api/budgets');
     url.searchParams.set('categoryId', 'cat-1');
     url.searchParams.set('year', '2024');
@@ -371,13 +370,12 @@ describe('DELETE /api/budgets', () => {
     const response = await DELETE(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('필수 파라미터가 없으면 400 에러를 반환해야 함', async () => {
     const url = new URL('http://localhost:3000/api/budgets');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url, { method: 'DELETE' });
     const response = await DELETE(request);
@@ -391,7 +389,6 @@ describe('DELETE /api/budgets', () => {
     (prisma.budget.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
 
     const url = new URL('http://localhost:3000/api/budgets');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('scope', 'total');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
@@ -408,7 +405,6 @@ describe('DELETE /api/budgets', () => {
     (prisma.user.update as jest.Mock).mockResolvedValue({ defaultExpenseBudget: null });
 
     const url = new URL('http://localhost:3000/api/budgets');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('scope', 'default');
 
     const request = new NextRequest(url, { method: 'DELETE' });
@@ -423,7 +419,6 @@ describe('DELETE /api/budgets', () => {
     (prisma.budget.updateMany as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/budgets');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('categoryId', 'cat-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');

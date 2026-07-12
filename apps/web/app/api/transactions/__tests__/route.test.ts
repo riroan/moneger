@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { GET, POST } from '../route';
 import { prisma } from '@/lib/prisma';
+import { __setMockSessionUserId } from '@/lib/session';
+
+jest.mock('@/lib/session');
 
 // Prisma mock
 jest.mock('@/lib/prisma', () => ({
@@ -22,6 +25,7 @@ jest.mock('@/lib/prisma', () => ({
 describe('POST /api/transactions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   it('거래를 성공적으로 생성해야 함', async () => {
@@ -72,7 +76,6 @@ describe('POST /api/transactions', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         type: 'EXPENSE',
         amount: 10000,
         description: '점심',
@@ -95,7 +98,9 @@ describe('POST /api/transactions', () => {
     });
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/transactions', {
       method: 'POST',
       body: JSON.stringify({
@@ -107,15 +112,14 @@ describe('POST /api/transactions', () => {
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('type이 없으면 400 에러를 반환해야 함', async () => {
     const request = new NextRequest('http://localhost:3000/api/transactions', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         amount: 10000,
       }),
     });
@@ -131,7 +135,6 @@ describe('POST /api/transactions', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         type: 'EXPENSE',
       }),
     });
@@ -147,7 +150,6 @@ describe('POST /api/transactions', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         type: 'EXPENSE',
         amount: 0,
       }),
@@ -164,7 +166,6 @@ describe('POST /api/transactions', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         type: 'INVALID',
         amount: 10000,
       }),
@@ -185,7 +186,6 @@ describe('POST /api/transactions', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         type: 'EXPENSE',
         amount: 10000,
       }),
@@ -204,7 +204,6 @@ describe('POST /api/transactions', () => {
     const request = new NextRequest('http://localhost:3000/api/transactions', {
       method: 'POST',
       body: JSON.stringify({
-        userId: 'user-1',
         type: 'EXPENSE',
         amount: 10000,
         categoryId: 'invalid-category',
@@ -222,6 +221,7 @@ describe('POST /api/transactions', () => {
 describe('GET /api/transactions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __setMockSessionUserId('user-1');
   });
 
   const mockTransactions = [
@@ -251,7 +251,6 @@ describe('GET /api/transactions', () => {
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue(mockTransactions);
 
     const url = new URL('http://localhost:3000/api/transactions');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -267,7 +266,6 @@ describe('GET /api/transactions', () => {
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue([mockTransactions[0]]);
 
     const url = new URL('http://localhost:3000/api/transactions');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('year', '2024');
     url.searchParams.set('month', '1');
 
@@ -280,21 +278,22 @@ describe('GET /api/transactions', () => {
     expect(data.data).toHaveLength(1);
   });
 
-  it('userId가 없으면 400 에러를 반환해야 함', async () => {
+  it('세션이 없으면 401 에러를 반환해야 함', async () => {
+    __setMockSessionUserId(null);
+
     const request = new NextRequest('http://localhost:3000/api/transactions');
 
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('userId is required');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
   });
 
   it('데이터베이스 에러 시 500 에러를 반환해야 함', async () => {
     (prisma.transaction.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
 
     const url = new URL('http://localhost:3000/api/transactions');
-    url.searchParams.set('userId', 'user-1');
 
     const request = new NextRequest(url);
     const response = await GET(request);
@@ -313,7 +312,6 @@ describe('GET /api/transactions', () => {
     (prisma.transaction.findMany as jest.Mock).mockResolvedValue(manyTransactions);
 
     const url = new URL('http://localhost:3000/api/transactions');
-    url.searchParams.set('userId', 'user-1');
     url.searchParams.set('limit', '20');
 
     const request = new NextRequest(url);
