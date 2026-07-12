@@ -1,14 +1,15 @@
-import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { successResponseWithMessage, errorResponse, apiHandler } from '@/lib/api-utils';
+import { successResponseWithMessage, errorResponse } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { findUserById, verifyPassword, hashPassword } from '@/lib/services/auth.service';
+import { deleteOtherSessionsForUser } from '@/lib/session';
 
 // PATCH /api/auth/password - 비밀번호 변경
-export const PATCH = apiHandler('change password', async (request: NextRequest) => {
+export const PATCH = authenticatedHandler('change password', async (request, { userId, sessionToken }) => {
   const body = await request.json();
-  const { userId, currentPassword, newPassword } = body;
+  const { currentPassword, newPassword } = body;
 
-  if (!userId || !currentPassword || !newPassword) {
+  if (!currentPassword || !newPassword) {
     return errorResponse('모든 필드를 입력해주세요', 400);
   }
 
@@ -32,6 +33,9 @@ export const PATCH = apiHandler('change password', async (request: NextRequest) 
     where: { id: userId },
     data: { password: hashedNewPassword },
   });
+
+  // 비밀번호 변경 시 다른 기기/세션은 전부 로그아웃(현재 세션은 유지)
+  await deleteOtherSessionsForUser(userId, sessionToken);
 
   return successResponseWithMessage(null, '비밀번호가 변경되었습니다');
 });

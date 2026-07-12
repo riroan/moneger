@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { successResponseWithMessage, errorResponse, apiHandler } from '@/lib/api-utils';
 import { findUserByEmail, verifyPassword, excludePassword } from '@/lib/services/auth.service';
+import { createSession, buildSessionCookie } from '@/lib/session';
 
 // POST /api/auth/login - 로그인
 export const POST = apiHandler('login', async (request: NextRequest) => {
@@ -21,5 +22,15 @@ export const POST = apiHandler('login', async (request: NextRequest) => {
     return errorResponse('이메일 또는 비밀번호가 올바르지 않습니다', 401);
   }
 
-  return successResponseWithMessage({ user: excludePassword(user) }, '로그인 성공');
+  const { token, expiresAt } = await createSession(user.id, {
+    userAgent: request.headers.get('user-agent'),
+    ipAddress: request.headers.get('x-forwarded-for'),
+  });
+
+  const response = successResponseWithMessage(
+    { user: excludePassword(user), accessToken: token },
+    '로그인 성공'
+  );
+  response.cookies.set(buildSessionCookie(token, expiresAt));
+  return response;
 });
