@@ -115,3 +115,8 @@ export function buildClearedSessionCookie(): SessionCookieOptions {
     maxAge: 0,
   };
 }
+
+// 테스트 전용 훅. jest.mock('@/lib/session')이 apps/web/lib/__mocks__/session.ts로
+// 치환하므로 실제 런타임에서는 호출되지 않는다 — tsc가 테스트 파일의 import를
+// 검증할 수 있도록 실제 모듈에도 동일한 시그니처를 둔다.
+export function __setMockSessionUserId(_userId: string | null): void {}

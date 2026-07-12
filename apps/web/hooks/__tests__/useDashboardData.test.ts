@@ -83,15 +83,15 @@ describe('useDashboardData', () => {
         );
       }
 
-      if (url === '/api/transactions/summary?userId=user-1&year=2026&month=6') {
+      if (url === '/api/transactions/summary?year=2026&month=6') {
         return Promise.resolve(jsonResponse({ success: true, data: juneRefetchedSummary }));
       }
 
-      if (url === '/api/transactions/summary?userId=user-1&year=2026&month=5') {
+      if (url === '/api/transactions/summary?year=2026&month=5') {
         return Promise.resolve(jsonResponse({ success: true, data: maySummary }));
       }
 
-      if (url === '/api/transactions/summary?userId=user-1&year=2026&month=4') {
+      if (url === '/api/transactions/summary?year=2026&month=4') {
         return Promise.resolve(jsonResponse({ success: true, data: aprilSummary }));
       }
 
@@ -122,6 +122,6 @@ describe('useDashboardData', () => {
       expect(useTransactionStore.getState().summary).toBe(juneRefetchedSummary);
     });
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/transactions/summary?userId=user-1&year=2026&month=6');
+    expect(global.fetch).toHaveBeenCalledWith('/api/transactions/summary?year=2026&month=6');
   });
 });

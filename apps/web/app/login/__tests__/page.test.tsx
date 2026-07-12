@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useRouter } from 'next/navigation';
 import LoginPage from '../page';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 // Mock useRouter
 jest.mock('next/navigation', () => ({
@@ -11,19 +12,13 @@ jest.mock('next/navigation', () => ({
 // Mock fetch
 const mockFetch = global.fetch as jest.Mock;
 
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-  return {
-    getItem: jest.fn((key: string) => store[key] ?? null),
-    setItem: jest.fn((key: string, value: string) => { store[key] = value; }),
-    removeItem: jest.fn((key: string) => { delete store[key]; }),
-    clear: jest.fn(() => { store = {}; }),
-    _reset: () => { store = {}; },
-  };
-})();
-
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+async function renderLoginForm() {
+  render(<LoginPage />);
+  // 마운트 시 세션 확인(fetchSession)이 비동기로 끝난 뒤에야 폼이 나타난다
+  await waitFor(() => {
+    expect(screen.getByPlaceholderText('example@email.com')).toBeInTheDocument();
+  });
+}
 
 describe('LoginPage', () => {
   let mockPush: jest.Mock;
@@ -34,13 +29,14 @@ describe('LoginPage', () => {
       push: mockPush,
       replace: jest.fn(),
     });
-    localStorageMock._reset();
-    localStorageMock.getItem.mockClear();
-    localStorageMock.setItem.mockClear();
+    useAuthStore.setState({ userId: null, userName: '', userEmail: '', isLoading: true });
+    mockFetch.mockReset();
+    // 마운트 시 호출되는 /api/auth/me의 기본 응답 — 세션 없음(로그인 폼을 보여줘야 함)
+    mockFetch.mockResolvedValue({ ok: false, json: async () => ({ error: 'Unauthorized' }) });
   });
 
-  it('로그인 폼이 렌더링되어야 함', () => {
-    render(<LoginPage />);
+  it('로그인 폼이 렌더링되어야 함', async () => {
+    await renderLoginForm();
 
     // 로그인 폼의 주요 요소들이 렌더링되는지 확인
     expect(screen.getByPlaceholderText('example@email.com')).toBeInTheDocument();
@@ -52,7 +48,7 @@ describe('LoginPage', () => {
 
   it('이메일과 비밀번호를 입력할 수 있어야 함', async () => {
     const user = userEvent.setup();
-    render(<LoginPage />);
+    await renderLoginForm();
 
     const emailInput = screen.getByPlaceholderText('example@email.com');
     const passwordInputs = screen.getAllByPlaceholderText('••••••••');
@@ -69,9 +65,9 @@ describe('LoginPage', () => {
 
   it('성공적으로 로그인하면 메인 페이지로 이동해야 함', async () => {
     const user = userEvent.setup();
-    render(<LoginPage />);
+    await renderLoginForm();
 
-    // Mock 성공 응답
+    // Mock 성공 응답 (다음 fetch 호출 = 로그인 제출)
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -82,6 +78,7 @@ describe('LoginPage', () => {
             email: 'test@example.com',
             name: '테스트 사용자',
           },
+          accessToken: 'mock-token',
         },
       }),
     });
@@ -103,15 +100,16 @@ describe('LoginPage', () => {
       expect(mockPush).toHaveBeenCalledWith('/');
     });
 
-    // localStorage에 userId가 저장되었는지 확인
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('userId', '1');
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('userName', '테스트 사용자');
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('userEmail', 'test@example.com');
+    // 세션 쿠키는 서버가 설정 — 클라이언트 상태(useAuthStore)만 갱신되었는지 확인
+    const state = useAuthStore.getState();
+    expect(state.userId).toBe('1');
+    expect(state.userName).toBe('테스트 사용자');
+    expect(state.userEmail).toBe('test@example.com');
   });
 
   it('로그인 실패 시 에러 메시지를 표시해야 함', async () => {
     const user = userEvent.setup();
-    render(<LoginPage />);
+    await renderLoginForm();
 
     // Mock 실패 응답
     mockFetch.mockResolvedValueOnce({
@@ -145,7 +143,7 @@ describe('LoginPage', () => {
 
   it('회원가입 링크를 클릭하면 회원가입 폼으로 전환되어야 함', async () => {
     const user = userEvent.setup();
-    render(<LoginPage />);
+    await renderLoginForm();
 
     // 초기에는 로그인 폼
     expect(screen.getByText('스마트한 가계부 관리')).toBeInTheDocument();
@@ -165,7 +163,7 @@ describe('LoginPage', () => {
 
   it('비밀번호 표시/숨기기 토글이 작동해야 함', async () => {
     const user = userEvent.setup();
-    render(<LoginPage />);
+    await renderLoginForm();
 
     const passwordInputs = screen.getAllByPlaceholderText('••••••••');
     const passwordInput = passwordInputs[0] as HTMLInputElement;
@@ -186,7 +184,7 @@ describe('LoginPage', () => {
 
   it('회원가입 성공 시 로그인 화면으로 전환되어야 함', async () => {
     const user = userEvent.setup();
-    render(<LoginPage />);
+    await renderLoginForm();
 
     // 회원가입 모드로 전환
     const signupLink = screen.getByText('회원가입');
@@ -241,7 +239,7 @@ describe('LoginPage', () => {
 
   it('회원가입 시 비밀번호가 일치하지 않으면 에러를 표시해야 함', async () => {
     const user = userEvent.setup();
-    render(<LoginPage />);
+    await renderLoginForm();
 
     // 회원가입 모드로 전환
     const signupLink = screen.getByText('회원가입');
@@ -273,7 +271,7 @@ describe('LoginPage', () => {
 
   it('로그인 폼으로 돌아갈 수 있어야 함', async () => {
     const user = userEvent.setup();
-    render(<LoginPage />);
+    await renderLoginForm();
 
     // 회원가입 모드로 전환
     await user.click(screen.getByText('회원가입'));
