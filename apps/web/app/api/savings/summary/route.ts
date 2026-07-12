@@ -1,21 +1,16 @@
-import { NextRequest } from 'next/server';
-import { successResponse, validateUserId, apiHandler } from '@/lib/api-utils';
+import { successResponse } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { prisma } from '@/lib/prisma';
 
 // GET /api/savings/summary - 저축 요약 조회
-export const GET = apiHandler('fetch savings summary', async (request: NextRequest) => {
-  const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get('userId');
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'SAVINGS');
+export const GET = authenticatedHandler('fetch savings summary', async (request, { userId }) => {
+  const featureError = await requireFeature(userId, 'SAVINGS');
   if (featureError) return featureError;
 
   const savingsGoals = await prisma.savingsGoal.findMany({
     where: {
-      userId: userId!,
+      userId,
       deletedAt: null,
     },
   });

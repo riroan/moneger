@@ -1,11 +1,9 @@
-import { NextRequest } from 'next/server';
 import {
   successResponseWithMessage,
   errorResponse,
-  validateUserId,
   validateTransactionType,
-  apiHandlerWithParams,
 } from '@/lib/api-utils';
+import { authenticatedHandlerWithParams } from '@/lib/auth-handler';
 import {
   findCategory,
   findDuplicateCategory,
@@ -14,12 +12,9 @@ import {
 } from '@/lib/services/category.service';
 
 // PATCH /api/categories/[id] - 카테고리 수정
-export const PATCH = apiHandlerWithParams<{ id: string }>('update category', async (request: NextRequest, { id }) => {
+export const PATCH = authenticatedHandlerWithParams<{ id: string }>('update category', async (request, { id }, { userId }) => {
   const body = await request.json();
-  const { userId, name, type, color, icon, defaultBudget } = body;
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
+  const { name, type, color, icon, defaultBudget } = body;
 
   // 카테고리 존재 여부 확인
   const existingCategory = await findCategory(id, userId);
@@ -50,15 +45,9 @@ export const PATCH = apiHandlerWithParams<{ id: string }>('update category', asy
 });
 
 // DELETE /api/categories/[id] - 카테고리 삭제 (soft delete)
-export const DELETE = apiHandlerWithParams<{ id: string }>('delete category', async (request: NextRequest, { id }) => {
-  const body = await request.json();
-  const { userId } = body;
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-
+export const DELETE = authenticatedHandlerWithParams<{ id: string }>('delete category', async (request, { id }, { userId }) => {
   // 카테고리 존재 여부 확인
-  const existingCategory = await findCategory(id, userId!);
+  const existingCategory = await findCategory(id, userId);
   if (!existingCategory) {
     return errorResponse('Category not found', 404);
   }

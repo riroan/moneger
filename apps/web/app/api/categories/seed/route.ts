@@ -1,19 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { apiHandler } from '@/lib/api-utils';
+import { NextResponse } from 'next/server';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { getCategories, seedDefaultCategories } from '@/lib/services/category.service';
 
 // POST /api/categories/seed - 기본 카테고리 생성
-export const POST = apiHandler('seed categories', async (request: NextRequest) => {
-  const body = await request.json();
-  const { userId } = body;
-
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'userId is required' },
-      { status: 400 }
-    );
-  }
-
+export const POST = authenticatedHandler('seed categories', async (request, { userId }) => {
   // 기존 카테고리가 있는지 확인
   const existingCategories = await getCategories(userId);
 

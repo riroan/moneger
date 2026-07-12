@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { apiHandler } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { prisma } from '@/lib/prisma';
 import { hasFeature } from '@/lib/entitlements';
 import {
@@ -40,13 +40,9 @@ function serializeSummary(row: { text: string; generatedAt: Date; source: string
   };
 }
 
-export const GET = apiHandler('fetch asset AI summary', async (request: NextRequest) => {
-  const userId = request.nextUrl.searchParams.get('userId');
+export const GET = authenticatedHandler('fetch asset AI summary', async (request, { userId }) => {
   const month = request.nextUrl.searchParams.get('month');
 
-  if (!userId || typeof userId !== 'string') {
-    return errorNoStore('userId is required', 400);
-  }
   if (!month || typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month)) {
     return errorNoStore('month must be YYYY-MM', 400);
   }
@@ -74,13 +70,10 @@ export const GET = apiHandler('fetch asset AI summary', async (request: NextRequ
   return successNoStore(cached ? serializeSummary(cached) : null);
 });
 
-export const POST = apiHandler('generate asset AI summary', async (request: NextRequest) => {
+export const POST = authenticatedHandler('generate asset AI summary', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, month, regenerate = false } = body ?? {};
+  const { month, regenerate = false } = body ?? {};
 
-  if (!userId || typeof userId !== 'string') {
-    return errorNoStore('userId is required', 400);
-  }
   if (!month || typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month)) {
     return errorNoStore('month must be YYYY-MM', 400);
   }

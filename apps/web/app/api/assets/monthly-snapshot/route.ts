@@ -1,21 +1,17 @@
-import { NextRequest } from 'next/server';
 import {
-  apiHandler,
   errorResponse,
   successResponse,
-  validateUserId,
 } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { upsertMonthlyAssetSnapshot } from '@/lib/services/monthly-asset.service';
 import { kstMonthKey, parseMonthKey } from '@/lib/utils/asset-month';
 
-export const POST = apiHandler('upsert monthly asset snapshot', async (request: NextRequest) => {
+export const POST = authenticatedHandler('upsert monthly asset snapshot', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, month } = body ?? {};
+  const { month } = body ?? {};
 
-  const userIdError = validateUserId(typeof userId === 'string' ? userId : null);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'ASSETS');
+  const featureError = await requireFeature(userId, 'ASSETS');
   if (featureError) return featureError;
 
   if (month != null && (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month))) {

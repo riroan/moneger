@@ -1,23 +1,17 @@
-import { NextRequest } from 'next/server';
 import {
-  apiHandlerWithParams,
   errorResponse,
   successResponse,
-  validateUserId,
 } from '@/lib/api-utils';
+import { authenticatedHandlerWithParams } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { syncConnection } from '@/lib/services/brokerage-snapshot.service';
 import { BrokerageError } from '@/lib/services/brokerage/types';
 
 // POST /api/brokerage/connections/[id]/sync — 수동 "지금 동기화"
-export const POST = apiHandlerWithParams<{ id: string }>(
+export const POST = authenticatedHandlerWithParams<{ id: string }>(
   'sync brokerage connection',
-  async (request: NextRequest, { id }) => {
-    const body = await request.json().catch(() => ({}));
-    const userId = body?.userId ?? request.nextUrl.searchParams.get('userId');
-    const userIdError = validateUserId(userId);
-    if (userIdError) return userIdError;
-    const featureError = await requireFeature(userId!, 'BROKERAGE');
+  async (request, { id }, { userId }) => {
+    const featureError = await requireFeature(userId, 'BROKERAGE');
     if (featureError) return featureError;
 
     try {

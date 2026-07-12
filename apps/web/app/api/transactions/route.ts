@@ -1,14 +1,12 @@
-import { NextRequest } from 'next/server';
 import { TransactionType } from '@prisma/client';
 import {
   successResponseWithMessage,
   errorResponse,
   paginatedResponse,
-  validateUserId,
   validateTransactionType,
   validateAmount,
-  apiHandler,
 } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import {
   createTransaction,
   getTransactions,
@@ -16,15 +14,11 @@ import {
 } from '@/lib/services/transaction.service';
 
 // GET /api/transactions - 거래 목록 조회
-export const GET = apiHandler('fetch transactions', async (request: NextRequest) => {
+export const GET = authenticatedHandler('fetch transactions', async (request, { userId }) => {
   const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get('userId');
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
 
   const result = await getTransactions({
-    userId: userId!,
+    userId,
     year: searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined,
     month: searchParams.get('month') ? parseInt(searchParams.get('month')!) : undefined,
     type: searchParams.get('type') as TransactionType | undefined,
@@ -50,14 +44,11 @@ export const GET = apiHandler('fetch transactions', async (request: NextRequest)
 });
 
 // POST /api/transactions - 거래 생성
-export const POST = apiHandler('create transaction', async (request: NextRequest) => {
+export const POST = authenticatedHandler('create transaction', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, type, amount, description, categoryId, groupId, date } = body;
+  const { type, amount, description, categoryId, groupId, date } = body;
 
   // 유효성 검사
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-
   const typeError = validateTransactionType(type);
   if (typeError) return typeError;
 

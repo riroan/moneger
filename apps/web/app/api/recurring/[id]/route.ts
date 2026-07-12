@@ -1,10 +1,8 @@
-import { NextRequest } from 'next/server';
 import {
   successResponse,
   errorResponse,
-  validateUserId,
-  apiHandlerWithParams,
 } from '@/lib/api-utils';
+import { authenticatedHandlerWithParams } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import {
   updateRecurringExpense,
@@ -12,15 +10,13 @@ import {
 } from '@/lib/services/recurring.service';
 
 // PUT /api/recurring/[id] - 정기 지출 수정
-export const PUT = apiHandlerWithParams<{ id: string }>(
+export const PUT = authenticatedHandlerWithParams<{ id: string }>(
   'update recurring expense',
-  async (request: NextRequest, { id }) => {
+  async (request, { id }, { userId }) => {
     const body = await request.json();
-    const { userId, amount, description, categoryId, dayOfMonth, isActive } = body;
+    const { amount, description, categoryId, dayOfMonth, isActive } = body;
 
-    const userIdError = validateUserId(userId);
-    if (userIdError) return userIdError;
-    const featureError = await requireFeature(userId!, 'RECURRING');
+    const featureError = await requireFeature(userId, 'RECURRING');
     if (featureError) return featureError;
 
     if (amount !== undefined && (isNaN(amount) || amount <= 0)) {
@@ -48,17 +44,13 @@ export const PUT = apiHandlerWithParams<{ id: string }>(
 );
 
 // DELETE /api/recurring/[id] - 정기 지출 삭제
-export const DELETE = apiHandlerWithParams<{ id: string }>(
+export const DELETE = authenticatedHandlerWithParams<{ id: string }>(
   'delete recurring expense',
-  async (request: NextRequest, { id }) => {
-    const userId = request.nextUrl.searchParams.get('userId');
-
-    const userIdError = validateUserId(userId);
-    if (userIdError) return userIdError;
-    const featureError = await requireFeature(userId!, 'RECURRING');
+  async (request, { id }, { userId }) => {
+    const featureError = await requireFeature(userId, 'RECURRING');
     if (featureError) return featureError;
 
-    const result = await deleteRecurringExpense(id, userId!);
+    const result = await deleteRecurringExpense(id, userId);
 
     if (!result) {
       return errorResponse('Recurring expense not found', 404);

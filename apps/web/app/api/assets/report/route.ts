@@ -1,10 +1,8 @@
-import { NextRequest } from 'next/server';
 import {
-  apiHandler,
   errorResponse,
   successResponse,
-  validateUserId,
 } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { getAssetReport } from '@/lib/services/asset.service';
 import { parseMonthKey } from '@/lib/utils/asset-month';
@@ -12,14 +10,11 @@ import { parseMonthKey } from '@/lib/utils/asset-month';
 const DEFAULT_RANGE = 5;
 const MAX_RANGE = 12;
 
-export const GET = apiHandler('fetch asset report', async (request: NextRequest) => {
-  const userId = request.nextUrl.searchParams.get('userId');
+export const GET = authenticatedHandler('fetch asset report', async (request, { userId }) => {
   const monthStr = request.nextUrl.searchParams.get('month');
   const rangeStr = request.nextUrl.searchParams.get('range');
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'ASSETS');
+  const featureError = await requireFeature(userId, 'ASSETS');
   if (featureError) return featureError;
 
   if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) {
@@ -35,6 +30,6 @@ export const GET = apiHandler('fetch asset report', async (request: NextRequest)
     return errorResponse('invalid month', 400);
   }
 
-  const report = await getAssetReport(userId!, endMonthKey, range);
+  const report = await getAssetReport(userId, endMonthKey, range);
   return successResponse(report);
 });

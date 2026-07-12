@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import { successResponse, errorResponse, validateUserId, apiHandlerWithParams } from '@/lib/api-utils';
+import { successResponse, errorResponse } from '@/lib/api-utils';
+import { authenticatedHandlerWithParams } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import {
   findSavingsGoal,
@@ -10,13 +10,11 @@ import {
 } from '@/lib/services/savings.service';
 
 // PUT /api/savings/[id] - 저축 목표 수정 (+ 증권 계좌 연결)
-export const PUT = apiHandlerWithParams<{ id: string }>('update savings goal', async (request: NextRequest, { id }) => {
+export const PUT = authenticatedHandlerWithParams<{ id: string }>('update savings goal', async (request, { id }, { userId }) => {
   const body = await request.json();
-  const { userId, name, icon, targetAmount, targetYear, targetMonth, isPrimary, brokerageAccountIds } = body;
+  const { name, icon, targetAmount, targetYear, targetMonth, isPrimary, brokerageAccountIds } = body;
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'SAVINGS');
+  const featureError = await requireFeature(userId, 'SAVINGS');
   if (featureError) return featureError;
 
   const existingGoal = await findSavingsGoal(id, userId);
@@ -40,13 +38,11 @@ export const PUT = apiHandlerWithParams<{ id: string }>('update savings goal', a
 });
 
 // PATCH /api/savings/[id] - 대표 저축 목표 설정/해제
-export const PATCH = apiHandlerWithParams<{ id: string }>('update primary savings goal', async (request: NextRequest, { id }) => {
+export const PATCH = authenticatedHandlerWithParams<{ id: string }>('update primary savings goal', async (request, { id }, { userId }) => {
   const body = await request.json();
-  const { userId, isPrimary } = body;
+  const { isPrimary } = body;
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'SAVINGS');
+  const featureError = await requireFeature(userId, 'SAVINGS');
   if (featureError) return featureError;
 
   const existingGoal = await findSavingsGoal(id, userId);
@@ -60,16 +56,11 @@ export const PATCH = apiHandlerWithParams<{ id: string }>('update primary saving
 });
 
 // DELETE /api/savings/[id] - 저축 목표 삭제 (soft delete)
-export const DELETE = apiHandlerWithParams<{ id: string }>('delete savings goal', async (request: NextRequest, { id }) => {
-  const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get('userId');
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'SAVINGS');
+export const DELETE = authenticatedHandlerWithParams<{ id: string }>('delete savings goal', async (request, { id }, { userId }) => {
+  const featureError = await requireFeature(userId, 'SAVINGS');
   if (featureError) return featureError;
 
-  const existingGoal = await findSavingsGoal(id, userId!);
+  const existingGoal = await findSavingsGoal(id, userId);
   if (!existingGoal) {
     return errorResponse('Savings goal not found', 404);
   }

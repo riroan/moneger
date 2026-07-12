@@ -1,15 +1,11 @@
-import { NextRequest } from 'next/server';
-import { successResponse, validateUserId, apiHandler } from '@/lib/api-utils';
+import { successResponse } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { prisma } from '@/lib/prisma';
 
 // GET /api/savings/trend - 월별 저축 추세 조회
-export const GET = apiHandler('fetch savings trend', async (request: NextRequest) => {
-  const userId = request.nextUrl.searchParams.get('userId');
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'SAVINGS');
+export const GET = authenticatedHandler('fetch savings trend', async (request, { userId }) => {
+  const featureError = await requireFeature(userId, 'SAVINGS');
   if (featureError) return featureError;
 
   const monthlyData = await prisma.$queryRaw<{ month: string; amount: number }[]>`

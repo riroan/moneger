@@ -1,18 +1,16 @@
-import { NextRequest } from 'next/server';
-import { successResponse, errorResponse, validateUserId, apiHandlerWithParams } from '@/lib/api-utils';
+import { successResponse, errorResponse } from '@/lib/api-utils';
+import { authenticatedHandlerWithParams } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { prisma } from '@/lib/prisma';
 import { updateDailyBalanceInTransaction } from '@/lib/services/daily-balance.service';
 import { findSavingsGoal, depositToSavingsGoal } from '@/lib/services/savings.service';
 
 // POST /api/savings/[id]/deposit - 저축 목표에 입금 (거래 내역도 함께 생성)
-export const POST = apiHandlerWithParams<{ id: string }>('deposit to savings goal', async (request: NextRequest, { id }) => {
+export const POST = authenticatedHandlerWithParams<{ id: string }>('deposit to savings goal', async (request, { id }, { userId }) => {
   const body = await request.json();
-  const { userId, amount } = body;
+  const { amount } = body;
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'SAVINGS');
+  const featureError = await requireFeature(userId, 'SAVINGS');
   if (featureError) return featureError;
 
   if (!amount || amount <= 0) {

@@ -1,10 +1,8 @@
-import { NextRequest } from 'next/server';
 import {
-  apiHandler,
   errorResponse,
   successResponse,
-  validateUserId,
 } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import {
   deleteAssetSnapshot,
@@ -12,13 +10,11 @@ import {
 } from '@/lib/services/asset.service';
 import { parseMonthKey } from '@/lib/utils/asset-month';
 
-export const PUT = apiHandler('upsert asset snapshot', async (request: NextRequest) => {
+export const PUT = authenticatedHandler('upsert asset snapshot', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, assetItemId, month, amount, note } = body ?? {};
+  const { assetItemId, month, amount, note } = body ?? {};
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'ASSETS');
+  const featureError = await requireFeature(userId, 'ASSETS');
   if (featureError) return featureError;
 
   if (typeof assetItemId !== 'string' || !assetItemId) {
@@ -49,14 +45,11 @@ export const PUT = apiHandler('upsert asset snapshot', async (request: NextReque
   }
 });
 
-export const DELETE = apiHandler('delete asset snapshot', async (request: NextRequest) => {
-  const userId = request.nextUrl.searchParams.get('userId');
+export const DELETE = authenticatedHandler('delete asset snapshot', async (request, { userId }) => {
   const assetItemId = request.nextUrl.searchParams.get('assetItemId');
   const month = request.nextUrl.searchParams.get('month');
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'ASSETS');
+  const featureError = await requireFeature(userId, 'ASSETS');
   if (featureError) return featureError;
   if (!assetItemId) return errorResponse('assetItemId is required', 400);
   if (!month || !/^\d{4}-\d{2}$/.test(month)) {
@@ -64,6 +57,6 @@ export const DELETE = apiHandler('delete asset snapshot', async (request: NextRe
   }
 
   const monthKey = parseMonthKey(month);
-  const removed = await deleteAssetSnapshot(userId!, assetItemId, monthKey);
+  const removed = await deleteAssetSnapshot(userId, assetItemId, monthKey);
   return successResponse({ deleted: removed !== null });
 });

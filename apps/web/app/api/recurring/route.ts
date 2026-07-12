@@ -1,12 +1,10 @@
-import { NextRequest } from 'next/server';
 import {
   successResponse,
   successResponseWithMessage,
   errorResponse,
-  validateUserId,
   validateAmount,
-  apiHandler,
 } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { RECURRING_EXPENSE_LIMITS } from '@/lib/constants';
 import {
@@ -15,26 +13,20 @@ import {
 } from '@/lib/services/recurring.service';
 
 // GET /api/recurring - 정기 지출 목록 조회
-export const GET = apiHandler('fetch recurring expenses', async (request: NextRequest) => {
-  const userId = request.nextUrl.searchParams.get('userId');
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'RECURRING');
+export const GET = authenticatedHandler('fetch recurring expenses', async (request, { userId }) => {
+  const featureError = await requireFeature(userId, 'RECURRING');
   if (featureError) return featureError;
 
-  const data = await getRecurringExpenses(userId!);
+  const data = await getRecurringExpenses(userId);
   return successResponse(data);
 });
 
 // POST /api/recurring - 정기 지출 등록
-export const POST = apiHandler('create recurring expense', async (request: NextRequest) => {
+export const POST = authenticatedHandler('create recurring expense', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, amount, description, type, categoryId, dayOfMonth } = body;
+  const { amount, description, type, categoryId, dayOfMonth } = body;
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'RECURRING');
+  const featureError = await requireFeature(userId, 'RECURRING');
   if (featureError) return featureError;
 
   const amountError = validateAmount(amount);

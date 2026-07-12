@@ -1,29 +1,23 @@
-import { NextRequest } from 'next/server';
-import { successResponse, errorResponse, validateUserId, apiHandler } from '@/lib/api-utils';
+import { successResponse, errorResponse } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { getGroupsWithSummary, createGroup, findDuplicateGroup } from '@/lib/services/group.service';
 
 // GET /api/groups - 그룹 목록 조회
-export const GET = apiHandler('fetch groups', async (request: NextRequest) => {
-  const userId = request.nextUrl.searchParams.get('userId');
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'GROUPS');
+export const GET = authenticatedHandler('fetch groups', async (request, { userId }) => {
+  const featureError = await requireFeature(userId, 'GROUPS');
   if (featureError) return featureError;
 
-  const groups = await getGroupsWithSummary(userId!);
+  const groups = await getGroupsWithSummary(userId);
   return successResponse(groups);
 });
 
 // POST /api/groups - 그룹 생성
-export const POST = apiHandler('create group', async (request: NextRequest) => {
+export const POST = authenticatedHandler('create group', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, name, description, icon, color } = body;
+  const { name, description, icon, color } = body;
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'GROUPS');
+  const featureError = await requireFeature(userId, 'GROUPS');
   if (featureError) return featureError;
 
   if (!name || !name.trim()) {

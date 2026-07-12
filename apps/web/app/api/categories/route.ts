@@ -1,13 +1,11 @@
-import { NextRequest } from 'next/server';
 import { TransactionType } from '@prisma/client';
 import {
   listResponse,
   successResponseWithMessage,
   errorResponse,
-  validateUserId,
   validateTransactionType,
-  apiHandler,
 } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import {
   getCategories,
   findDuplicateCategory,
@@ -19,16 +17,12 @@ import {
 import { CATEGORY_LIMITS } from '@/lib/constants';
 
 // GET /api/categories - 카테고리 목록 조회
-export const GET = apiHandler('fetch categories', async (request: NextRequest) => {
+export const GET = authenticatedHandler('fetch categories', async (request, { userId }) => {
   const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get('userId');
   const type = searchParams.get('type') as TransactionType | null;
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-
   const categories = await getCategories(
-    userId!,
+    userId,
     type && (type === 'INCOME' || type === 'EXPENSE') ? type : undefined
   );
 
@@ -36,14 +30,11 @@ export const GET = apiHandler('fetch categories', async (request: NextRequest) =
 });
 
 // POST /api/categories - 카테고리 생성
-export const POST = apiHandler('create category', async (request: NextRequest) => {
+export const POST = authenticatedHandler('create category', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, name, type, color, icon, defaultBudget } = body;
+  const { name, type, color, icon, defaultBudget } = body;
 
   // 유효성 검사
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-
   if (!name) {
     return errorResponse('name is required', 400);
   }

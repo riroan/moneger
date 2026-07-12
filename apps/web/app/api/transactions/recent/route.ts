@@ -1,22 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { TransactionType, Prisma } from '@prisma/client';
-import { apiHandler } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 
 // GET /api/transactions/recent - 최근 거래 목록 조회
-export const GET = apiHandler('fetch recent transactions', async (request: NextRequest) => {
+export const GET = authenticatedHandler('fetch recent transactions', async (request, { userId }) => {
   const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get('userId');
   const limitParam = searchParams.get('limit');
   const offsetParam = searchParams.get('offset');
   const type = searchParams.get('type') as TransactionType | null;
-
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'userId is required' },
-      { status: 400 }
-    );
-  }
 
   // 기본값 10개, 최대 100개
   const limit = limitParam ? Math.min(parseInt(limitParam), 100) : 10;

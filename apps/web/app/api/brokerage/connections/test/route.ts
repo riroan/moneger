@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import { apiHandler, errorResponse, successResponse, validateUserId } from '@/lib/api-utils';
+import { errorResponse, successResponse } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { testCredentials } from '@/lib/services/brokerage.service';
 import { BrokerageError, type Broker } from '@/lib/services/brokerage/types';
@@ -7,13 +7,11 @@ import { BrokerageError, type Broker } from '@/lib/services/brokerage/types';
 const VALID_BROKERS: Broker[] = ['KIS', 'TOSS'];
 
 // POST /api/brokerage/connections/test — 저장 전 "연결 테스트"
-export const POST = apiHandler('test brokerage credentials', async (request: NextRequest) => {
+export const POST = authenticatedHandler('test brokerage credentials', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, broker, credentials } = body ?? {};
+  const { broker, credentials } = body ?? {};
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'BROKERAGE');
+  const featureError = await requireFeature(userId, 'BROKERAGE');
   if (featureError) return featureError;
   if (!VALID_BROKERS.includes(broker)) {
     return errorResponse('broker must be KIS or TOSS', 400);

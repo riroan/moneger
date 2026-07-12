@@ -1,25 +1,21 @@
-import { NextRequest } from 'next/server';
 import {
-  apiHandlerWithParams,
   errorResponse,
   successResponse,
-  validateUserId,
 } from '@/lib/api-utils';
+import { authenticatedHandlerWithParams } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import {
   softDeleteAssetItem,
   updateAssetItem,
 } from '@/lib/services/asset.service';
 
-export const PATCH = apiHandlerWithParams<{ id: string }>(
+export const PATCH = authenticatedHandlerWithParams<{ id: string }>(
   'update asset item',
-  async (request: NextRequest, { id }) => {
+  async (request, { id }, { userId }) => {
     const body = await request.json();
-    const { userId, name, icon, order } = body ?? {};
+    const { name, icon, order } = body ?? {};
 
-    const userIdError = validateUserId(userId);
-    if (userIdError) return userIdError;
-    const featureError = await requireFeature(userId!, 'ASSETS');
+    const featureError = await requireFeature(userId, 'ASSETS');
     if (featureError) return featureError;
 
     try {
@@ -37,17 +33,14 @@ export const PATCH = apiHandlerWithParams<{ id: string }>(
   }
 );
 
-export const DELETE = apiHandlerWithParams<{ id: string }>(
+export const DELETE = authenticatedHandlerWithParams<{ id: string }>(
   'delete asset item',
-  async (request: NextRequest, { id }) => {
-    const userId = request.nextUrl.searchParams.get('userId');
-    const userIdError = validateUserId(userId);
-    if (userIdError) return userIdError;
-    const featureError = await requireFeature(userId!, 'ASSETS');
+  async (request, { id }, { userId }) => {
+    const featureError = await requireFeature(userId, 'ASSETS');
     if (featureError) return featureError;
 
     try {
-      await softDeleteAssetItem(id, userId!);
+      await softDeleteAssetItem(id, userId);
       return successResponse({ id });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'failed to delete';

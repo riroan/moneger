@@ -1,18 +1,14 @@
-import { NextRequest } from 'next/server';
-import { successResponse, errorResponse, validateUserId, apiHandlerWithParams } from '@/lib/api-utils';
+import { successResponse, errorResponse } from '@/lib/api-utils';
+import { authenticatedHandlerWithParams } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { findGroup, findDuplicateGroup, updateGroup, deleteGroup, getGroupDetail } from '@/lib/services/group.service';
 
 // GET /api/groups/[id] - 그룹 상세 조회
-export const GET = apiHandlerWithParams<{ id: string }>('fetch group detail', async (request: NextRequest, { id }) => {
-  const userId = request.nextUrl.searchParams.get('userId');
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'GROUPS');
+export const GET = authenticatedHandlerWithParams<{ id: string }>('fetch group detail', async (request, { id }, { userId }) => {
+  const featureError = await requireFeature(userId, 'GROUPS');
   if (featureError) return featureError;
 
-  const detail = await getGroupDetail(id, userId!);
+  const detail = await getGroupDetail(id, userId);
   if (!detail) {
     return errorResponse('Group not found', 404);
   }
@@ -21,13 +17,11 @@ export const GET = apiHandlerWithParams<{ id: string }>('fetch group detail', as
 });
 
 // PATCH /api/groups/[id] - 그룹 수정
-export const PATCH = apiHandlerWithParams<{ id: string }>('update group', async (request: NextRequest, { id }) => {
+export const PATCH = authenticatedHandlerWithParams<{ id: string }>('update group', async (request, { id }, { userId }) => {
   const body = await request.json();
-  const { userId, name, description, icon, color } = body;
+  const { name, description, icon, color } = body;
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'GROUPS');
+  const featureError = await requireFeature(userId, 'GROUPS');
   if (featureError) return featureError;
 
   const existingGroup = await findGroup(id, userId);
@@ -53,15 +47,11 @@ export const PATCH = apiHandlerWithParams<{ id: string }>('update group', async 
 });
 
 // DELETE /api/groups/[id] - 그룹 삭제
-export const DELETE = apiHandlerWithParams<{ id: string }>('delete group', async (request: NextRequest, { id }) => {
-  const userId = request.nextUrl.searchParams.get('userId');
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'GROUPS');
+export const DELETE = authenticatedHandlerWithParams<{ id: string }>('delete group', async (request, { id }, { userId }) => {
+  const featureError = await requireFeature(userId, 'GROUPS');
   if (featureError) return featureError;
 
-  const existingGroup = await findGroup(id, userId!);
+  const existingGroup = await findGroup(id, userId);
   if (!existingGroup) {
     return errorResponse('Group not found', 404);
   }

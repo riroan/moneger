@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import { apiHandler, errorResponse, successResponse, validateUserId } from '@/lib/api-utils';
+import { errorResponse, successResponse } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import {
   listConnections,
@@ -12,23 +12,18 @@ import { BrokerageError, type Broker } from '@/lib/services/brokerage/types';
 
 const VALID_BROKERS: Broker[] = ['KIS', 'TOSS'];
 
-export const GET = apiHandler('list brokerage connections', async (request: NextRequest) => {
-  const userId = request.nextUrl.searchParams.get('userId');
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'BROKERAGE');
+export const GET = authenticatedHandler('list brokerage connections', async (request, { userId }) => {
+  const featureError = await requireFeature(userId, 'BROKERAGE');
   if (featureError) return featureError;
 
-  return successResponse(await listConnections(userId!));
+  return successResponse(await listConnections(userId));
 });
 
-export const POST = apiHandler('create brokerage connection', async (request: NextRequest) => {
+export const POST = authenticatedHandler('create brokerage connection', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, broker, label, credentials } = body ?? {};
+  const { broker, label, credentials } = body ?? {};
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'BROKERAGE');
+  const featureError = await requireFeature(userId, 'BROKERAGE');
   if (featureError) return featureError;
   if (!VALID_BROKERS.includes(broker)) {
     return errorResponse('broker must be KIS or TOSS', 400);

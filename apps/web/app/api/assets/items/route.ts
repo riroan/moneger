@@ -1,31 +1,24 @@
-import { NextRequest } from 'next/server';
 import {
-  apiHandler,
   errorResponse,
   successResponse,
-  validateUserId,
 } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { requireFeature } from '@/lib/entitlements-server';
 import { createAssetItem, listAssetItems } from '@/lib/services/asset.service';
 
-export const GET = apiHandler('list asset items', async (request: NextRequest) => {
-  const userId = request.nextUrl.searchParams.get('userId');
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'ASSETS');
+export const GET = authenticatedHandler('list asset items', async (request, { userId }) => {
+  const featureError = await requireFeature(userId, 'ASSETS');
   if (featureError) return featureError;
 
-  const items = await listAssetItems(userId!);
+  const items = await listAssetItems(userId);
   return successResponse(items);
 });
 
-export const POST = apiHandler('create asset item', async (request: NextRequest) => {
+export const POST = authenticatedHandler('create asset item', async (request, { userId }) => {
   const body = await request.json();
-  const { userId, name, icon, order } = body ?? {};
+  const { name, icon, order } = body ?? {};
 
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-  const featureError = await requireFeature(userId!, 'ASSETS');
+  const featureError = await requireFeature(userId, 'ASSETS');
   if (featureError) return featureError;
   if (typeof name !== 'string' || !name.trim()) {
     return errorResponse('name is required', 400);

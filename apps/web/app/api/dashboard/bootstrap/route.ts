@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import { apiHandler, isErrorResponse, parseYearMonth, successResponse, validateUserId } from '@/lib/api-utils';
+import { isErrorResponse, parseYearMonth, successResponse } from '@/lib/api-utils';
+import { authenticatedHandler } from '@/lib/auth-handler';
 import { getOrSeedCategories } from '@/lib/services/category.service';
 import { getTransactionSummary } from '@/lib/services/summary.service';
 import { getOldestTransactionDate, getRecentTransactions, getTodaySummary } from '@/lib/services/transaction.service';
@@ -15,12 +15,8 @@ function normalizeLimit(value: string | null) {
   return Math.min(Math.max(parsed, 1), 100);
 }
 
-export const GET = apiHandler('fetch dashboard bootstrap', async (request: NextRequest) => {
+export const GET = authenticatedHandler('fetch dashboard bootstrap', async (request, { userId }) => {
   const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get('userId');
-
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
 
   const parsed = parseYearMonth(searchParams);
   if (isErrorResponse(parsed)) return parsed;
@@ -29,12 +25,12 @@ export const GET = apiHandler('fetch dashboard bootstrap', async (request: NextR
   const lastMonth = previousYearMonth(parsed.year, parsed.month);
 
   const [categories, oldestDate, recentTransactions, todaySummary, summary, lastMonthSummary] = await Promise.all([
-    getOrSeedCategories(userId!),
-    getOldestTransactionDate(userId!),
-    getRecentTransactions(userId!, limit),
-    getTodaySummary(userId!),
-    getTransactionSummary(userId!, parsed.year, parsed.month),
-    getTransactionSummary(userId!, lastMonth.year, lastMonth.month),
+    getOrSeedCategories(userId),
+    getOldestTransactionDate(userId),
+    getRecentTransactions(userId, limit),
+    getTodaySummary(userId),
+    getTransactionSummary(userId, parsed.year, parsed.month),
+    getTransactionSummary(userId, lastMonth.year, lastMonth.month),
   ]);
 
   return successResponse({

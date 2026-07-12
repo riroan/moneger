@@ -1,12 +1,10 @@
-import { NextRequest } from 'next/server';
 import {
   successResponseWithMessage,
   errorResponse,
-  validateUserId,
   validateTransactionType,
   validateAmount,
-  apiHandlerWithParams,
 } from '@/lib/api-utils';
+import { authenticatedHandlerWithParams } from '@/lib/auth-handler';
 import {
   findTransaction,
   updateTransaction,
@@ -15,13 +13,9 @@ import {
 } from '@/lib/services/transaction.service';
 
 // PATCH /api/transactions/[id] - 거래 수정
-export const PATCH = apiHandlerWithParams<{ id: string }>('update transaction', async (request: NextRequest, { id }) => {
+export const PATCH = authenticatedHandlerWithParams<{ id: string }>('update transaction', async (request, { id }, { userId }) => {
   const body = await request.json();
-  const { userId, type, amount, description, categoryId, groupId, date } = body;
-
-  // 유효성 검사
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
+  const { type, amount, description, categoryId, groupId, date } = body;
 
   // 거래가 존재하는지 확인
   const existingTransaction = await findTransaction(id, userId);
@@ -73,14 +67,7 @@ export const PATCH = apiHandlerWithParams<{ id: string }>('update transaction', 
 });
 
 // DELETE /api/transactions/[id] - 거래 삭제 (Soft Delete)
-export const DELETE = apiHandlerWithParams<{ id: string }>('delete transaction', async (request: NextRequest, { id }) => {
-  const body = await request.json();
-  const { userId } = body;
-
-  // 유효성 검사
-  const userIdError = validateUserId(userId);
-  if (userIdError) return userIdError;
-
+export const DELETE = authenticatedHandlerWithParams<{ id: string }>('delete transaction', async (request, { id }, { userId }) => {
   // 거래가 존재하는지 확인
   const existingTransaction = await findTransaction(id, userId);
   if (!existingTransaction) {
